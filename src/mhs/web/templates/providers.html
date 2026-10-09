@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import year_select %}
+{% block title %}Providers{% endblock %}
+{% block content %}
+{% set FLAG_TEXT = {'overpaid': ('Overpaid', 'bad'), 'unpaid': ('Unpaid', ''), 'gap': ('Owed per insurer, not billed or paid', 'bad'),
+  'no_claim': ('HSA payment, no claim', 'info'), 'outside_hsa': ('Paid outside HSA', ''), 'duplicate': ('Possible duplicate', 'bad'),
+  'unconfirmed': ('Unconfirmed match', 'idle')} %}
+<div class="page-head"><h1>Providers</h1>{{ year_select(report, "/providers") }}</div>
+<p class="muted">Payments are balanced against everything you owe each provider. Providers joined by a match in Settings are shown together.</p>
+<div class="card table-wrap">
+<table>
+  <tr><th>Provider</th><th class="num">Visits</th><th class="num">You owe (EOB)</th><th class="num">Paid</th><th class="num">Unpaid</th><th class="num">Overpaid</th><th>Flags</th></tr>
+  {% for g in report.groups %}
+  <tr>
+    <td><a href="/providers/{{ g.id }}?year={{ report.year }}">{{ g.name }}</a></td>
+    <td class="num">{{ g.visits|rejectattr('carry_in')|list|length }}</td>
+    <td class="num">{{ g.should_owe|money }}</td>
+    <td class="num">{{ g.paid|money }}</td>
+    <td class="num">{{ g.unpaid|money if g.unpaid else '' }}</td>
+    <td class="num">{{ g.overpaid|money if g.overpaid else '' }}</td>
+    <td>{% for f in g.flags %}<span class="chip {{ FLAG_TEXT[f][1] }}">{{ FLAG_TEXT[f][0] }}</span>{% endfor %}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

@@ -1,0 +1,942 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://my-health-spend.local/schema/mhs-ingest-0.1.json",
+  "title": "My Health Spend ingest file",
+  "description": "One ingest batch. Every section is optional, so a file can carry only settings (plans, accounts, providers), only visits and documents, or both. Records are upserted by id: re-importing a file with the same id replaces that record. Money is in dollars and is converted to integer cents on import. Cross-references (provider_id, visit_id and so on) are checked by the importer, not by this schema.",
+  "type": "object",
+  "required": [
+    "schema_version"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "plans": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/plan"
+      }
+    },
+    "accounts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/account"
+      }
+    },
+    "members": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/member"
+      }
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/provider"
+      }
+    },
+    "provider_relationships": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/provider_relationship"
+      }
+    },
+    "visits": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/visit"
+      }
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/provider_bill"
+          },
+          {
+            "$ref": "#/$defs/eob"
+          },
+          {
+            "$ref": "#/$defs/payment"
+          },
+          {
+            "$ref": "#/$defs/receipt"
+          },
+          {
+            "$ref": "#/$defs/account_reimbursement"
+          },
+          {
+            "$ref": "#/$defs/account_transaction"
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+$",
+      "description": "Stable identifier you choose, e.g. 'v-2026-02-10-pcp'. Used to link records and to upsert on re-import."
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "money": {
+      "type": "number",
+      "minimum": 0,
+      "description": "US dollars, up to 2 decimal places."
+    },
+    "network_status": {
+      "enum": [
+        "in_network",
+        "out_of_network",
+        "not_applicable",
+        "unknown"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Free-form fields not yet in the schema. Stored as-is; lets the format evolve without breaking imports."
+    },
+    "file": {
+      "type": "string",
+      "description": "Path to the source document (PDF or image), relative to the ingest file. A missing file is a warning, not an error."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prepared_by": {
+          "type": "string"
+        },
+        "prepared_on": {
+          "$ref": "#/$defs/date"
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "description": "Insurance plan for one plan year. Shown and edited on the Settings page.",
+      "required": [
+        "id",
+        "plan_year",
+        "insurer"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "plan_year": {
+          "type": "integer",
+          "minimum": 2000,
+          "maximum": 2100
+        },
+        "insurer": {
+          "type": "string"
+        },
+        "coverage_order": {
+          "enum": [
+            "primary",
+            "secondary",
+            "tertiary"
+          ],
+          "description": "Order this plan pays in when more than one plan covers a member (coordination of benefits)."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "description": "Household members this plan covers."
+        },
+        "plan_name": {
+          "type": "string"
+        },
+        "coverage_start": {
+          "$ref": "#/$defs/date"
+        },
+        "coverage_end": {
+          "$ref": "#/$defs/date"
+        },
+        "hsa_eligible_plan": {
+          "type": "boolean",
+          "description": "True for a high-deductible plan that allows HSA contributions."
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/plan_limit"
+          },
+          "description": "Deductibles and out-of-pocket maximums, one entry per type, network tier and level."
+        },
+        "coinsurance_rate": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Your share after the deductible, e.g. 0.2 for 20%. null when not yet known."
+        },
+        "copays": {
+          "type": "object",
+          "description": "Copay by service type, e.g. {\"primary_care\": 30, \"specialist\": 60}.",
+          "additionalProperties": {
+            "$ref": "#/$defs/money"
+          }
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "account": {
+      "type": "object",
+      "description": "A way of paying. Shown and edited on the Settings page.",
+      "required": [
+        "id",
+        "name",
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "description": "A label, not an account number, e.g. 'HSA' or 'Personal Visa'."
+        },
+        "type": {
+          "enum": [
+            "hsa",
+            "fsa",
+            "credit_card",
+            "debit_card",
+            "bank",
+            "cash",
+            "other"
+          ]
+        },
+        "plan_year": {
+          "type": "integer",
+          "description": "For FSAs and other per-year accounts."
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "description": "Anyone you pay for health spend: practice, hospital, lab, pharmacy or retailer. Shown and edited on the Settings page.",
+      "required": [
+        "id",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "physician_practice",
+            "hospital",
+            "lab",
+            "imaging",
+            "pharmacy",
+            "retailer",
+            "other"
+          ]
+        },
+        "network_status": {
+          "$ref": "#/$defs/network_status"
+        },
+        "npi": {
+          "type": "string",
+          "pattern": "^[0-9]{10}$",
+          "description": "Public National Provider Identifier, optional."
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Names this provider appears under in source files (insurer 'Provided By', card-statement merchant). Used by importers to map rows to this provider."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "description": "Members this provider is known to serve, set by the owner. Relationships seen on claims are derived from visits and need not be listed."
+        }
+      }
+    },
+    "visit": {
+      "type": "object",
+      "description": "One encounter or purchase. The unit the app reconciles.",
+      "required": [
+        "id",
+        "date",
+        "provider_id",
+        "category"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "provider_id": {
+          "$ref": "#/$defs/id"
+        },
+        "member_id": {
+          "$ref": "#/$defs/id"
+        },
+        "plan_id": {
+          "$ref": "#/$defs/id"
+        },
+        "category": {
+          "enum": [
+            "provider_visit",
+            "service",
+            "supplements",
+            "rx",
+            "equipment"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "document_base": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "date"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "type": "string"
+        },
+        "date": {
+          "$ref": "#/$defs/date",
+          "description": "Date on the document (statement date, processed date, payment date)."
+        },
+        "file": {
+          "$ref": "#/$defs/file"
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "provider_bill": {
+      "description": "A bill or statement from a provider. One line per visit it covers; a later statement may repeat earlier visits.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/document_base"
+        }
+      ],
+      "required": [
+        "provider_id",
+        "balance_due",
+        "lines"
+      ],
+      "properties": {
+        "type": {
+          "const": "provider_bill"
+        },
+        "provider_id": {
+          "$ref": "#/$defs/id"
+        },
+        "due_date": {
+          "$ref": "#/$defs/date"
+        },
+        "balance_due": {
+          "$ref": "#/$defs/money"
+        },
+        "network_status_shown": {
+          "$ref": "#/$defs/network_status"
+        },
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "visit_id",
+              "patient_amount"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "visit_id": {
+                "$ref": "#/$defs/id"
+              },
+              "description": {
+                "type": "string"
+              },
+              "billed_charge": {
+                "$ref": "#/$defs/money"
+              },
+              "insurance_paid": {
+                "$ref": "#/$defs/money"
+              },
+              "adjustment": {
+                "$ref": "#/$defs/money"
+              },
+              "rate": {
+                "$ref": "#/$defs/money",
+                "description": "Agreed rate as printed on the bill, if shown."
+              },
+              "patient_amount": {
+                "$ref": "#/$defs/money",
+                "description": "What the provider says you owe for this visit, before your payments."
+              },
+              "patient_paid": {
+                "$ref": "#/$defs/money",
+                "description": "Your payments the provider has credited to this visit."
+              },
+              "balance": {
+                "$ref": "#/$defs/money",
+                "description": "What is still owed on this visit after insurance and your payments."
+              },
+              "items": {
+                "type": "array",
+                "description": "Service lines for this visit as printed on the statement.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "description": {
+                      "type": "string"
+                    },
+                    "rendering_provider": {
+                      "type": "string"
+                    },
+                    "charge": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "adjustment": {
+                      "type": "number",
+                      "description": "Net insurance adjustment; reversals make it differ from the sum of postings."
+                    },
+                    "insurance_paid": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "patient_amount": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "patient_amount_type": {
+                      "enum": [
+                        "deductible",
+                        "coinsurance",
+                        "copay",
+                        "not_covered",
+                        "mixed",
+                        "unknown"
+                      ]
+                    },
+                    "patient_paid": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "balance": {
+                      "$ref": "#/$defs/money"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "last_payment_received": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The 'last payment received' box many statements print.",
+          "properties": {
+            "date": {
+              "$ref": "#/$defs/date"
+            },
+            "method": {
+              "type": "string"
+            },
+            "amount": {
+              "$ref": "#/$defs/money"
+            }
+          }
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "eob": {
+      "description": "Explanation of benefits: the insurer's decision on one visit's claim. Billed = insurer_paid + adjustment + additional_savings + patient_responsibility.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/document_base"
+        }
+      ],
+      "required": [
+        "plan_id",
+        "provider_id",
+        "visit_id",
+        "billed",
+        "allowed",
+        "insurer_paid",
+        "patient_responsibility"
+      ],
+      "properties": {
+        "type": {
+          "const": "eob"
+        },
+        "plan_id": {
+          "$ref": "#/$defs/id"
+        },
+        "provider_id": {
+          "$ref": "#/$defs/id"
+        },
+        "visit_id": {
+          "$ref": "#/$defs/id"
+        },
+        "claim_number": {
+          "type": "string"
+        },
+        "claim_status": {
+          "enum": [
+            "processed",
+            "denied",
+            "pending",
+            "adjusted"
+          ]
+        },
+        "received_date": {
+          "$ref": "#/$defs/date",
+          "description": "Date the insurer received the claim."
+        },
+        "network_status": {
+          "$ref": "#/$defs/network_status"
+        },
+        "billed": {
+          "$ref": "#/$defs/money"
+        },
+        "allowed": {
+          "$ref": "#/$defs/money",
+          "description": "The agreed (negotiated) rate for this claim."
+        },
+        "adjustment": {
+          "$ref": "#/$defs/money",
+          "description": "Contractual write-off: billed minus allowed, for in-network claims."
+        },
+        "insurer_paid": {
+          "$ref": "#/$defs/money"
+        },
+        "additional_savings": {
+          "$ref": "#/$defs/money",
+          "description": "Other reductions some insurers report separately from the plan discount."
+        },
+        "deductible": {
+          "$ref": "#/$defs/money"
+        },
+        "copay": {
+          "$ref": "#/$defs/money"
+        },
+        "coinsurance": {
+          "$ref": "#/$defs/money"
+        },
+        "not_covered": {
+          "$ref": "#/$defs/money"
+        },
+        "patient_responsibility": {
+          "$ref": "#/$defs/money",
+          "description": "deductible + copay + coinsurance + not_covered."
+        },
+        "lines": {
+          "type": "array",
+          "description": "Optional service lines. Not reconciled in the MVP; captured for later.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "service_date": {
+                "$ref": "#/$defs/date"
+              },
+              "description": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string",
+                "description": "CPT/HCPCS code if printed."
+              },
+              "billed": {
+                "$ref": "#/$defs/money"
+              },
+              "allowed": {
+                "$ref": "#/$defs/money"
+              },
+              "insurer_paid": {
+                "$ref": "#/$defs/money"
+              },
+              "patient_responsibility": {
+                "$ref": "#/$defs/money"
+              }
+            }
+          }
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "payment": {
+      "description": "Money you paid to (or got back from) a provider. Applied to the provider's ledger, not to one visit; visit_ids is an optional hint.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/document_base"
+        }
+      ],
+      "required": [
+        "provider_id",
+        "account_id",
+        "amount"
+      ],
+      "properties": {
+        "type": {
+          "const": "payment"
+        },
+        "kind": {
+          "enum": [
+            "payment",
+            "refund"
+          ],
+          "default": "payment"
+        },
+        "provider_id": {
+          "$ref": "#/$defs/id"
+        },
+        "account_id": {
+          "$ref": "#/$defs/id"
+        },
+        "amount": {
+          "$ref": "#/$defs/money"
+        },
+        "reference": {
+          "type": "string",
+          "description": "Confirmation or check number."
+        },
+        "visit_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "account_balance_after": {
+          "$ref": "#/$defs/money",
+          "description": "Account balance after this transaction, if the statement shows it."
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "receipt": {
+      "description": "Point-of-sale receipt for a purchase with no insurance claim (supplements, equipment, some Rx). Pair it with a payment.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/document_base"
+        }
+      ],
+      "required": [
+        "provider_id",
+        "visit_id",
+        "total"
+      ],
+      "properties": {
+        "type": {
+          "const": "receipt"
+        },
+        "provider_id": {
+          "$ref": "#/$defs/id"
+        },
+        "visit_id": {
+          "$ref": "#/$defs/id"
+        },
+        "total": {
+          "$ref": "#/$defs/money"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "description",
+              "amount"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "number",
+                "minimum": 0
+              },
+              "amount": {
+                "$ref": "#/$defs/money"
+              }
+            }
+          }
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "account_reimbursement": {
+      "description": "You paid out of pocket, then reimbursed yourself from an HSA or FSA. Clears the 'not paid from HSA' flag on those payments.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/document_base"
+        }
+      ],
+      "required": [
+        "from_account_id",
+        "amount",
+        "payment_ids"
+      ],
+      "properties": {
+        "type": {
+          "const": "account_reimbursement"
+        },
+        "from_account_id": {
+          "$ref": "#/$defs/id"
+        },
+        "amount": {
+          "$ref": "#/$defs/money"
+        },
+        "payment_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "account_transaction": {
+      "description": "Account activity that is not a payment to a provider: contributions, interest, fees, opening balance.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/document_base"
+        }
+      ],
+      "required": [
+        "account_id",
+        "kind",
+        "amount"
+      ],
+      "properties": {
+        "type": {
+          "const": "account_transaction"
+        },
+        "account_id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "enum": [
+            "contribution_employee",
+            "contribution_employer",
+            "interest",
+            "fee",
+            "balance_forward",
+            "transfer_in",
+            "transfer_out",
+            "other"
+          ]
+        },
+        "amount": {
+          "$ref": "#/$defs/money",
+          "description": "Always positive; the kind gives the direction (fee and transfer_out reduce the balance)."
+        },
+        "description": {
+          "type": "string"
+        },
+        "tax_year": {
+          "type": "integer"
+        },
+        "account_balance_after": {
+          "$ref": "#/$defs/money"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "member": {
+      "type": "object",
+      "description": "A household member who receives care. Shown and edited on the Settings page.",
+      "required": [
+        "id",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "relationship": {
+          "enum": [
+            "self",
+            "spouse",
+            "child",
+            "other"
+          ]
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Names this member appears under in source files (e.g. claims 'Patient')."
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "provider_relationship": {
+      "type": "object",
+      "description": "Two provider records that may be the same entity (different names on the claim and the card statement) or related. Tracked so matches are explicit, flagged until confirmed, and reconciled together.",
+      "required": [
+        "id",
+        "provider_id",
+        "related_provider_id",
+        "relationship",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "provider_id": {
+          "$ref": "#/$defs/id"
+        },
+        "related_provider_id": {
+          "$ref": "#/$defs/id"
+        },
+        "relationship": {
+          "enum": [
+            "same_individual",
+            "same_organization",
+            "affiliated"
+          ]
+        },
+        "status": {
+          "enum": [
+            "suspected",
+            "confirmed",
+            "rejected"
+          ]
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        }
+      }
+    },
+    "plan_limit": {
+      "type": "object",
+      "description": "One cost-sharing limit, e.g. in-network family deductible $6,000. An individual limit with no member_id applies to each covered member; with member_id it applies to that member only.",
+      "required": [
+        "type",
+        "network",
+        "level",
+        "amount"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "deductible",
+            "out_of_pocket_max",
+            "annual_maximum"
+          ],
+          "description": "annual_maximum is the most a plan pays per year (common on dental plans)."
+        },
+        "network": {
+          "enum": [
+            "in_network",
+            "out_of_network",
+            "combined"
+          ]
+        },
+        "level": {
+          "enum": [
+            "individual",
+            "family"
+          ]
+        },
+        "member_id": {
+          "$ref": "#/$defs/id"
+        },
+        "amount": {
+          "$ref": "#/$defs/money"
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,373 @@
+{
+  "schema_version": "0.1",
+  "source": {
+    "prepared_by": "Claude (sample)",
+    "prepared_on": "2026-10-09",
+    "notes": "Made-up sample data. Every provider, amount and claim number is invented. Covers each status: matched, discrepancy, balance outstanding with missing EOB, waiting, and a possible HSA opportunity."
+  },
+  "plans": [
+    {
+      "id": "plan-2026",
+      "plan_year": 2026,
+      "insurer": "Example Health",
+      "coverage_order": "primary",
+      "plan_name": "Example HDHP 1700",
+      "coverage_start": "2026-01-01",
+      "coverage_end": "2026-12-31",
+      "hsa_eligible_plan": true,
+      "limits": [
+        {
+          "type": "deductible",
+          "network": "in_network",
+          "level": "individual",
+          "amount": 1700
+        },
+        {
+          "type": "deductible",
+          "network": "in_network",
+          "level": "family",
+          "amount": 3400
+        },
+        {
+          "type": "out_of_pocket_max",
+          "network": "in_network",
+          "level": "individual",
+          "amount": 5000
+        },
+        {
+          "type": "out_of_pocket_max",
+          "network": "in_network",
+          "level": "family",
+          "amount": 10000
+        }
+      ],
+      "coinsurance_rate": 0.2
+    }
+  ],
+  "accounts": [
+    {
+      "id": "acct-hsa",
+      "name": "HSA",
+      "type": "hsa"
+    },
+    {
+      "id": "acct-visa",
+      "name": "Personal Visa",
+      "type": "credit_card"
+    }
+  ],
+  "providers": [
+    {
+      "id": "prov-pcp",
+      "name": "Example Family Medicine",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-lab",
+      "name": "Example Labs",
+      "kind": "lab",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-imaging",
+      "name": "Example Imaging Center",
+      "kind": "imaging",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-derm",
+      "name": "Example Dermatology",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-vitamins",
+      "name": "Example Vitamin Shop",
+      "kind": "retailer",
+      "network_status": "not_applicable"
+    }
+  ],
+  "visits": [
+    {
+      "id": "v-2026-02-10-pcp",
+      "date": "2026-02-10",
+      "provider_id": "prov-pcp",
+      "plan_id": "plan-2026",
+      "category": "provider_visit",
+      "description": "Office visit, sinus infection",
+      "notes": "Expected: Matched."
+    },
+    {
+      "id": "v-2026-04-02-pcp",
+      "date": "2026-04-02",
+      "provider_id": "prov-pcp",
+      "plan_id": "plan-2026",
+      "category": "provider_visit",
+      "description": "Follow-up visit",
+      "notes": "Expected: Discrepancy. Provider billed the full $180 charge instead of the $100 agreed rate; $80 overpaid."
+    },
+    {
+      "id": "v-2026-04-02-lab",
+      "date": "2026-04-02",
+      "provider_id": "prov-lab",
+      "plan_id": "plan-2026",
+      "category": "service",
+      "description": "Blood panel",
+      "notes": "Expected: Matched. Paid by card, then reimbursed from the HSA, so no HSA flag."
+    },
+    {
+      "id": "v-2026-06-15-vitamins",
+      "date": "2026-06-15",
+      "provider_id": "prov-vitamins",
+      "category": "supplements",
+      "description": "Vitamin D and magnesium",
+      "notes": "Expected: Matched, with a 'possible HSA/FSA opportunity' flag (eligibility not confirmed)."
+    },
+    {
+      "id": "v-2026-07-20-imaging",
+      "date": "2026-07-20",
+      "provider_id": "prov-imaging",
+      "plan_id": "plan-2026",
+      "category": "service",
+      "description": "Knee MRI",
+      "notes": "Expected: Balance outstanding (also missing EOB). Provider billed full charge before insurance processed."
+    },
+    {
+      "id": "v-2026-09-28-derm",
+      "date": "2026-09-28",
+      "provider_id": "prov-derm",
+      "plan_id": "plan-2026",
+      "category": "provider_visit",
+      "description": "Skin check",
+      "notes": "Expected: Waiting. No documents yet and under 30 days since the visit."
+    }
+  ],
+  "documents": [
+    {
+      "id": "eob-2026-02-10-pcp",
+      "type": "eob",
+      "date": "2026-02-24",
+      "file": "files/eob-2026-02-10-pcp.pdf",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-pcp",
+      "visit_id": "v-2026-02-10-pcp",
+      "claim_number": "EX0000001",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 250.0,
+      "allowed": 140.0,
+      "adjustment": 110.0,
+      "insurer_paid": 0.0,
+      "deductible": 140.0,
+      "copay": 0.0,
+      "coinsurance": 0.0,
+      "not_covered": 0.0,
+      "patient_responsibility": 140.0
+    },
+    {
+      "id": "bill-pcp-2026-03-05",
+      "type": "provider_bill",
+      "date": "2026-03-05",
+      "due_date": "2026-04-04",
+      "provider_id": "prov-pcp",
+      "network_status_shown": "in_network",
+      "balance_due": 140.0,
+      "lines": [
+        {
+          "visit_id": "v-2026-02-10-pcp",
+          "description": "Office visit",
+          "billed_charge": 250.0,
+          "insurance_paid": 0.0,
+          "adjustment": 110.0,
+          "patient_amount": 140.0,
+          "patient_paid": 0.0
+        }
+      ]
+    },
+    {
+      "id": "eob-2026-04-02-pcp",
+      "type": "eob",
+      "date": "2026-04-16",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-pcp",
+      "visit_id": "v-2026-04-02-pcp",
+      "claim_number": "EX0000002",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 180.0,
+      "allowed": 100.0,
+      "adjustment": 80.0,
+      "insurer_paid": 0.0,
+      "deductible": 100.0,
+      "patient_responsibility": 100.0
+    },
+    {
+      "id": "bill-pcp-2026-04-28",
+      "type": "provider_bill",
+      "date": "2026-04-28",
+      "due_date": "2026-05-28",
+      "provider_id": "prov-pcp",
+      "network_status_shown": "in_network",
+      "balance_due": 320.0,
+      "lines": [
+        {
+          "visit_id": "v-2026-02-10-pcp",
+          "description": "Office visit",
+          "billed_charge": 250.0,
+          "insurance_paid": 0.0,
+          "adjustment": 110.0,
+          "patient_amount": 140.0,
+          "patient_paid": 0.0
+        },
+        {
+          "visit_id": "v-2026-04-02-pcp",
+          "description": "Follow-up visit",
+          "billed_charge": 180.0,
+          "insurance_paid": 0.0,
+          "adjustment": 0.0,
+          "patient_amount": 180.0,
+          "patient_paid": 0.0
+        }
+      ]
+    },
+    {
+      "id": "pay-pcp-2026-05-02",
+      "type": "payment",
+      "date": "2026-05-02",
+      "provider_id": "prov-pcp",
+      "account_id": "acct-hsa",
+      "amount": 320.0,
+      "reference": "HSA-CONF-1001",
+      "visit_ids": [
+        "v-2026-02-10-pcp",
+        "v-2026-04-02-pcp"
+      ],
+      "notes": "Paid the full statement balance from the HSA."
+    },
+    {
+      "id": "eob-2026-04-02-lab",
+      "type": "eob",
+      "date": "2026-04-20",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-lab",
+      "visit_id": "v-2026-04-02-lab",
+      "claim_number": "EX0000003",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 210.0,
+      "allowed": 95.0,
+      "adjustment": 115.0,
+      "insurer_paid": 0.0,
+      "deductible": 95.0,
+      "patient_responsibility": 95.0,
+      "lines": [
+        {
+          "service_date": "2026-04-02",
+          "description": "Comprehensive metabolic panel",
+          "code": "80053",
+          "billed": 120.0,
+          "allowed": 55.0,
+          "insurer_paid": 0.0,
+          "patient_responsibility": 55.0
+        },
+        {
+          "service_date": "2026-04-02",
+          "description": "Lipid panel",
+          "code": "80061",
+          "billed": 90.0,
+          "allowed": 40.0,
+          "insurer_paid": 0.0,
+          "patient_responsibility": 40.0
+        }
+      ]
+    },
+    {
+      "id": "bill-lab-2026-05-10",
+      "type": "provider_bill",
+      "date": "2026-05-10",
+      "provider_id": "prov-lab",
+      "network_status_shown": "in_network",
+      "balance_due": 95.0,
+      "lines": [
+        {
+          "visit_id": "v-2026-04-02-lab",
+          "description": "Lab services",
+          "billed_charge": 210.0,
+          "insurance_paid": 0.0,
+          "adjustment": 115.0,
+          "patient_amount": 95.0
+        }
+      ]
+    },
+    {
+      "id": "pay-lab-2026-05-20",
+      "type": "payment",
+      "date": "2026-05-20",
+      "provider_id": "prov-lab",
+      "account_id": "acct-visa",
+      "amount": 95.0
+    },
+    {
+      "id": "reimb-hsa-2026-06-01",
+      "type": "account_reimbursement",
+      "date": "2026-06-01",
+      "from_account_id": "acct-hsa",
+      "amount": 95.0,
+      "payment_ids": [
+        "pay-lab-2026-05-20"
+      ]
+    },
+    {
+      "id": "rcpt-vitamins-2026-06-15",
+      "type": "receipt",
+      "date": "2026-06-15",
+      "provider_id": "prov-vitamins",
+      "visit_id": "v-2026-06-15-vitamins",
+      "total": 42.5,
+      "items": [
+        {
+          "description": "Vitamin D3 2000 IU, 120 ct",
+          "quantity": 1,
+          "amount": 18.0
+        },
+        {
+          "description": "Magnesium glycinate, 90 ct",
+          "quantity": 1,
+          "amount": 24.5
+        }
+      ]
+    },
+    {
+      "id": "pay-vitamins-2026-06-15",
+      "type": "payment",
+      "date": "2026-06-15",
+      "provider_id": "prov-vitamins",
+      "account_id": "acct-visa",
+      "amount": 42.5,
+      "visit_ids": [
+        "v-2026-06-15-vitamins"
+      ]
+    },
+    {
+      "id": "bill-imaging-2026-08-15",
+      "type": "provider_bill",
+      "date": "2026-08-15",
+      "due_date": "2026-09-14",
+      "provider_id": "prov-imaging",
+      "network_status_shown": "in_network",
+      "balance_due": 900.0,
+      "lines": [
+        {
+          "visit_id": "v-2026-07-20-imaging",
+          "description": "MRI knee without contrast",
+          "billed_charge": 900.0,
+          "insurance_paid": 0.0,
+          "adjustment": 0.0,
+          "patient_amount": 900.0
+        }
+      ],
+      "notes": "No EOB yet. Do not pay until the insurer processes the claim."
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mhs",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "mhs"],
+      "port": 3062
+    }
+  ]
+}

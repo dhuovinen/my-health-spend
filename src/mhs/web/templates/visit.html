@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge %}
+{% block title %}{{ v.provider.name }} {{ v.visit.date }}{% endblock %}
+{% block content %}
+<p class="small"><a href="/visits?year={{ v.visit.date[:4] }}">← Visits</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ v.provider.name }}</h1>
+    <div class="muted">{{ v.visit.date|nice_date }} · {{ v.visit.category|humanize }}{% if v.member %} · {{ v.member.name }}{% endif %}{% if plan %} · {{ plan.insurer }} {{ plan.plan_name }} {{ plan.plan_year }}{% endif %}</div>
+    {% if v.visit.description %}<div class="small">{{ v.visit.description }}</div>{% endif %}
+  </div>
+  {{ badge(v.status) }}
+</div>
+
+{% if group.unconfirmed %}
+<div class="alert warn">This provider is reconciled together with {{ group.providers|rejectattr('id', 'equalto', v.provider.id)|map(attribute='name')|join(', ') }} based on an unconfirmed match. <a href="/settings#relationships">Confirm or reject it</a>.</div>
+{% endif %}
+
+<div class="grid tiles">
+  <div class="card tile"><div class="label">Billed to insurer</div><div class="value">{{ v.total_billed|money }}</div></div>
+  <div class="card tile"><div class="label">You owe per EOB</div><div class="value">{{ v.insurer_owed|money }}</div></div>
+  <div class="card tile"><div class="label">Provider billed you</div><div class="value">{{ v.billed_to_me|money }}</div></div>
+  <div class="card tile"><div class="label">Paid (allocated)</div><div class="value">{{ v.paid|money }}</div>{% if v.remaining %}<div class="small" style="color:var(--warn)">{{ v.remaining|money }} still unpaid</div>{% endif %}</div>
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <h2>Reconciliation checks</h2>
+    {% for c in v.checks %}
+    <div class="check {{ c.result }}">
+      <div class="mark">{{ {'pass': '✓', 'fail': '✕', 'na': '–'}[c.result] }}</div>
+      <div><strong>{{ c.name }}</strong><div class="small muted">{{ c.detail }}</div></div>
+      <div class="num">{% if c.result == 'fail' and c.amount %}{{ c.amount|money }}{% endif %}</div>
+    </div>
+    {% endfor %}
+    {% if v.missing %}<p class="small">Missing: {{ v.missing|join(', ') }}</p>{% endif %}
+    {% if v.hsa_flags %}
+    <h3 class="section">HSA</h3>
+    {% for f in v.hsa_flags %}<span class="chip">{{ f }}</span>{% endfor %}
+    <p class="muted small">Possible HSA opportunity; eligibility not confirmed.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Payments applied</h2>
+    {% if v.allocations %}
+    <table>
+      <tr><th>Date</th><th>Account</th><th class="num">Applied</th></tr>
+      {% for a in v.allocations %}
+      <tr><td>{{ a.payment.date|nice_date }}</td>
+          <td>{{ accounts.get(a.payment.account_id, {}).get('name', a.payment.account_id) }}{% if a.surplus %} <span class="chip bad">more than owed</span>{% endif %}</td>
+          <td class="num">{{ a.amount|money }}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted">No payments applied to this visit.</p>{% endif %}
+    <p class="muted small">Payments go to the provider, not one visit. They are applied oldest visit first; see the <a href="/providers/{{ v.group_id }}?year={{ v.visit.date[:4] }}">provider ledger</a> for the full picture.</p>
+  </div>
+</div>
+
+<h2 class="section">Documents</h2>
+<div class="grid two">
+  <div class="card">
+    <h3>Insurance decision (EOB) {% if v.eob %}<span class="badge s-matched">Received</span>{% else %}<span class="badge s-missing_documents">Missing</span>{% endif %}</h3>
+    {% if v.eob %}{% set e = v.eob %}
+    <ul class="kv">
+      <li><span>Claim</span><span>{{ e.claim_number or '—' }} · {{ e.claim_status|humanize }}</span></li>
+      <li><span>Received / processed</span><span>{{ e.received_date|nice_date }} / {{ e.date|nice_date }}</span></li>
+      <li><span>Network</span><span>{{ (e.network_status or 'unknown')|humanize }}</span></li>
+      <li><span>Billed</span><span class="num">{{ e.billed|money }}</span></li>
+      <li><span>Plan discount</span><span class="num">{{ e.adjustment|money }}</span></li>
+      <li><span>Allowed (agreed rate)</span><span class="num">{{ e.allowed|money }}</span></li>
+      <li><span>Insurer paid</span><span class="num">{{ e.insurer_paid|money }}</span></li>
+      {% if e.additional_savings %}<li><span>Additional savings</span><span class="num">{{ e.additional_savings|money }}</span></li>{% endif %}
+      <li><span>Deductible / copay / coinsurance</span><span class="num">{{ e.deductible|money }} / {{ e.copay|money }} / {{ e.coinsurance|money }}</span></li>
+      <li><span>Not covered</span><span class="num">{{ e.not_covered|money }}</span></li>
+      <li><strong>Your cost</strong><strong class="num">{{ e.patient_responsibility|money }}</strong></li>
+    </ul>
+    {% if e.stored_file %}<p><a href="/files/{{ e.id }}" target="_blank">Open document</a></p>{% endif %}
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Provider statements {% if v.bill_lines %}<span class="badge s-matched">{{ v.bill_lines|length }} received</span>{% else %}<span class="badge s-waiting">None</span>{% endif %}</h3>
+    {% for bill, line in v.bill_lines %}
+    <details {{ 'open' if loop.first }}>
+      <summary>{{ bill.date|nice_date }} — asks {{ line.patient_amount|money }}, balance {{ line.balance|money }}{% if loop.first %} (latest){% endif %}</summary>
+      {% if line.get('items') %}
+      <div class="table-wrap"><table class="small">
+        <tr><th>Service</th><th class="num">Charge</th><th class="num">Adj.</th><th class="num">You</th><th class="num">Paid</th><th class="num">Balance</th></tr>
+        {% for it in line.get('items', []) %}
+        <tr><td>{{ it.description }}{% if it.patient_amount_type %}<div class="muted">{{ it.patient_amount_type }}</div>{% endif %}</td>
+            <td class="num">{{ it.charge|money }}</td><td class="num">{{ it.adjustment|money }}</td>
+            <td class="num">{{ it.patient_amount|money }}</td><td class="num">{{ it.patient_paid|money }}</td><td class="num">{{ it.balance|money }}</td></tr>
+        {% endfor %}
+      </table></div>
+      {% endif %}
+      {% if bill.stored_file %}<p class="small"><a href="/files/{{ bill.id }}" target="_blank">Open statement</a></p>{% endif %}
+    </details>
+    {% else %}<p class="muted">No provider statement imported for this visit.</p>{% endfor %}
+    {% if v.receipts %}
+    <h3 class="section">Receipts</h3>
+    {% for r in v.receipts %}<p>{{ r.date|nice_date }} — {{ r.total|money }}{% if r.stored_file %} · <a href="/files/{{ r.id }}" target="_blank">Open</a>{% endif %}</p>{% endfor %}
+    {% endif %}
+  </div>
+</div>
+{% if v.visit.notes %}<div class="card section"><h3>Notes</h3><p>{{ v.visit.notes }}</p></div>{% endif %}
+{% endblock %}

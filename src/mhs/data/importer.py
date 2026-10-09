@@ -1,0 +1,187 @@
+"""Validate an ingest file, preview what it would change, and save it.
+
+Nothing is written unless the file passes schema and cross-reference validation. Records are
+upserted by id, so re-importing a corrected file is how data is fixed.
+"""
+
+import json
+import shutil
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from jsonschema import Draft202012Validator, FormatChecker
+
+from mhs.config import SCHEMA_PATH
+from mhs.data.money import to_cents
+from mhs.data.store import Store
+
+SECTIONS = {
+    "plans": "plan",
+    "accounts": "account",
+    "members": "member",
+    "providers": "provider",
+    "provider_relationships": "provider_relationship",
+    "visits": "visit",
+    "documents": "document",
+}
+
+# (field, target kind) references checked on every record; list fields hold several ids.
+REFERENCES = [
+    ("provider_id", "provider"), ("related_provider_id", "provider"), ("visit_id", "visit"),
+    ("plan_id", "plan"), ("member_id", "member"), ("account_id", "account"), ("from_account_id", "account"),
+]
+LIST_REFERENCES = [("member_ids", "member"), ("visit_ids", "visit"), ("payment_ids", "document")]
+
+
+@dataclass
+class ImportPlan:
+    source: str
+    data: dict
+    base_dir: Path | None
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    counts: dict[str, dict[str, int]] = field(default_factory=dict)
+
+    @property
+    def ok(self) -> bool:
+        return not self.errors
+
+
+def _schema() -> dict:
+    return json.loads(SCHEMA_PATH.read_text())
+
+
+def _label(data: dict, path) -> str:
+    parts = list(path)
+    if len(parts) >= 2 and parts[0] in SECTIONS and isinstance(parts[1], int):
+        rec = data.get(parts[0], [])[parts[1]]
+        rid = rec.get("id", "?") if isinstance(rec, dict) else "?"
+        rest = "/".join(str(p) for p in parts[2:])
+        return f"{parts[0]}[{parts[1]}] ({rid})" + (f" {rest}" if rest else "")
+    return "/".join(str(p) for p in parts) or "file"
+
+
+def schema_errors(data: dict) -> list[str]:
+    schema = _schema()
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    errors = []
+    doc_types = {k for k in schema["$defs"] if schema["$defs"][k].get("allOf")}
+    for err in sorted(validator.iter_errors(data), key=lambda e: list(e.path)):
+        path = list(err.path)
+        if len(path) == 2 and path[0] == "documents" and err.validator == "oneOf":
+            # oneOf hides the real problem; re-check against the definition named by "type".
+            doc = data["documents"][path[1]]
+            dtype = doc.get("type") if isinstance(doc, dict) else None
+            if dtype in doc_types:
+                sub = Draft202012Validator({"$defs": schema["$defs"], "$ref": f"#/$defs/{dtype}"},
+                                           format_checker=FormatChecker())
+                for e in sub.iter_errors(doc):
+                    errors.append(f"{_label(data, path + list(e.path))}: {e.message}")
+                continue
+            errors.append(f"{_label(data, path)}: unknown document type {dtype!r}")
+            continue
+        errors.append(f"{_label(data, path)}: {err.message}")
+    return errors
+
+
+def reference_errors(data: dict, store: Store) -> list[str]:
+    known = {kind: store.ids(kind) for kind in SECTIONS.values()}
+    errors = []
+    for section, kind in SECTIONS.items():
+        seen = set()
+        for rec in data.get(section, []):
+            if rec["id"] in seen:
+                errors.append(f"{section}: id {rec['id']!r} appears more than once")
+            seen.add(rec["id"])
+        known[kind] |= seen
+    payment_ids = {d["id"] for d in data.get("documents", []) if d.get("type") == "payment"}
+    payment_ids |= {d["id"] for d in store.all("document") if d.get("type") == "payment"}
+
+    def check(obj, where):
+        if isinstance(obj, dict):
+            for fname, kind in REFERENCES:
+                if fname in obj and obj[fname] not in known[kind]:
+                    errors.append(f"{where}: {fname} {obj[fname]!r} does not match any {kind}")
+            for fname, kind in LIST_REFERENCES:
+                for ref in obj.get(fname, []) if isinstance(obj.get(fname), list) else []:
+                    valid = ref in payment_ids if fname == "payment_ids" else ref in known[kind]
+                    if not valid:
+                        target = "payment" if fname == "payment_ids" else kind
+                        errors.append(f"{where}: {fname} entry {ref!r} does not match any {target}")
+            for v in obj.values():
+                if isinstance(v, (list, dict)):
+                    check(v, where)
+        elif isinstance(obj, list):
+            for x in obj:
+                check(x, where)
+
+    for section in SECTIONS:
+        for rec in data.get(section, []):
+            check(rec, f"{section} ({rec['id']})")
+    return errors
+
+
+def prepare(data: dict, store: Store, source: str, base_dir: Path | None) -> ImportPlan:
+    plan = ImportPlan(source=source, data=data, base_dir=base_dir)
+    plan.errors = schema_errors(data)
+    if plan.errors:
+        return plan
+    plan.errors = reference_errors(data, store)
+    if plan.errors:
+        return plan
+
+    for section, kind in SECTIONS.items():
+        records = data.get(section, [])
+        if not records:
+            continue
+        existing = {r["id"]: r for r in store.all(kind)}
+        c = {"new": 0, "updated": 0, "unchanged": 0}
+        for rec in records:
+            old = existing.get(rec["id"])
+            if old is None:
+                c["new"] += 1
+            else:
+                old = {k: v for k, v in old.items() if k != "stored_file"}
+                c["unchanged" if old == to_cents(rec) else "updated"] += 1
+        plan.counts[section] = c
+
+    for doc in data.get("documents", []):
+        if "file" not in doc:
+            continue
+        if base_dir is None:
+            plan.warnings.append(f"documents ({doc['id']}): file {doc['file']!r} not attached (uploaded JSON has no folder to read it from; import by path instead)")
+        elif not (base_dir / doc["file"]).is_file():
+            plan.warnings.append(f"documents ({doc['id']}): file {doc['file']!r} not found")
+    return plan
+
+
+def commit(plan: ImportPlan, store: Store, documents_dir: Path) -> dict:
+    if not plan.ok:
+        raise ValueError("Cannot import a file with errors")
+    documents_dir.mkdir(parents=True, exist_ok=True)
+    existing_docs = {d["id"]: d for d in store.all("document")}
+    items = []
+    for section, kind in SECTIONS.items():
+        for rec in plan.data.get(section, []):
+            rec = to_cents(rec)
+            if kind == "document":
+                src = plan.base_dir / rec["file"] if plan.base_dir and "file" in rec else None
+                if src and src.is_file():
+                    name = f"{rec['id']}{src.suffix.lower()}"
+                    shutil.copyfile(src, documents_dir / name)
+                    rec["stored_file"] = name
+                elif rec["id"] in existing_docs and "stored_file" in existing_docs[rec["id"]]:
+                    rec["stored_file"] = existing_docs[rec["id"]]["stored_file"]
+            items.append((kind, rec))
+    store.upsert_many(items)
+    summary = {"counts": plan.counts, "warnings": len(plan.warnings)}
+    store.log_import(plan.source, summary)
+    return summary
+
+
+def record_errors(definition: str, record: dict) -> list[str]:
+    """Validate one record (in ingest dollars) against a schema definition, e.g. 'plan'."""
+    schema = _schema()
+    validator = Draft202012Validator({"$defs": schema["$defs"], "$ref": f"#/$defs/{definition}"},
+                                     format_checker=FormatChecker())
+    return [f"{'/'.join(str(p) for p in e.path) or definition}: {e.message}" for e in validator.iter_errors(record)]

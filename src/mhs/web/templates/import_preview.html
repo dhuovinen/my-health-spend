@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Check import{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Check import</h1><span class="muted small">{{ plan.source }}</span></div>
+{% if plan.errors %}
+<div class="alert bad"><strong>{{ plan.errors|length }} problem{{ 's' if plan.errors|length != 1 }} found. Nothing was saved.</strong> Fix the file and check it again.</div>
+<div class="card"><ul>{% for e in plan.errors %}<li class="small">{{ e }}</li>{% endfor %}</ul></div>
+<p class="section"><a class="btn" href="/import">Back</a></p>
+{% else %}
+<div class="card">
+  <h2>What will change</h2>
+  <table>
+    <tr><th>Section</th><th class="num">New</th><th class="num">Updated</th><th class="num">Unchanged</th></tr>
+    {% for section, c in plan.counts.items() %}
+    <tr><td>{{ section|humanize }}</td><td class="num">{{ c.new }}</td><td class="num">{{ c.updated }}</td><td class="num">{{ c.unchanged }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% if plan.warnings %}
+<div class="card section"><h2>Warnings</h2><ul>{% for w in plan.warnings %}<li class="small">{{ w }}</li>{% endfor %}</ul></div>
+{% endif %}
+<form method="post" action="/import/confirm" class="inline section">
+  <input type="hidden" name="token" value="{{ token }}">
+  <button class="btn primary">Save import</button>
+  <a class="btn" href="/import">Cancel</a>
+</form>
+{% endif %}
+{% endblock %}

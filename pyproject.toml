@@ -1,0 +1,29 @@
+[project]
+name = "mhs"
+version = "0.1.0"
+description = "My Health Spend: reconcile insurer claims, provider statements and HSA payments."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "jsonschema>=4.23",
+    "rfc3339-validator>=0.1.4",
+]
+
+[project.scripts]
+mhs = "mhs.web.server:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mhs"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, year_select %}
+{% block title %}{{ g.name }} ledger{% endblock %}
+{% block content %}
+<p class="small"><a href="/providers?year={{ report.year }}">← Providers</a></p>
+<div class="page-head"><h1>{{ g.name }}</h1>{{ year_select(report, "/providers/" ~ g.id) }}</div>
+
+<div class="grid tiles">
+  <div class="card tile"><div class="label">You owe per insurer (EOBs)</div><div class="value">{{ g.should_owe|money }}</div></div>
+  <div class="card tile"><div class="label">Paid in {{ report.year }}</div><div class="value">{{ g.paid|money }}</div></div>
+  <div class="card tile"><div class="label">Provider says you owe</div><div class="value">{{ g.provider_says_owed|money }}</div>
+    <div class="muted small">{% if g.latest_statement %}Statement {{ g.latest_statement.date|nice_date }}, less later payments{% else %}No statement imported{% endif %}</div></div>
+  <div class="card tile {{ 'accent' if g.overpaid or g.gap }}"><div class="label">Difference (insurer − paid)</div><div class="value">{{ (g.should_owe - g.paid)|money }}</div></div>
+</div>
+
+{% if g.overpaid or g.unpaid or g.gap or g.no_claim_payments or g.duplicates or g.unconfirmed or g.paid_outside_hsa %}
+<div class="card">
+  <h2>Findings</h2>
+  <ul>
+    {% if g.overpaid %}<li><strong>Overpaid {{ g.overpaid|money }}.</strong> You paid more than the insurer says you owe this provider. Ask for a refund or a credit.</li>{% endif %}
+    {% if g.unpaid %}<li><strong>Unpaid {{ g.unpaid|money }}.</strong> Still owed on the provider's latest statement or per the insurer. Pay from the HSA.</li>{% endif %}
+    {% if g.gap %}<li><strong>{{ g.gap|money }} the insurer says you owe, but the provider hasn't billed it and no payment covers it.</strong> Ask the provider whether it will be billed, and the insurer whether it is correct. If it was paid another way, submit an HSA reimbursement claim.</li>{% endif %}
+    {% if g.no_claim_payments %}<li><strong>HSA payments of {{ g.no_claim_payments|money }} with no claim.</strong> Possibly another household member's visit, a purchase that never goes through insurance, or a missing claim.</li>{% endif %}
+    {% if g.paid_outside_hsa %}<li><strong>{{ g.paid_outside_hsa|money }} paid outside the HSA.</strong> Submit an HSA reimbursement claim if eligible.</li>{% endif %}
+    {% for a, b in g.duplicates %}<li><strong>Possible duplicate:</strong> {{ a.amount|money }} on {{ a.date|nice_date }} and {{ b.date|nice_date }}.</li>{% endfor %}
+    {% for r in g.unconfirmed %}<li><strong>Unconfirmed match ({{ r.relationship|humanize }}).</strong> {{ r.evidence }} <a href="/settings#relationships">Confirm or reject</a></li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<h2 class="section">Ledger {{ report.year }}</h2>
+<p class="muted small">Charges are what you owe per the insurer's EOB (or the statement when there is no EOB). Statements are shown for reference and do not change the balance.</p>
+<div class="card table-wrap">
+<table>
+  <tr><th>Date</th><th>Entry</th><th class="num">Charge</th><th class="num">Payment</th><th class="num">Balance</th></tr>
+  {% for e in g.ledger %}
+  <tr class="{{ 'dim' if e.kind == 'statement' }}">
+    <td>{{ e.date|nice_date }}</td>
+    <td>{% if e.kind == 'charge' %}<a href="/visits/{{ e.ref }}">{{ e.description }}</a>{% else %}{{ e.description }}{% endif %}</td>
+    <td class="num">{{ e.charge|money if e.charge else '' }}</td>
+    <td class="num">{{ e.payment|money if e.payment else '' }}</td>
+    <td class="num">{{ e.balance|money if e.kind != 'statement' else '' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+
+{% if g.visits %}
+<h2 class="section">Visits</h2>
+<div class="card table-wrap">
+<table>
+  <tr><th>Date</th><th>Status</th><th class="num">Owe (EOB)</th><th class="num">Billed you</th><th class="num">Paid</th><th class="num">Unpaid</th></tr>
+  {% for v in g.visits %}
+  <tr><td><a href="/visits/{{ v.id }}">{{ v.visit.date|nice_date }}</a>{% if v.carry_in %} <span class="chip idle">prior year</span>{% endif %}</td>
+      <td>{{ badge(v.status) }}</td><td class="num">{{ v.insurer_owed|money }}</td><td class="num">{{ v.billed_to_me|money }}</td>
+      <td class="num">{{ v.paid|money }}</td><td class="num">{{ v.remaining|money if v.remaining else '' }}</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, year_select %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>My Health Spend</h1>
+    <p>Every visit's provider bill, insurance decision and HSA payment, checked against each other, so billing errors and overpayments don't go unseen.</p>
+  </div>
+  <div class="actions">
+    {{ year_select(report, "/") }}
+    <a class="btn secondary" href="/visits?year={{ report.year }}&flagged=1">Review flagged visits</a>
+    <a class="btn primary" href="/import">Import data</a>
+  </div>
+</section>
+
+{% if not report.visits and not report.groups %}
+<div class="card empty">
+  <h2>No visits yet</h2>
+  <p class="muted">Gather three things for each visit: the provider's bill or statement, the insurer's claim (EOB), and your HSA or card payment. Put them in an ingest file and import it.</p>
+  <a class="btn primary" href="/import">Import your first file</a>
+</div>
+{% else %}
+
+<div class="grid tiles">
+  <div class="card tile"><div class="label">Total billed</div><div class="value">{{ totals.billed|money }}</div><div class="muted small">{{ report.visits|length }} visits in {{ report.year }}</div></div>
+  <div class="card tile"><div class="label">Insurer paid</div><div class="value">{{ totals.insurer_paid|money }}</div></div>
+  <div class="card tile"><div class="label">You paid</div><div class="value">{{ totals.you_paid|money }}</div><div class="muted small">Payments to providers in {{ report.year }}</div></div>
+  <div class="card tile accent"><div class="label">$ at stake</div><div class="value">{{ totals.at_stake|money }}</div><div class="muted small">Overpayments and bill/EOB mismatches</div></div>
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <h2>Visits by status</h2>
+    <ul class="status-list">
+      {% for s in STATUS_ORDER %}
+      <li><a href="/visits?year={{ report.year }}&status={{ s }}">{{ badge(s) }}</a><strong>{{ report.status_counts[s] }}</strong></li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <h2>HSA</h2>
+    <ul class="kv">
+      <li><span>Unpaid — pay from HSA</span><strong>{{ totals.unpaid|money }}</strong></li>
+      <li><span>Insurer says you owe, but not billed or paid</span><strong>{{ totals.gap|money }}</strong></li>
+      <li><span>Paid outside the HSA — reimbursement opportunity</span><strong>{{ totals.outside_hsa|money }}</strong></li>
+      <li><span>Settled by provider, no matching payment</span><strong>{{ totals.unexplained|money }}</strong></li>
+      <li><span><a href="/providers?year={{ report.year }}">HSA payments with no claim</a></span><strong>{{ totals.no_claim|money }}</strong></li>
+    </ul>
+    <p class="muted small">Flags show possible HSA opportunities; they don't confirm an expense is HSA-eligible.</p>
+  </div>
+</div>
+
+{% if report.unconfirmed_relationships %}
+<div class="alert warn section">
+  {{ report.unconfirmed_relationships|length }} provider match{{ 'es' if report.unconfirmed_relationships|length != 1 }} not yet confirmed. Payments and claims are reconciled together until you confirm or reject them in <a href="/settings#relationships">Settings</a>.
+</div>
+{% endif %}
+
+<div class="grid two section">
+  <div class="card">
+    <h2>Needs attention</h2>
+    {% if attention %}
+    <table>
+      {% for v in attention %}
+      <tr>
+        <td><a href="/visits/{{ v.id }}">{{ v.provider.name }}</a><div class="muted small">{{ v.visit.date|nice_date }}</div></td>
+        <td>{{ badge(v.status) }}</td>
+        <td class="num">{{ (v.at_stake or v.remaining)|money }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted">Nothing flagged.</p>{% endif %}
+  </div>
+  <div class="card">
+    <h2>Plan limits {{ report.year }}</h2>
+    {% for l in report.limits %}
+    <div class="limit">
+      <div class="row"><span>{{ l.label }}</span><span class="num">{{ l.used|money }} of {{ l.limit.amount|money }}</span></div>
+      <div class="bar"><span style="width: {{ l.pct }}%"></span></div>
+      {% if l.note %}<div class="muted small">{{ l.note }}</div>{% endif %}
+    </div>
+    {% else %}
+    <p class="muted">No limits set for {{ report.year }}. Add your deductible and out-of-pocket maximum in <a href="/settings#plans">Settings</a>.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

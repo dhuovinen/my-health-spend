@@ -1,0 +1,32 @@
+{% macro badge(status) %}<span class="badge s-{{ status }}">{{ STATUS_LABELS[status] }}</span>{% endmacro %}
+
+{% macro year_select(report, action, extra={}) %}
+<form method="get" action="{{ action }}" class="inline">
+  {% for k, v in extra.items() if v %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+  <label>Plan year
+    <select name="year" onchange="this.form.submit()">
+      {% for y in report.years %}<option value="{{ y }}" {{ 'selected' if y == report.year }}>{{ y }}</option>{% endfor %}
+    </select>
+  </label>
+  <noscript><button class="btn small">Go</button></noscript>
+</form>
+{% endmacro %}
+
+{% macro visit_card(v) %}
+<a class="card visit-card" href="/visits/{{ v.id }}">
+  <div class="top">
+    <div>
+      <div class="provider">{{ v.provider.name }}</div>
+      <div class="muted small">{{ v.visit.date|nice_date }} · {{ v.visit.category|humanize }}{% if v.member %} · {{ v.member.name }}{% endif %}</div>
+    </div>
+    {{ badge(v.status) }}
+  </div>
+  <div class="money">
+    <div><span>Billed</span>{{ v.total_billed|money }}</div>
+    <div><span>You owe (EOB)</span>{{ v.insurer_owed|money }}</div>
+    <div><span>Paid</span>{{ v.paid|money }}</div>
+    {% if v.at_stake %}<div><span>At stake</span><strong style="color:var(--bad)">{{ v.at_stake|money }}</strong></div>{% endif %}
+  </div>
+  {% for f in v.hsa_flags %}<span class="chip">HSA: {{ f }}</span>{% endfor %}
+</a>
+{% endmacro %}

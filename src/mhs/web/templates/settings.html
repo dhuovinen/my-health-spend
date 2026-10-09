@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% macro options(values, selected, blank=None) %}{% if blank is not none %}<option value="">{{ blank }}</option>{% endif %}{% for o in values %}<option value="{{ o }}" {{ 'selected' if o == selected }}>{{ o|humanize }}</option>{% endfor %}{% endmacro %}
+{% block content %}
+<div class="page-head"><h1>Settings</h1><span class="muted small">Changes are saved to the database and written to data/settings.json</span></div>
+{% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
+{% if saved %}<div class="alert good">Saved.</div>{% endif %}
+
+<div class="callout">
+  {% if primary %}
+  <div class="muted small">Primary insurer</div>
+  <h2 style="margin:0">{{ primary.insurer }}</h2>
+  <div class="small">{{ primary.plan_name }} · plan year {{ primary.plan_year }}{% if primary.member_ids %} · covers {% for mid in primary.member_ids %}{{ member_names.get(mid, mid) }}{{ ', ' if not loop.last }}{% endfor %}{% endif %}</div>
+  {% else %}
+  <strong>No primary insurer set.</strong> Set "Coverage order" to Primary on a plan below.
+  {% endif %}
+</div>
+
+<nav class="toc small"><a href="#plans">Insurance plans</a><a href="#members">Household members</a><a href="#accounts">Payment accounts</a><a href="#providers">Providers</a><a href="#relationships">Provider matches</a><a href="#later">Coming later</a></nav>
+
+<section id="plans" class="section">
+  <h2>Insurance plans</h2>
+  {% for p in plans %}
+  <div class="card section">
+    <h3>{{ p.insurer }} · {{ p.plan_name }} {{ p.plan_year }}{% if p.coverage_order %} <span class="badge s-matched">{{ p.coverage_order|humanize }}</span>{% endif %}</h3>
+    <form method="post" action="/settings/plans/{{ p.id }}" class="inline">
+      <label>Insurer<input name="insurer" value="{{ p.insurer }}" required></label>
+      <label>Plan name<input name="plan_name" value="{{ p.plan_name }}"></label>
+      <label>Plan year<input name="plan_year" type="number" value="{{ p.plan_year }}" style="width:6rem"></label>
+      <label>Coverage order<select name="coverage_order">{{ options(['primary', 'secondary', 'tertiary'], p.coverage_order, '—') }}</select></label>
+      <label>Coverage start<input name="coverage_start" type="date" value="{{ p.coverage_start or '' }}"></label>
+      <label>Coverage end<input name="coverage_end" type="date" value="{{ p.coverage_end or '' }}"></label>
+      <label>Coinsurance %<input name="coinsurance_pct" type="number" step="0.1" min="0" max="100" style="width:6rem"
+        value="{{ (p.coinsurance_rate * 100)|round(1) if p.coinsurance_rate is not none else '' }}"></label>
+      <label>Copays (one per line, "specialist: 60")<textarea name="copays" rows="2">{% for k, v in (p.copays or {}).items() %}{{ k }}: {{ '%.2f'|format(v / 100) }}
+{% endfor %}</textarea></label>
+      <div><div class="muted small">Members covered</div>
+        {% for m in members %}<label class="check-label"><input type="checkbox" name="member_ids" value="{{ m.id }}" {{ 'checked' if m.id in (p.member_ids or []) }}> {{ m.name }}</label>{% endfor %}
+      </div>
+      <label class="check-label"><input type="checkbox" name="hsa_eligible_plan" {{ 'checked' if p.hsa_eligible_plan }}> HSA-eligible plan</label>
+      <button class="btn primary">Save plan</button>
+    </form>
+
+    <h3 class="section">Deductibles and out-of-pocket maximums</h3>
+    {% if p.limits %}
+    <table>
+      <tr><th>Type</th><th>Network</th><th>Level</th><th>Member</th><th class="num">Amount</th><th></th></tr>
+      {% for l in p.limits %}
+      <tr><td>{{ l.type|humanize }}</td><td>{{ l.network|humanize }}</td><td>{{ l.level|humanize }}</td>
+        <td>{{ member_names.get(l.member_id, 'Each member' if l.level == 'individual' else '—') }}</td>
+        <td class="num">{{ l.amount|money }}</td>
+        <td class="num"><form method="post" action="/settings/plans/{{ p.id }}/limits/{{ loop.index0 }}/delete"><button class="btn small danger">Remove</button></form></td></tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted small">No limits yet.</p>{% endif %}
+    <form method="post" action="/settings/plans/{{ p.id }}/limits" class="inline section">
+      <label>Type<select name="type">{{ options(opts.limit_types, 'deductible') }}</select></label>
+      <label>Network<select name="network">{{ options(opts.limit_networks, 'in_network') }}</select></label>
+      <label>Level<select name="level">{{ options(['individual', 'family'], 'individual') }}</select></label>
+      <label>Member (individual only)<select name="member_id"><option value="">Each member</option>{% for m in members %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}</select></label>
+      <label>Amount<input name="amount" inputmode="decimal" placeholder="4500.00" required style="width:8rem"></label>
+      <button class="btn">Add limit</button>
+    </form>
+  </div>
+  {% endfor %}
+  <details class="card section">
+    <summary><strong>Add a plan</strong></summary>
+    <form method="post" action="/settings/plans" class="inline section">
+      <label>Plan year<input name="plan_year" type="number" required style="width:6rem"></label>
+      <label>Insurer<input name="insurer" required></label>
+      <label>Plan name<input name="plan_name" placeholder="Medical" required></label>
+      <button class="btn primary">Add plan</button>
+    </form>
+  </details>
+</section>
+
+<section id="members" class="section">
+  <h2>Household members</h2>
+  <div class="card">
+    {% for m in members %}
+    <form method="post" action="/settings/members" class="inline settings-row">
+      <input type="hidden" name="id" value="{{ m.id }}">
+      <label>Name<input name="name" value="{{ m.name }}" required></label>
+      <label>Relationship<select name="relationship">{{ options(opts.relationships, m.relationship) }}</select></label>
+      <label>Names in source files (one per line)<textarea name="aliases" rows="2">{{ (m.aliases or [])|join('\n') }}</textarea></label>
+      <button class="btn">Save</button>
+    </form>
+    {% endfor %}
+    <form method="post" action="/settings/members" class="inline settings-row">
+      <label>Name<input name="name" required placeholder="New member"></label>
+      <label>Relationship<select name="relationship">{{ options(opts.relationships, 'child') }}</select></label>
+      <label>Names in source files (one per line)<textarea name="aliases" rows="2"></textarea></label>
+      <button class="btn primary">Add member</button>
+    </form>
+  </div>
+</section>
+
+<section id="accounts" class="section">
+  <h2>Payment accounts</h2>
+  <div class="card">
+    {% for a in accounts %}
+    <form method="post" action="/settings/accounts" class="inline settings-row">
+      <input type="hidden" name="id" value="{{ a.id }}">
+      <label>Name<input name="name" value="{{ a.name }}" required></label>
+      <label>Type<select name="type">{{ options(opts.account_types, a.type) }}</select></label>
+      <button class="btn">Save</button>
+    </form>
+    {% endfor %}
+    <form method="post" action="/settings/accounts" class="inline settings-row">
+      <label>Name<input name="name" required placeholder="e.g. FSA 2026"></label>
+      <label>Type<select name="type">{{ options(opts.account_types, 'credit_card') }}</select></label>
+      <button class="btn primary">Add account</button>
+    </form>
+  </div>
+</section>
+
+<section id="providers" class="section">
+  <h2>Providers</h2>
+  <p class="muted small">"Names in source files" maps the insurer's provider name and the HSA card merchant name to this provider. Assigning members lets HSA payments with no claim be attributed.</p>
+  <div class="card">
+    {% for p in providers %}
+    <form method="post" action="/settings/providers/{{ p.id }}" class="inline settings-row">
+      <label>Name<input name="name" value="{{ p.name }}" required></label>
+      <label>Kind<select name="kind">{{ options(opts.provider_kinds, p.kind) }}</select></label>
+      <label>Network<select name="network_status">{{ options(opts.network_statuses, p.network_status or 'unknown') }}</select></label>
+      <label>Names in source files<textarea name="aliases" rows="2">{{ (p.aliases or [])|join('\n') }}</textarea></label>
+      <div><div class="muted small">Members served</div>
+        {% for m in members %}<label class="check-label"><input type="checkbox" name="member_ids" value="{{ m.id }}" {{ 'checked' if m.id in (p.member_ids or []) }}> {{ m.name }}</label>{% endfor %}
+      </div>
+      <button class="btn">Save</button>
+    </form>
+    {% endfor %}
+  </div>
+</section>
+
+<section id="relationships" class="section">
+  <h2>Provider matches</h2>
+  <p class="muted small">Provider records that may be the same individual or organization. Suspected and confirmed matches are reconciled together; suspected ones are flagged until you decide.</p>
+  <div class="card">
+    {% for r in relationships %}
+    <form method="post" action="/settings/relationships/{{ r.id }}" class="inline settings-row">
+      <div style="flex:1 1 320px">
+        <strong>{{ provider_names.get(r.provider_id, r.provider_id) }}</strong> ↔ <strong>{{ provider_names.get(r.related_provider_id, r.related_provider_id) }}</strong>
+        <div class="small">{{ r.relationship|humanize }}{% if r.evidence %} · {{ r.evidence }}{% endif %}</div>
+      </div>
+      <label>Status<select name="status">{{ options(['suspected', 'confirmed', 'rejected'], r.status) }}</select></label>
+      <label>Notes<input name="notes" value="{{ r.notes or '' }}" style="width:16rem"></label>
+      <button class="btn">Save</button>
+    </form>
+    {% else %}<p class="muted">No provider matches.</p>{% endfor %}
+  </div>
+</section>
+
+<section id="later" class="section">
+  <h2>Coming later</h2>
+  <div class="grid two">
+    <div class="card"><h3>Data</h3><p class="muted small">Export, backup and delete all data.</p></div>
+    <div class="card"><h3>Rules</h3><p class="muted small">"Waiting" threshold (fixed at 30 days for now) and FSA rules.</p></div>
+  </div>
+</section>
+{% endblock %}
