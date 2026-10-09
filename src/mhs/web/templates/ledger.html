@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, year_select %}
+{% from "_macros.html" import badge, year_select, note_fields, note_meta %}
 {% block title %}{{ g.name }} ledger{% endblock %}
 {% block content %}
 <p class="small"><a href="/providers?year={{ report.year }}">← Providers</a></p>
@@ -27,6 +27,40 @@
   </ul>
 </div>
 {% endif %}
+
+{% set here = request.url.path ~ '?year=' ~ report.year %}
+{% set providers_by_id = {} %}{% for p in g.providers %}{% set _ = providers_by_id.update({p.id: p.name}) %}{% endfor %}
+<section id="notes" class="section">
+  <h2>Notes {% if notes %}<span class="muted small">({{ notes|length }})</span>{% endif %}</h2>
+  <div class="card">
+    {% for n in notes %}
+    <div class="note">
+      <div class="note-head">{{ note_meta(n, providers_by_id, g.providers|length > 1) }}</div>
+      <div class="note-text">{{ n.text }}</div>
+      <details class="small">
+        <summary>Edit</summary>
+        <form method="post" action="/notes/{{ n.id }}" class="inline section">
+          <input type="hidden" name="next" value="{{ here }}">
+          {{ note_fields(g, n, today, channels, directions) }}
+          <button class="btn primary">Save note</button>
+        </form>
+        <form method="post" action="/notes/{{ n.id }}/delete" class="section" onsubmit="return confirm('Delete this note?')">
+          <input type="hidden" name="next" value="{{ here }}">
+          <button class="btn small danger">Delete note</button>
+        </form>
+      </details>
+    </div>
+    {% endfor %}
+    <details {{ 'open' if not notes }} class="{{ 'section' if notes }}">
+      <summary><strong>Add a note</strong></summary>
+      <form method="post" action="/notes" class="inline section">
+        <input type="hidden" name="next" value="{{ here }}">
+        {{ note_fields(g, {}, today, channels, directions) }}
+        <button class="btn primary">Add note</button>
+      </form>
+    </details>
+  </div>
+</section>
 
 <h2 class="section">Ledger {{ report.year }}</h2>
 <p class="muted small">Charges are what you owe per the insurer's EOB (or the statement when there is no EOB). Statements are shown for reference and do not change the balance.</p>

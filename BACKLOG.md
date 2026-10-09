@@ -25,3 +25,4 @@ Items deferred from the MVP. Newest decisions are in `MVP_REQUIREMENTS.md` secti
 | B-19 | HSA contribution tracking against the annual IRS limit | Real data, 2026-10-09 | Contributions are now imported as `account_transaction`. |
 | B-20 | Statement parsers for other provider billing systems | Real data, 2026-10-09 | One layout supported (Southeastern Retina). |
 | B-21 | Prior-year (2025) HSA history | Real data, 2026-10-09 | Needed to close 2025 Southeastern Retina payments; HSA export starts 2026-01-14. |
+| B-22 | Follow-up tracking on provider notes (open / resolved, follow-up date, reminders) | Owner, 2026-10-09 | MVP notes are a plain dated log. |

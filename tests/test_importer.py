@@ -56,3 +56,13 @@ def test_attached_files_are_copied_and_missing_ones_warned(store, config, sample
     saved = store.get("document", "eob-2026-02-10-pcp")
     assert saved["stored_file"] == "eob-2026-02-10-pcp.pdf" and saved["billed"] == 25000
     assert (config.documents_dir / "eob-2026-02-10-pcp.pdf").read_bytes() == b"%PDF-1.4 test"
+
+
+def test_provider_notes_import(loaded_store):
+    data = {"schema_version": "0.1", "provider_notes": [
+        {"id": "n1", "provider_id": "prov-derm", "date": "2026-10-09", "channel": "phone", "text": "Called"}]}
+    plan = prepare(data, loaded_store, "x", None)
+    assert plan.ok and plan.counts == {"provider_notes": {"new": 1, "updated": 0, "unchanged": 0}}
+    bad = {"schema_version": "0.1", "provider_notes": [{"id": "n1", "provider_id": "prov-nobody", "date": "2026-10-09", "text": "x"}]}
+    assert prepare(bad, loaded_store, "x", None).errors == [
+        "provider_notes (n1): provider_id 'prov-nobody' does not match any provider"]

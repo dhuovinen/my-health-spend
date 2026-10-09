@@ -30,3 +30,22 @@
   {% for f in v.hsa_flags %}<span class="chip">HSA: {{ f }}</span>{% endfor %}
 </a>
 {% endmacro %}
+
+{% macro note_fields(g, note, today, channels, directions) %}
+  {% if g.providers|length > 1 %}
+  <label>Provider<select name="provider_id">{% for p in g.providers %}<option value="{{ p.id }}" {{ 'selected' if note.provider_id == p.id }}>{{ p.name }}</option>{% endfor %}</select></label>
+  {% else %}<input type="hidden" name="provider_id" value="{{ g.providers[0].id }}">{% endif %}
+  <label>Date<input type="date" name="date" value="{{ note.date or today }}" required></label>
+  <label>How<select name="channel"><option value="">—</option>{% for c in channels %}<option value="{{ c }}" {{ 'selected' if note.channel == c }}>{{ c|humanize }}</option>{% endfor %}</select></label>
+  <label>Direction<select name="direction"><option value="">—</option>{% for d in directions %}<option value="{{ d }}" {{ 'selected' if note.direction == d }}>{{ {'sent': 'I sent', 'received': 'They sent', 'note': 'My note'}[d] }}</option>{% endfor %}</select></label>
+  <label>About visit<select name="visit_id"><option value="">Provider in general</option>{% for v in g.visits %}<option value="{{ v.id }}" {{ 'selected' if note.visit_id == v.id }}>{{ v.visit.date|nice_date }}{% if g.providers|length > 1 %} · {{ v.provider.name }}{% endif %}</option>{% endfor %}</select></label>
+  <label class="grow">Note<textarea name="text" rows="5" required>{{ note.text or '' }}</textarea></label>
+{% endmacro %}
+
+{% macro note_meta(n, providers_by_id, show_provider) %}
+  <strong>{{ n.date|nice_date }}</strong>
+  {% if n.channel %}<span class="chip info">{{ n.channel|humanize }}</span>{% endif %}
+  {% if n.direction %}<span class="chip idle">{{ {'sent': 'I sent', 'received': 'They sent', 'note': 'My note'}[n.direction] }}</span>{% endif %}
+  {% if show_provider %}<span class="muted small">{{ providers_by_id.get(n.provider_id, n.provider_id) }}</span>{% endif %}
+  {% if n.visit_id %}<a class="small" href="/visits/{{ n.visit_id }}">about visit {{ n.visit_id.split('-')[1:4]|join('-')|nice_date }}</a>{% endif %}
+{% endmacro %}

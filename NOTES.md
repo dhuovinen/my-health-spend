@@ -49,3 +49,4 @@ not yet picked. No app code yet. Waiting on the owner's real sample visits.
 provider relationships. Ingest now 15 visits, 96 documents.
 2026-10-09: MVP app built: hero, visits, visit detail, provider ledgers, import, settings (plans,
 limits, members, accounts, providers, provider matches), help stub. 22 tests passing. Real 2026 data imported.
+2026-10-09: Provider notes (dated contact log per provider, linked to a visit) on branch feat/provider-notes.

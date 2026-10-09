@@ -21,6 +21,7 @@ SECTIONS = {
     "members": "member",
     "providers": "provider",
     "provider_relationships": "provider_relationship",
+    "provider_notes": "provider_note",
     "visits": "visit",
     "documents": "document",
 }

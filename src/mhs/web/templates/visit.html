@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge %}
+{% from "_macros.html" import badge, note_meta %}
 {% block title %}{{ v.provider.name }} {{ v.visit.date }}{% endblock %}
 {% block content %}
 <p class="small"><a href="/visits?year={{ v.visit.date[:4] }}">← Visits</a></p>
@@ -103,5 +103,16 @@
     {% endif %}
   </div>
 </div>
-{% if v.visit.notes %}<div class="card section"><h3>Notes</h3><p>{{ v.visit.notes }}</p></div>{% endif %}
+<div class="card section" id="notes">
+  <h3>Notes on {{ group.name }}</h3>
+  {% set providers_by_id = {} %}{% for p in group.providers %}{% set _ = providers_by_id.update({p.id: p.name}) %}{% endfor %}
+  {% for n in notes %}
+  <div class="note {{ 'dim' if n.visit_id and n.visit_id != v.id }}">
+    <div class="note-head">{{ note_meta(n, providers_by_id, group.providers|length > 1) }}</div>
+    <div class="note-text">{{ n.text }}</div>
+  </div>
+  {% else %}<p class="muted">No notes yet.</p>{% endfor %}
+  <p class="small"><a href="/providers/{{ v.group_id }}?year={{ v.visit.date[:4] }}#notes">Add or edit notes</a></p>
+  {% if v.visit.notes %}<h3 class="section">Import notes</h3><p class="small">{{ v.visit.notes }}</p>{% endif %}
+</div>
 {% endblock %}

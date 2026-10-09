@@ -79,6 +79,7 @@ provider's charges.
 | PL-1 | Chronological table for one provider: each visit's charge (EOB patient responsibility, or the bill amount when no EOB), each payment and refund, and a running balance. |
 | PL-2 | Three balances side by side: **what I should owe** (from EOBs), **what the provider says I owe** (latest bill), **what I've paid**. Differences are highlighted. |
 | PL-3 | Reachable from visit detail and from a provider list. |
+| PL-4 | **Provider notes**: a dated log per provider (e.g. an email sent to the provider's billing office or a call with the insurer), with how it happened (email, phone, portal, in person, letter), direction (I sent, they sent, my note) and optionally the visit it concerns. Add, edit and delete on the provider page; shown read-only on visit detail; note count on the provider list. Notes live only in the app and are never changed by an import. |
 
 A chart of charges, payments and balance over time is in the backlog.
 
@@ -162,6 +163,7 @@ Earlier-year visits still listed on a statement in the selected year are carried
 | Member | name, relationship (self, spouse, child, other), aliases |
 | Account | name, type |
 | Provider | name, kind, network status, aliases, members served |
+| ProviderNote | provider, date, channel, direction, visit (optional), text |
 | ProviderRelationship | two providers, relationship (same individual, same organization, affiliated), status (suspected, confirmed, rejected), evidence |
 | Visit | date, member, provider, plan, category, description, notes |
 | ProviderBill | provider, date, balance due, last payment received, lines (one per visit: billed, insurance paid, adjustment, agreed rate if shown, patient amount, patient paid, balance, service items) |
@@ -219,6 +221,7 @@ Trigger: the app moves from a single personal application to one used by others.
 | D9 | Claims and visits link to household members; providers can be assigned to members. | 2026-10-09 |
 | D10 | Likely-same providers are tracked as explicit relationships (suspected → confirmed / rejected), reconciled together and flagged until confirmed. | 2026-10-09 |
 | D11 | No payments outside the HSA are expected; any charge not matched to an HSA payment is a gap to flag. | 2026-10-09 |
+| D13 | Provider notes are a separate record kind, not part of the provider record or settings.json, so imports and the converter never overwrite them. | 2026-10-09 |
 | D12 | Plan limits are a list (type × network × level × member), not fixed individual/family fields; each plan records its coverage order. | 2026-10-09 |
 
 ## 10. Waiting on

@@ -69,3 +69,41 @@ def test_settings_edits_are_saved_and_written_to_settings_json(client, config):
     bad = client.post("/settings/plans/plan-2026/limits", data={"type": "deductible", "network": "in_network",
                                                                 "level": "family", "amount": "lots"})
     assert bad.status_code == 400 and "not an amount" in bad.text
+
+
+def test_provider_notes_can_be_added_edited_and_deleted(client, store):
+    import_sample(client)
+    ledger = "/providers/prov-derm?year=2026"
+    r = client.post("/notes", data={"provider_id": "prov-derm", "date": "2026-10-09", "channel": "email",
+                                    "direction": "sent", "visit_id": "v-2026-09-28-derm",
+                                    "text": "Good day,\nAsked for the itemized bill.", "next": ledger},
+                    follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == ledger + "#notes"
+    [note] = store.all("provider_note")
+    assert note["channel"] == "email" and note["visit_id"] == "v-2026-09-28-derm"
+
+    page = client.get(ledger).text
+    assert "Asked for the itemized bill." in page and "I sent" in page
+    assert "Asked for the itemized bill." in client.get("/visits/v-2026-09-28-derm").text
+    assert '#notes">1</a>' in client.get("/providers").text
+
+    client.post(f"/notes/{note['id']}", data={"provider_id": "prov-derm", "date": "2026-10-10",
+                                              "text": "Called instead.", "next": ledger})
+    edited = store.get("provider_note", note["id"])
+    assert edited["text"] == "Called instead." and "channel" not in edited and "visit_id" not in edited
+
+    assert client.post("/notes", data={"provider_id": "prov-derm", "text": "  "}).status_code == 400
+    assert client.post("/notes", data={"provider_id": "nobody", "text": "x"}).status_code == 400
+    r = client.post("/notes", data={"provider_id": "prov-derm", "text": "x", "next": "https://evil.example"},
+                    follow_redirects=False)
+    assert r.headers["location"].startswith("/providers")
+
+    client.post(f"/notes/{note['id']}/delete", data={"next": ledger})
+    assert store.get("provider_note", note["id"]) is None
+
+
+def test_reimport_does_not_touch_notes(client, store):
+    import_sample(client)
+    client.post("/notes", data={"provider_id": "prov-pcp", "text": "Keep me"})
+    import_sample(client)
+    assert [n["text"] for n in store.all("provider_note")] == ["Keep me"]

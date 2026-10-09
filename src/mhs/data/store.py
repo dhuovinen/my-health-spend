@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-KINDS = ("plan", "account", "member", "provider", "provider_relationship", "visit", "document")
+KINDS = ("plan", "account", "member", "provider", "provider_relationship", "provider_note", "visit", "document")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS records (
