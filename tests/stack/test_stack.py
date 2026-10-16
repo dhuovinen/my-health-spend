@@ -140,7 +140,7 @@ def ai_browser(member):
 def test_photo_read_by_ocr_scrubbed_and_extracted_by_ai(ai_browser):
     """Phase 1.3 engines on the stack: a photo of an EOB is read by Tesseract in the app, scrubbed with Presidio
     and sent by the AI worker through `capture`; TC-PLT-04-1: the captured AI requests carry tokens, never the
-    seeded identifiers."""
+    seeded identifiers; PRV-05: nor the real service dates."""
     from tests.pdfs import make_image
 
     browser = ai_browser
@@ -159,7 +159,9 @@ def test_photo_read_by_ocr_scrubbed_and_extracted_by_ai(ai_browser):
         time.sleep(0.5)
     review = browser.get(f"/uploads/{upload_id}/review").text
     assert "photo, OCR (tesseract)" in review and "fields found by AI (claude-opus-5-5)" in review
-    assert form_values(review, f"/uploads/{upload_id}/confirm")["billed"] == "320.00"
+    values = form_values(review, f"/uploads/{upload_id}/confirm")
+    assert values["billed"] == "320.00"
+    assert values["service_start"] == "2026-09-28"  # PRV-05: shifted for the AI, shifted back for the household
 
     flows = [json.loads(line) for line in log.read_text().splitlines()[seen:]]
     sent = [f["request_body"] for f in flows if f["host"] == AI_HOST]
@@ -168,6 +170,7 @@ def test_photo_read_by_ocr_scrubbed_and_extracted_by_ai(ai_browser):
         assert "tok_" in body
         for seed in SEEDS:
             assert seed.lower() not in body.lower(), seed
+        assert "09/28/2026" not in body and "10/05/2026" not in body  # TC-PRV-05-2: real dates never sent
 
 
 def test_originals_volume_holds_only_ciphertext(member):

@@ -68,6 +68,7 @@ Each scenario is automated in `tests/test_r1_scenarios.py` (with the worker run 
 | 14 | Strangers in a letter | Upload a letter that names people the household doesn't know, with a phone number | With Presidio, none of the names or the number reach the worker; dates, amounts and the provider do | PRV-04 TC-2/3 | `test_presidio_scrubs_strangers_in_a_letter`, `test_r1_scrub_recall.py` |
 | 15 | AI extraction | `mhs-admin ai-extraction --household <id> on`; upload an EOB | The Uploads page says AI helps; the review names the model; a value the document doesn't show is marked "not found in the document text"; the member's correction is confirmed and the AI's value is kept beside it; the AI request holds tokens, never identifiers | ADR-028, PLT-04 TC-1/2 | `test_ai_extraction_for_a_household_that_turned_it_on`, `test_r1_ai.py`, stack (TC-PLT-04-1) |
 | 16 | AI unavailable | AI on, but no AI worker for a minute, or the AI declines | The layout rules read the document and the review says why | ADR-034 | `test_ai_jobs_are_read_by_the_rules_when_ai_is_unavailable` |
+| 17 | Dates sent to the AI are shifted | AI on; upload an EOB for a visit on 2026-12-30, and two EOBs for one patient 14 days apart | The AI request carries shifted dates, 14 days apart for the same person; the review and the visit keep 2026-12-30 (plan year 2026) | PRV-05 (TC-1, TC-2) | `test_r1_dates.py`, stack (`test_photo_read_by_ocr_scrubbed_and_extracted_by_ai`) |
 
 ## Levels
 

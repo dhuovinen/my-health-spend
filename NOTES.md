@@ -52,3 +52,5 @@ in the app tier; worker classifies and extracts with confidences; member reviews
 staging still to come.
 2026-10-16: Owner accepted ADR-032, ADR-033 and ADR-034 (034 on condition: no Claude extraction on real data until
 PRV-05 date shifting). Phases 1.2 and 1.3 (local build, with the OCR/Presidio/Claude engines) merged into main, tagged r1-uploads.
+2026-10-16: PRV-05 date shifting for AI requests on feat/r1-date-shifting (per-person random offset, shifted
+back on the answer); meets ADR-034's condition. 209 tests on the stack.
