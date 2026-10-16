@@ -1,7 +1,7 @@
 """Reconciliation engine: checks, visit status, provider ledgers, HSA gaps and plan-limit progress.
 
 Pure functions over plain record dicts (money in integer cents). No database or web imports.
-Rules are documented in MVP_REQUIREMENTS.md section 5.
+Rules are documented in docs/MVP_REQUIREMENTS.md section 5.
 """
 
 from collections import defaultdict

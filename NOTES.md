@@ -4,7 +4,8 @@
 
 My Health Spend (MH$): a personal app that reconciles provider bills, insurer EOBs and payment
 records (HSA/FSA/card) per visit to find billing errors and overpayment. MVP is single-user, local
-only. See `MVP_REQUIREMENTS.md` and `My Health Spend (MHS) Problem Statement & Plan.md`.
+only. Product docs live in `docs/`: `MVP_REQUIREMENTS.md`, `My Health Spend (MHS) Problem Statement & Plan.md`
+and `My Health Spend (MHS) Product Requirements.md` (full spec, about 98 requirements).
 
 ## How to run
 
@@ -50,3 +51,4 @@ provider relationships. Ingest now 15 visits, 96 documents.
 2026-10-09: MVP app built: hero, visits, visit detail, provider ledgers, import, settings (plans,
 limits, members, accounts, providers, provider matches), help stub. 22 tests passing. Real 2026 data imported.
 2026-10-09: Provider notes (dated contact log per provider, linked to a visit) on branch feat/provider-notes.
+2026-10-15: Full product requirements written; product docs moved into `docs/`.

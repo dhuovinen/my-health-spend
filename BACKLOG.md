@@ -1,6 +1,6 @@
 # BACKLOG
 
-Items deferred from the MVP. Newest decisions are in `MVP_REQUIREMENTS.md` section 9.
+Items deferred from the MVP. Newest decisions are in `docs/MVP_REQUIREMENTS.md` section 9.
 
 | ID | Item | Origin | Notes |
 | --- | --- | --- | --- |
