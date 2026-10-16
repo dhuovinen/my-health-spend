@@ -34,3 +34,7 @@ tier: VISION, ARCHITECTURE, ROADMAP, DECISIONS (ADR-001 to 028), TESTING, SETUP,
 2026-10-15: ADR-021 to 028 and all ambiguity definitions accepted and written into the PRD; no
 Release 1 test case is blocked. Still open for phase 1.0: hosting, OCR approach, test environment,
 merge and tag Release 0.
+2026-10-15: Release 0 merged into main (075f187) and tagged release-0.
+2026-10-16: Phase 1.0 done: OCR is PDF text layer then Document AI with Presidio scrubbing (ADR-029);
+build locally on Docker Compose, production on Google Cloud (ADR-030); test environment defined.
+Next: phase 1.1 Foundation on branch work off main.

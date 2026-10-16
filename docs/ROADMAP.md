@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current phase: 1.0, Release 1 planning.**
+**Current phase: 1.1, Foundation** (Release 1 planning finished 2026-10-16).
 
 Requirement IDs refer to the [Product Requirements](<My Health Spend (MHS) Product Requirements.md>). Test cases for each are in [TEST_PLAN.md](TEST_PLAN.md).
 
@@ -11,7 +11,7 @@ Built Oct 9 to 15, 2026 from [MVP_REQUIREMENTS.md](MVP_REQUIREMENTS.md). A singl
 | Item | Status |
 | --- | --- |
 | All MVP requirements built | Done (C6 aging and HR-4 counts closed 2026-10-15) |
-| Merge `feat/provider-notes` into `main` and tag `release-0` | **To do** (owner's go-ahead) |
+| Merge `feat/provider-notes` into `main` and tag `release-0` | Done 2026-10-15 (merge commit `075f187`) |
 | Owner data still to load | 2026 dental and 2025 UMR plan limits; 2025 HSA history (B-21) |
 
 ## Release 1: server-side web app for the household
@@ -20,13 +20,13 @@ Built Oct 9 to 15, 2026 from [MVP_REQUIREMENTS.md](MVP_REQUIREMENTS.md). A singl
 
 | Phase | Goal | Requirements | Exit |
 | --- | --- | --- | --- |
-| **1.0 Planning** (current) | Settle what is still open and set up for the build | none | ~~ADRs 021 to 028 and ambiguity definitions accepted~~ (done 2026-10-15); hosting chosen; OCR approach chosen; test environment defined; Release 0 merged and tagged |
-| 1.1 Foundation | A secure, empty server app the household can sign in to | PRV-11, PRV-06, PRV-07, PRV-08, PLT-06 | MFA sign-in; household isolation tests pass (TC-PRV-11-*); encrypted storage and a tested restore; CI runs the scenario library |
+| 1.0 Planning (done) | Settle what is still open and set up for the build | none | Done 2026-10-16: ADRs 021 to 030 accepted (hosting: local Docker Compose, then Google Cloud; OCR: text layer then Document AI); test environment defined in TESTING.md; Release 0 merged and tagged |
+| **1.1 Foundation** (current) | A secure, empty server app the household can sign in to, on the local Docker Compose stack | PRV-11, PRV-06, PRV-07, PRV-08, PLT-06 | Compose stack with the four adapters (ARCHITECTURE.md "Environments"); local port registered in app-registry; MFA sign-in; household isolation tests pass (TC-PRV-11-*); encrypted storage and a tested restore; CI runs the suite |
 | 1.2 Port Release 0 | Everything Release 0 does, on the server, for a household | MAT-02, MAT-03, MAT-04, MAT-07, MAT-09, ALC-03, ALC-04, ALC-06, REC-07, REC-08, TAX-04, DSP-03, UX-03, UX-04, UX-05, ING-08, ING-10 | Owner's Release 0 data migrated through the JSON admin import; Appendix A regression suite green on the server |
-| 1.3 Ingestion and privacy pipeline | Upload a photo or PDF and get confirmed, pseudonymized data | ING-01, ING-02, ING-03, ING-04, ING-05, ING-07, PRV-01, PRV-02, PRV-03, PRV-04, PLT-04 | Extraction corpus meets the accuracy target; outbound capture finds no identifiers (TC-PRV-01-1, TC-PLT-04-1) |
+| 1.3 Ingestion and privacy pipeline | Upload a photo or PDF and get confirmed, pseudonymized data | ING-01, ING-02, ING-03, ING-04, ING-05, ING-07, PRV-01, PRV-02, PRV-03, PRV-04, PLT-04 | Staging Google Cloud project set up; extraction corpus through Document AI meets the accuracy target; outbound capture finds no identifiers (TC-PRV-01-1, TC-PLT-04-1) |
 | 1.4 Matching and reconciliation | Line-level matching and the three money identities | MAT-01, MAT-05, MAT-06, MAT-10, REC-01, REC-02, REC-03, REC-04, REC-05, REC-11, REC-13, ALC-01 | All P1 REC and MAT cases pass; nine statuses live |
 | 1.5 Web experience | Visit cards and detail on phone and desktop, household view | UX-01, UX-02, UX-06, UX-10 | UX cases pass at 375px and 1280px |
-| 1.6 Hardening and acceptance | Prove it on real visits | none new | Full P1 test pass; owner reconciles a month of real household visits; false-positive rate measured |
+| 1.6 Hardening and acceptance | Prove it on real visits, in production | none new | Production Google Cloud project with the BAA accepted and Cloud KMS confirmed as covered; restore drill and performance run in staging; full P1 test pass; owner reconciles a month of real household visits; false-positive rate measured |
 
 **Launch gate for anyone outside the owner's household:** CMP-01 to CMP-04 (breach response, consent, privacy policy, disclaimers) and PRV-09 (export and delete), plus a review by a healthcare privacy attorney.
 

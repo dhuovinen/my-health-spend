@@ -41,14 +41,44 @@ uv run --with pytest-cov pytest --cov=mhs
 - Assertions on money use integer cents.
 - No secrets or environment-specific values in tests.
 
+## Release 1 test environment
+
+Defined 2026-10-16; built in phase 1.1. Environments and adapters are in [ARCHITECTURE.md](ARCHITECTURE.md#environments).
+
+### Local (every change)
+
+| Piece | How |
+| --- | --- |
+| Stack | `docker compose --profile test up`: `app`, `worker`, `vault`, `postgres`, plus `capture` |
+| Database | Fresh Postgres schema per test session; each test runs in a transaction that rolls back |
+| Outside services | AI extraction mocked with recorded responses; OCR is Tesseract; keys from a throwaway key file |
+| Outbound capture | `capture` is an intercepting proxy (mitmproxy) on the app → worker → AI path. PRV and PLT-04 tests seed the identifier set, run a workflow, then search every captured payload |
+| Isolation | Tests create two households and assert neither can read the other's records, files or vault entries (TC-PRV-11-*) |
+| Data | `samples/`, synthetic builders, the extraction corpus and the identifier seed set; the redacted scenario library once it exists. Never the real `data/` folder |
+| Commands | `uv run pytest` for unit and integration tests; `docker compose --profile test run --rm tests` for the full suite against the stack |
+| CI | The same compose file in CI on every change; merge blocked on failure (PLT-06) |
+
+### Staging (per release and on demand)
+
+| Run | What it proves |
+| --- | --- |
+| OCR accuracy | The extraction corpus through Document AI meets the 95% target before confirmation (PLT-02, TC-PLT-02-1) |
+| Cloud integration | The same suite with the Cloud SQL, Cloud Storage and Cloud KMS adapters |
+| Restore drill | Vault and database restored from backup into a fresh staging project (TC-PRV-07-1) |
+| Performance | 50 typical uploads, p95 machine time under 60 seconds (TC-PLT-05-1) |
+| Outbound capture | Traffic from Cloud Run to the AI service captured through a proxy egress; no identifiers (TC-PLT-04-1) |
+
+### Production
+
+No test data and no test runs. Health checks, audit logs and the owner's acceptance in phase 1.6.
+
 ## Release 1 additions
 
 | Need | Phase |
 | --- | --- |
-| CI running the suite and the scenario library on every change | 1.1 |
-| Server test environment: application tier, back-end tier, identity vault, proxy between tiers | 1.1 |
-| Household isolation tests (TC-PRV-11-*) | 1.1 |
-| Release 0 regression suite (TEST_PLAN Appendix A) run against the server | 1.2 |
-| Extraction corpus with ground truth, ≥ 5 documents per type | 1.3 |
-| Identifier seed set and outbound-capture tests | 1.3 |
+| Docker Compose stack, CI, household isolation tests | 1.1 |
+| Release 0 regression suite (TEST_PLAN Appendix A) run against the stack | 1.2 |
+| Extraction corpus with ground truth (≥ 5 documents per type), identifier seed set, capture tests | 1.3 |
+| Staging project and the OCR accuracy run | 1.3 |
 | Redacted real-world scenario per REC rule | 1.4 |
+| Restore drill and performance run in staging | 1.6 |

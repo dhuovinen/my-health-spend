@@ -36,6 +36,8 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 026 | HSA import accepts CSV, XLS and XLSX exports | 2026-10-15 | Accepted |
 | 027 | Postgres for records and the job queue | 2026-10-15 | Accepted |
 | 028 | AI extraction through the Claude API under a data-processing agreement | 2026-10-15 | Accepted |
+| 029 | OCR: PDF text layer first, then the cloud host's OCR; Presidio finds identifiers; images blanked from OCR word boxes | 2026-10-16 | Accepted |
+| 030 | Build and test locally on Docker Compose; production on Google Cloud | 2026-10-16 | Accepted |
 
 ## Records
 
@@ -121,3 +123,28 @@ Postgres for records (JSONB keeps the Release 0 record-store model and lets the 
 
 ### ADR-028 · AI extraction service (Accepted)
 Field and line extraction uses the Claude API on scrubbed, tokenized content (PLT-04), under a data-processing agreement with no training on the data (MVP ND-9). OCR and identifier scrubbing run before any content leaves the server.
+
+### ADR-029 · OCR and identifier scrubbing (Accepted)
+Read a PDF's own text layer when it has one (as Release 0's converter does). Otherwise, for photos and scans, use the production cloud host's OCR service inside the same account and BAA (Google Document AI Enterprise OCR or AWS Textract), so unredacted images never leave the hosting boundary. Microsoft Presidio (open source, on the server) detects identifiers in the OCR text, and the back-end tier receives the text with identifiers replaced by tokens (PRV-01) plus images blanked using the OCR word boxes (PRV-04); Presidio's own image redactor is alpha, so it isn't used. OCR sits behind one interface: local development uses Tesseract, which keeps the stack offline, and the extraction corpus measures the cloud engine against the 95% target (PLT-02).
+
+### ADR-030 · Local first, Google Cloud for production (Accepted)
+**Decision.** Release 1 is built and tested on a local Docker Compose stack, then deployed to Google Cloud: Cloud Run for the application tier and back-end workers, Cloud SQL for PostgreSQL, Cloud Storage for originals, Cloud KMS for per-household keys (ADR-025) and Document AI Enterprise OCR (ADR-029). Supersedes nothing; settles the hosting question in ARCHITECTURE.md.
+
+**Why Google Cloud over AWS** (comparison of 2026-10-16; prices approximate, check before budgeting):
+
+| | Google Cloud | AWS |
+| --- | --- | --- |
+| Container hosting | Cloud Run: deploy a container, scales to zero, pay per request; jobs for workers | ECS Fargate or App Runner; Fargate needs a load balancer (about $16+/month) and, in private subnets, a NAT gateway (about $32+/month) |
+| Smallest managed Postgres | Cloud SQL shared-core, roughly $9 to $13/month (no SLA on shared core) | RDS db.t4g.micro, similar price |
+| OCR with word boxes | Document AI Enterprise OCR, $1.50 per 1,000 pages | Textract, similar per-page pricing |
+| HIPAA BAA | Accepted in the console; Cloud Run, Cloud SQL, Cloud Storage and Document AI are on Google's covered list | Accepted in AWS Artifact; the widest eligible-services list and healthcare ecosystem |
+| Fixed monthly floor for a household | Lowest (mostly the database) | Higher (load balancer, NAT) unless built carefully |
+| Setup effort | Less networking and IAM to get right | More: VPC, subnets, IAM roles |
+
+AWS would win for a large provider-facing or enterprise healthcare product, or with existing AWS skills. For a household-scale app built by one owner, Google Cloud's lower fixed cost and simpler deploys win.
+
+**Consequences.**
+- Code reaches cloud services only through four small interfaces, so the local stack runs offline and a move to AWS stays possible: records (Postgres, identical everywhere), object storage (local folder ↔ Cloud Storage), keys (local key file ↔ Cloud KMS), OCR (Tesseract ↔ Document AI).
+- Before any real household data goes to Google Cloud: accept the BAA in the console, and confirm Cloud KMS on Google's HIPAA covered-products table (search results confirmed the other four services but not KMS).
+- Local and staging environments never hold real data; staging is a separate Google Cloud project with synthetic data only.
+
