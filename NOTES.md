@@ -50,3 +50,5 @@ EOBs (PDF or photo), HSA exports (CSV/XLS/XLSX) and insurer claims CSVs; identif
 in the app tier; worker classifies and extracts with confidences; member reviews, corrects and confirms.
 13 user scenarios automated; 166 tests on the stack. ADR-033 proposed. Presidio, OCR, AI extraction and
 staging still to come.
+2026-10-16: Owner accepted ADR-032, ADR-033 and ADR-034 (034 on condition: no Claude extraction on real data until
+PRV-05 date shifting). Phases 1.2 and 1.3 (local build, with the OCR/Presidio/Claude engines) merged into main, tagged r1-uploads.

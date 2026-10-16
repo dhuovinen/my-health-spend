@@ -39,9 +39,9 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 029 | OCR: PDF text layer first, then the cloud host's OCR; Presidio finds identifiers; images blanked from OCR word boxes | 2026-10-16 | Accepted |
 | 030 | Build and test locally on Docker Compose; production on Google Cloud | 2026-10-16 | Accepted |
 | 031 | Foundation build: roles and row-level security per household, envelope encryption per service, TOTP sign-in, passphrase-sealed vault backup | 2026-10-16 | Accepted |
-| 032 | Release 0 pages shared by both apps; Release 1 imports by upload only, files encrypted, edits and history per household | 2026-10-16 | Proposed |
-| 033 | Upload pipeline: exports parsed in the app tier; documents read and scrubbed in the app tier, extracted by the worker, confirmed by the member | 2026-10-16 | Proposed |
-| 034 | Ingestion engines: Tesseract OCR and Presidio in the app tier; Claude extraction per household, off by default, through a worker that only it routes out of | 2026-10-16 | Proposed |
+| 032 | Release 0 pages shared by both apps; Release 1 imports by upload only, files encrypted, edits and history per household | 2026-10-16 | Accepted |
+| 033 | Upload pipeline: exports parsed in the app tier; documents read and scrubbed in the app tier, extracted by the worker, confirmed by the member | 2026-10-16 | Accepted |
+| 034 | Ingestion engines: Tesseract OCR and Presidio in the app tier; Claude extraction per household, off by default, through a worker that only it routes out of | 2026-10-16 | Accepted with a condition |
 
 ## Records
 
@@ -165,8 +165,8 @@ Implementation choices for phase 1.1 inside ADR-012, 025, 027 and 030. Proposed 
 
 **Consequences.** Two compose services beyond the four in ARCHITECTURE.md (`setup` and `migrate`, both one-shot). Losing a key file loses that service's data locally, so the key files must be backed up with the vault backup. The test suite starts a throwaway Postgres container when no test database is given, so `uv run pytest` needs Docker for the Release 1 tests (they skip without it).
 
-### ADR-032 · Porting Release 0 to the server (Proposed)
-Implementation choices for phase 1.2. Proposed by the build session on 2026-10-16.
+### ADR-032 · Porting Release 0 to the server (Accepted)
+Implementation choices for phase 1.2. Proposed by the build session and accepted by the owner as written on 2026-10-16.
 
 **Decision.**
 - **One set of pages.** The Release 0 routes and templates move into a shared module (`web/pages.py`) that both apps mount. Release 0 (`uv run mhs`) hosts them over its SQLite store; the Release 1 application tier hosts them behind MFA sign-in, over a household-scoped Postgres store with the same interface. The Release 0 test suite (TEST_PLAN Appendix A) runs against both apps, so the two can't drift apart.
@@ -178,8 +178,8 @@ Implementation choices for phase 1.2. Proposed by the build session on 2026-10-1
 
 **Consequences.** Release 0 gains the same template changes (no visible difference). The import preview is held in the app process between preview and confirm, keyed by household, which is fine for one app instance and must move to the database before Cloud Run runs more than one.
 
-### ADR-033 · Upload pipeline, first build (Proposed)
-How uploads become reconciled data in phase 1.3, inside ADR-012, 028 and 029. Proposed by the build session on 2026-10-16.
+### ADR-033 · Upload pipeline, first build (Accepted)
+How uploads become reconciled data in phase 1.3, inside ADR-012, 028 and 029. Proposed by the build session and accepted by the owner as written on 2026-10-16.
 
 **Decision.**
 - **Two paths by what is uploaded.** Structured exports (the HSA administrator's CSV, XLS or XLSX, ING-08; the insurer's claims CSV) are parsed in the application tier into ingest records and go through the existing import preview and confirm step. Documents (PDFs and photos of provider statements, itemized bills and EOBs) go through extraction and member review.
@@ -189,8 +189,8 @@ How uploads become reconciled data in phase 1.3, inside ADR-012, 028 and 029. Pr
 
 **Consequences.** Until OCR and AI extraction arrive, documents in layouts the rules don't know come back mostly empty for the member to fill in, and photos always do. Near-duplicate statements (ING-07 TC-3/4) and the extraction corpus accuracy run (PLT-02) are not covered yet.
 
-### ADR-034 · Ingestion engines: OCR, Presidio, Claude extraction (Proposed)
-Implementation choices for the rest of phase 1.3, inside ADR-028, ADR-029 and ADR-033. Proposed by the build session on 2026-10-16.
+### ADR-034 · Ingestion engines: OCR, Presidio, Claude extraction (Accepted with a condition)
+Implementation choices for the rest of phase 1.3, inside ADR-028, ADR-029 and ADR-033. Proposed by the build session and accepted by the owner on 2026-10-16 with one condition: Claude extraction stays off for any household with real data until PRV-05 date shifting is built, because ADR-022 shifts dates before data goes to an outside AI service and this build sends real service dates; synthetic data only until then. The default model stays `claude-opus-5-5` until the extraction corpus run (PLT-02) compares models.
 
 **Decision.**
 - **OCR in the application tier with Tesseract** (`MHS_OCR_ENGINE=tesseract`, installed in the image). Photos (JPG, PNG, WebP, and iPhone HEIC converted with pillow-heif) are turned upright from their EXIF orientation; scanned PDF pages are rendered at 300 DPI (pypdfium2, no system dependency). Pages with a text layer keep it; only pages without one are OCR'd. The result carries word boxes as page fractions for image blanking later (PRV-04) and a mean word confidence, which caps every extracted field's confidence so weak scans are marked for checking. Photos that can't be opened are refused at upload with a plain reason. Document AI replaces Tesseract in Google Cloud behind the same interface.

@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current phase: 1.3, Ingestion and privacy pipeline, in progress** on branch `feat/r1-upload-pipeline` (ADR-033, proposed), with the OCR, Presidio and Claude engines on `feat/r1-ingest-engines` (ADR-034, proposed). Phase 1.2 is built on `feat/r1-port-release-0` (ADR-032, proposed); phase 1.1 is merged and tagged `r1-foundation`.
+**Current phase: 1.3, Ingestion and privacy pipeline, in progress.** Phases 1.1 and 1.2 and the local build of 1.3 (upload pipeline with Tesseract OCR, Presidio and Claude extraction) are merged into `main` and tagged `r1-uploads` on 2026-10-16; ADR-031 to ADR-034 accepted (034 with a condition: no AI extraction on real data until PRV-05 date shifting). Next in 1.3: PRV-05 date shifting, the extraction corpus run, the staging project with Document AI.
 
 Requirement IDs refer to the [Product Requirements](<My Health Spend (MHS) Product Requirements.md>). Test cases for each are in [TEST_PLAN.md](TEST_PLAN.md).
 
