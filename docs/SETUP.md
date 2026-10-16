@@ -1,6 +1,6 @@
 # Setup
 
-How to install, configure and run Release 0 locally. The exact run commands are also in the root `CLAUDE.md` ("How to run"). Release 1 server setup will be added in phase 1.1 (see [ROADMAP.md](ROADMAP.md)).
+How to install, configure and run Release 0 locally, and the Release 1 Docker Compose stack (see "Release 1 stack" below). The exact run commands are also in the root `CLAUDE.md` ("How to run").
 
 ## Prerequisites
 
@@ -56,3 +56,80 @@ It supports one claims CSV layout, one HSA export layout and one statement layou
 ## Ingest format
 
 JSON Schema `schema/mhs-ingest.schema.json` (version 0.1); rules in [MVP_REQUIREMENTS.md](MVP_REQUIREMENTS.md) section 4. Records link by id and re-import upserts by id. Use `extensions` on any record to trial new fields.
+
+## Release 1 stack (phase 1.1)
+
+The server-side app for the household, run locally on Docker Compose (ADR-030, ADR-031). **Synthetic data only:** never point it at the real `data/` folder.
+
+### Prerequisites
+
+- Docker Desktop (Compose v2.23 or later, for volume subpaths)
+- Port 3063 free (registered in `~/Projects/app-registry` as `my-health-spend-r1`)
+
+### Start
+
+```bash
+docker compose up --build
+```
+
+| Service | Role | Network |
+| --- | --- | --- |
+| `setup` | One-shot: generates database passwords, the vault service token and the two key files into the `secrets` volume, once | none |
+| `postgres` | Records database and job queue (`postgres:17-alpine`) | internal only |
+| `migrate` | One-shot: creates the tier roles and applies `src/mhs/data/migrations/` | internal only |
+| `vault` | Identity vault service on port 8100, inside the network only | internal only |
+| `app` | Application tier, http://127.0.0.1:3063 (the only published port) | internal + frontend |
+| `worker` | Back-end tier: claims jobs from the Postgres queue | internal only (no route out) |
+| `capture`, `tests` | Test profile only: mitmproxy logging every request, and the pytest runner | |
+
+Each service mounts only its own folder of the `secrets` volume: the worker gets its database password and nothing else, and only `app` and `vault` have a key file, each its own.
+
+### Add a household and a member
+
+```bash
+docker compose exec app mhs-admin create-household "Household name"
+```
+
+```bash
+docker compose exec -it app mhs-admin add-member --household <household-id> --email you@example.com --name "Your name"
+```
+
+`add-member` asks for a password (12 characters or more) and prints an authenticator secret and `otpauth://` URI, once. Add it to an authenticator app, then sign in at http://127.0.0.1:3063 with email, password and the 6-digit code. Five wrong tries lock the account for 15 minutes; sessions end after 15 idle minutes or 12 hours. Lost authenticator: `docker compose exec app mhs-admin reset-mfa --email you@example.com` issues a new secret and ends the member's sessions.
+
+### Back up and restore the vault (PRV-07)
+
+```bash
+docker compose exec -it vault mhs-vault backup --out /backups/vault-2026-10-16.mhsvb
+```
+
+```bash
+docker compose exec -it vault mhs-vault restore --in /backups/vault-2026-10-16.mhsvb
+```
+
+Backups land in the `vault-backups` volume. The passphrase is prompted (or `MHS_BACKUP_PASSPHRASE` / `MHS_BACKUP_PASSPHRASE_FILE`); restore only goes into an empty vault. A backup holds the vault's data keys wrapped by the vault's key file, so **keep a copy of the key file with the backups**: restoring needs both. Locally the key is `vault/kek` in the `secrets` volume; in Google Cloud it will be a Cloud KMS key.
+
+### Test
+
+```bash
+docker compose --profile test run --rm tests
+```
+
+This runs the whole suite in the `tests` container: unit and integration tests on a fresh database with throwaway roles in the stack's Postgres, then the stack tests through `capture`. CI (`.github/workflows/ci.yml`) runs the same command plus `uv run pytest` on every push and pull request.
+
+### Stop and reset
+
+`docker compose down` stops the stack and keeps its data. `docker compose --profile test down -v` also deletes the volumes: database, originals, secrets and key files, and vault backups.
+
+### Configuration
+
+| Variable | Used by | Meaning |
+| --- | --- | --- |
+| `MHS_DATABASE_URL` | app, worker, vault | Full Postgres URL; otherwise built from `MHS_DB_HOST`, `MHS_DB_NAME`, `MHS_DB_USER` and `MHS_DB_PASSWORD(_FILE)` |
+| `MHS_KEY_FILE` | app, vault | The service's key-encryption key file |
+| `MHS_VAULT_URL`, `MHS_VAULT_TOKEN(_FILE)` | app, vault | Where the vault is, and the shared service token |
+| `MHS_OBJECTS_DIR` | app | Folder for encrypted originals |
+| `MHS_HOST`, `MHS_APP_PORT` | app | Bind address (0.0.0.0 inside the container) and port (3063) |
+| `MHS_COOKIE_SECURE` | app | `1` once served over TLS (staging, production) |
+| `MHS_SESSION_IDLE_MINUTES`, `MHS_SESSION_MAX_HOURS` | app | Session timeouts (15, 12) |
+| `MHS_WORKER_POLL_SECONDS` | worker | Queue poll interval (1) |
+

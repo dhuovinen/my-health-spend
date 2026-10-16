@@ -38,6 +38,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 028 | AI extraction through the Claude API under a data-processing agreement | 2026-10-15 | Accepted |
 | 029 | OCR: PDF text layer first, then the cloud host's OCR; Presidio finds identifiers; images blanked from OCR word boxes | 2026-10-16 | Accepted |
 | 030 | Build and test locally on Docker Compose; production on Google Cloud | 2026-10-16 | Accepted |
+| 031 | Foundation build: roles and row-level security per household, envelope encryption per service, TOTP sign-in, passphrase-sealed vault backup | 2026-10-16 | Accepted |
 
 ## Records
 
@@ -148,3 +149,15 @@ AWS would win for a large provider-facing or enterprise healthcare product, or w
 - Before any real household data goes to Google Cloud: accept the BAA in the console, and confirm Cloud KMS on Google's HIPAA covered-products table (search results confirmed the other four services but not KMS).
 - Local and staging environments never hold real data; staging is a separate Google Cloud project with synthetic data only.
 
+### ADR-031 · Foundation build choices (Accepted)
+Implementation choices for phase 1.1 inside ADR-012, 025, 027 and 030. Proposed by the build session and accepted by the owner as written on 2026-10-16.
+
+**Decision.**
+- **Household isolation in the database, not only in code.** Each tier connects as its own Postgres role (`mhs_app`, `mhs_worker`, `mhs_vault`); a one-shot `migrate` job owns the tables. Household tables have row-level security keyed on a per-transaction setting (`mhs.household_id`), and every repository query also filters by household. A query that forgets the household returns nothing. The worker role has no grant on accounts, sessions or the vault schema.
+- **Envelope encryption per service.** The application tier and the vault each have their own key-encryption key (a key file locally, a Cloud KMS key later) and their own per-household data keys, stored only in wrapped form. Content is AES-256-GCM with the household and object id as associated data, so a ciphertext moved to another household or object fails to decrypt. The worker has no key.
+- **Sign-in.** Email and password (Argon2id, at least 12 characters), then a TOTP code (RFC 6238) on a second step; no data route works until both pass. Server-side sessions: only a hash of the cookie is stored; 15-minute idle and 12-hour absolute timeouts; the token rotates after MFA. Five failed attempts lock the account for 15 minutes; a TOTP code can't be reused. Members are created and MFA is reset with an admin command until MFA account recovery (TC-PRV-07-3) is built.
+- **Vault backup.** `mhs-vault backup` writes the vault rows (entries already encrypted, data keys still wrapped) sealed with a passphrase (scrypt, then AES-256-GCM). Restoring needs the passphrase and the vault's key-encryption key, which therefore has to be backed up separately (Cloud KMS keeps it in production).
+- **Secrets locally.** A one-shot `setup` job generates the database passwords, the vault service token and the key files into a Docker volume on first `docker compose up`; each service mounts only its own subfolder. Nothing secret is in the repository.
+- **Code layout.** Adapters for records, queue, object storage and keys in `data/`; OCR and the worker in `ingest/`; the vault service, client and backup in `vault/`; the application tier in `web/household/`, beside the untouched Release 0 app.
+
+**Consequences.** Two compose services beyond the four in ARCHITECTURE.md (`setup` and `migrate`, both one-shot). Losing a key file loses that service's data locally, so the key files must be backed up with the vault backup. The test suite starts a throwaway Postgres container when no test database is given, so `uv run pytest` needs Docker for the Release 1 tests (they skip without it).

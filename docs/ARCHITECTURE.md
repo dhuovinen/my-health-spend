@@ -83,8 +83,10 @@ Keep the Release 0 layering and add two packages:
 | `core/` | Reconciliation, matching and identities (pure) |
 | `data/` | Repositories for the records database and owner-edit protection |
 | `ingest/` (new) | Back-end tier pipeline: OCR, scrub, classify, extract, dedupe |
-| `vault/` (new) | Identity vault client: tokenize, normalize (PRV-03), re-identify |
-| `web/` | Application tier routes and templates |
+| `vault/` (new) | Identity vault service, client, encrypted backup and restore; tokenize, normalize (PRV-03), re-identify |
+| `web/` | Release 0 app (`web/app.py`) and the Release 1 application tier (`web/household/`: sign-in, sessions, routes, templates, `mhs-admin`) |
+
+Phase 1.1 placed the adapters in `data/` (`db.py`, `records.py`, `queue.py`, `objects.py`, `keys.py`, `migrate.py` with SQL in `data/migrations/`), the worker and the OCR interface in `ingest/`, and the stack's runtime settings and `mhs-stack` setup commands in `stack.py` (ADR-031).
 
 The Release 0 JSON importer stays as an admin path for migrating the owner's data and for test fixtures.
 
@@ -112,11 +114,11 @@ The same containers run in every environment. Only four adapters change, so the 
 
 | Environment | Runs | Data | Purpose |
 | --- | --- | --- | --- |
-| Local | `docker compose up`: `app` (application tier), `worker` (back-end tier), `postgres`, `vault` (identity vault service), and in the test profile a `capture` proxy between tiers | Synthetic and sample data only; never the real `data/` folder | Daily development and the full automated suite |
+| Local | `docker compose up`: `app` (application tier), `worker` (back-end tier), `postgres`, `vault` (identity vault service), plus the one-shot `setup` (secrets) and `migrate` jobs; in the test profile a `capture` proxy and the `tests` runner | Synthetic and sample data only; never the real `data/` folder | Daily development and the full automated suite |
 | Staging | Separate Google Cloud project: Cloud Run services and jobs, Cloud SQL, Cloud Storage, Cloud KMS, Document AI | Synthetic data and the redacted scenario library only | Integration with the real cloud services, OCR accuracy runs, restore drills |
 | Production | Separate Google Cloud project with the BAA accepted; customer-managed encryption keys; audit logging on | The household's real data | Release 1 from phase 1.6 |
 
 AI extraction (ADR-028) is the one outside service in every environment. Locally it is mocked by default, so tests stay offline and deterministic; a flag turns on real calls with synthetic documents.
 
-Only the application tier publishes a port. Locally that is a new port to register in `~/Projects/app-registry` before first run, because Release 0 keeps 3062.
+Only the application tier publishes a port: locally 127.0.0.1:3063, registered in `~/Projects/app-registry` as `my-health-spend-r1` (Release 0 keeps 3062). Postgres, the vault and the worker sit on an internal Docker network with no route out. Each tier connects to Postgres as its own role, and household tables enforce isolation with row-level security (ADR-031).
 

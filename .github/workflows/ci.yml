@@ -1,0 +1,44 @@
+# PLT-06 / TC-PLT-06-2: the whole suite on every change. Make both jobs required checks on main so a failure
+# blocks the merge.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: uv run pytest
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: ci-only-throwaway
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      MHS_TEST_DATABASE_ADMIN_URL: postgresql://postgres:ci-only-throwaway@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.2"
+      - run: uv sync --frozen
+      - run: uv run --with pytest-cov pytest -q -rs --cov=mhs --cov-report=term
+
+  stack:
+    name: compose test profile
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose --profile test build
+      - run: docker compose --profile test run --rm tests
+      - if: failure()
+        run: docker compose --profile test logs --no-color
+      - if: always()
+        run: docker compose --profile test down -v

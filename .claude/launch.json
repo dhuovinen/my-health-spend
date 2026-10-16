@@ -4,8 +4,21 @@
     {
       "name": "mhs",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "mhs"],
+      "runtimeArgs": [
+        "run",
+        "mhs"
+      ],
       "port": 3062
+    },
+    {
+      "name": "mhs-r1",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": [
+        "compose",
+        "up",
+        "--build"
+      ],
+      "port": 3063
     }
   ]
 }
