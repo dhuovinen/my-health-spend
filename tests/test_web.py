@@ -204,3 +204,11 @@ def test_home_hsa_counts_link_to_filtered_lists(web):
     assert "Showing providers flagged" in client.get("/providers?year=2026&flag=unpaid").text
     ledger = client.get("/providers/prov-imaging?year=2026").text
     assert re.search(r"first billed \d+ days ago", ledger)  # the app ages balances from the real date
+
+
+def test_a_new_plan_shows_on_settings(web):
+    """Regression: a plan added in Settings has no coinsurance rate yet, and Settings must still render."""
+    r = web.client.post("/settings/plans", data={"plan_year": "2026", "insurer": "Example Health",
+                                                 "plan_name": "Medical"})
+    assert r.status_code == 200 and "Example Health" in r.text
+    assert web.store.get("plan", "plan-2026-medical")["plan_year"] == 2026

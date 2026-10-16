@@ -96,6 +96,15 @@ docker compose exec -it app mhs-admin add-member --household <household-id> --em
 
 `add-member` asks for a password (12 characters or more) and prints an authenticator secret and `otpauth://` URI, once. Add it to an authenticator app, then sign in at http://127.0.0.1:3063 with email, password and the 6-digit code. Five wrong tries lock the account for 15 minutes; sessions end after 15 idle minutes or 12 hours. Lost authenticator: `docker compose exec app mhs-admin reset-mfa --email you@example.com` issues a new secret and ends the member's sessions.
 
+### Upload documents
+
+On the Uploads page, choose a file and what it is (or let the app decide):
+
+- **Provider bills, statements, EOBs** as PDF, or a photo (JPG, PNG, HEIC). The app reads the text, replaces names and ID numbers with vault tokens, and the worker extracts the fields. When the status turns to Review, open it, check the fields ("check" marks the doubtful ones), correct them and confirm. Only then does the document reach your visits. Photos aren't read yet (no OCR): type the fields on the review page.
+- **HSA/FSA exports** (CSV, XLS, XLSX) and the **insurer's claims export** (CSV) go straight to the import preview; confirm there.
+
+The same file twice is refused. Add your household members and the year's plan in Settings first, so patients and claims match.
+
 ### Load data
 
 Upload an ingest file on the Import page, with the statement and EOB files it refers to (matched by file name, stored encrypted). Or, as an admin, import a file that is inside the app container:

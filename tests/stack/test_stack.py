@@ -18,6 +18,9 @@ import httpx
 import pyotp
 import pytest
 
+from tests.pdfs import make_pdf
+from tests.test_r1_scenarios import EOB, form_values
+
 pytestmark = pytest.mark.stack
 
 STACK_URL = os.environ.get("MHS_STACK_URL")
@@ -62,10 +65,11 @@ def test_full_session_over_the_stack(member, browser):
     assert home.status_code == 200 and "Stack test" in home.text
     assert "script-src 'self'" in home.headers["content-security-policy"]
 
-    r = browser.post("/uploads", files={"file": ("stack.pdf", b"%PDF-1.4 " + MARKER, "application/pdf")},
+    pdf = make_pdf(MARKER.decode())
+    r = browser.post("/uploads", files={"file": ("stack.pdf", pdf, "application/pdf")},
                      data={"csrf_token": csrf(home.text)})
     doc_id = r.headers["location"].split("uploaded=")[1]
-    assert browser.get(f"/uploads/{doc_id}").content == b"%PDF-1.4 " + MARKER
+    assert browser.get(f"/uploads/{doc_id}").content == pdf
 
     # Phase 1.2: the sample ingest file imports by upload and every Release 0 page renders for the household.
     sample = Path("/srv/mhs/samples/example-ingest.json")
@@ -87,6 +91,22 @@ def test_full_session_over_the_stack(member, browser):
     while browser.get(f"/api/jobs/{job}").json()["status"] != "done":
         assert time.monotonic() < deadline, "worker didn't finish the ping job"
         time.sleep(0.5)
+
+    # Phase 1.3: an EOB PDF is read by the worker container, reviewed and confirmed onto a visit.
+    upload = browser.post("/uploads", data={"csrf_token": csrf(home.text), "kind": "auto"},
+                          files={"file": ("eob.pdf", make_pdf(EOB), "application/pdf")})
+    assert upload.status_code == 303, upload.text[:1000]
+    upload_id = upload.headers["location"].split("uploaded=")[1]
+    deadline = time.monotonic() + 30
+    while browser.get(f"/api/uploads/{upload_id}").json()["status"] != "review":
+        assert time.monotonic() < deadline, "worker didn't read the upload"
+        time.sleep(0.5)
+    review = browser.get(f"/uploads/{upload_id}/review")
+    assert "tok_" not in review.text  # re-identified for the member
+    values = form_values(review.text, f"/uploads/{upload_id}/confirm")
+    r = browser.post(f"/uploads/{upload_id}/confirm", data=values)
+    assert r.status_code == 303 and r.headers["location"].startswith("/visits/"), r.text[:1000]
+    assert "$45.00" in browser.get(r.headers["location"]).text
 
     r = browser.post("/signout", data={"csrf_token": csrf(browser.get("/").text)})
     assert r.status_code == 303

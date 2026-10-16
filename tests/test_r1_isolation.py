@@ -2,11 +2,14 @@
 
 import pytest
 
+from tests.pdfs import make_pdf
+
 from mhs.data.records import HouseholdRecords
 
 pytestmark = pytest.mark.postgres
 
 NOT_FOUND = {"detail": "Not found"}
+A_PDF = make_pdf("household A only")
 
 
 @pytest.fixture
@@ -15,7 +18,7 @@ def two(household, app_db):
     ca, cb = household.sign_in(a), household.sign_in(b)
     HouseholdRecords(app_db, a.household_id).put("visit", {"id": "visit-a", "provider": "Clinic A"})
     HouseholdRecords(app_db, b.household_id).put("visit", {"id": "visit-b", "provider": "Clinic B"})
-    r = ca.post("/uploads", files={"file": ("a-eob.pdf", b"%PDF-1.4 household A only", "application/pdf")},
+    r = ca.post("/uploads", files={"file": ("a-eob.pdf", A_PDF, "application/pdf")},
                 data={"csrf_token": household.csrf(ca)}, follow_redirects=False)
     doc_a = r.headers["location"].split("uploaded=")[1]
     return household, a, b, ca, cb, doc_a
@@ -26,7 +29,7 @@ def test_visits_and_documents_of_another_household_are_not_found(two):
     # A sees its own.
     assert ca.get("/api/visits/visit-a").json()["provider"] == "Clinic A"
     assert ca.get(f"/api/uploads/{doc_a}").json()["filename"] == "a-eob.pdf"
-    assert ca.get(f"/uploads/{doc_a}").content == b"%PDF-1.4 household A only"
+    assert ca.get(f"/uploads/{doc_a}").content == A_PDF
     # B asks for A's ids: the same 404 as an id that doesn't exist, nothing of A's in the body.
     for path in (f"/api/uploads/{doc_a}", "/api/visits/visit-a", f"/uploads/{doc_a}"):
         r = cb.get(path)

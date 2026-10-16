@@ -174,3 +174,5 @@ form.stack { display: flex; flex-direction: column; gap: .8rem; margin-top: 1rem
 form.stack .btn { align-self: flex-start; }
 .topbar .icons form { margin: 0; }
 .uploads form.inline { margin-bottom: 1rem; }
+.review label.low input, .review label.low select { border-color: var(--warn); background: var(--warn-soft); }
+.review .grid.two { gap: .8rem 1.2rem; }

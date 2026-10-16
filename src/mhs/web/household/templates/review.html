@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Review {{ rec.filename }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Review: {{ rec.filename }}</h1>
+  <p class="muted small">Read from the {{ ext.how_read or 'file' }}{% if ext.pages %}, {{ ext.pages }} page{{ 's' if ext.pages != 1 }}{% endif %}. Check every field against the document; fields marked <span class="badge s-balance_outstanding">check</span> were read with less confidence or weren't found. <a href="/uploads/{{ rec.id }}">Open the original</a>.</p>
+</div>
+{% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
+{% if rec.status == 'confirmed' %}<p class="alert good">Confirmed. Saving again updates the visit with your changes.</p>{% endif %}
+{% for w in ext.warnings %}<p class="alert warn">{{ w }}</p>{% endfor %}
+
+<section class="card section">
+  <form method="post" action="/uploads/{{ rec.id }}/reclassify" class="inline">{{ csrf_input() }}
+    <label>Document type <span class="muted">({{ (ext.type_confidence * 100)|round|int }}% sure)</span>
+      <select name="doc_type">
+        {% for value, label in types.items() %}<option value="{{ value }}" {{ 'selected' if value == ext.doc_type }}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn small" type="submit">Change type and read again</button>
+  </form>
+</section>
+
+<form method="post" action="/uploads/{{ rec.id }}/confirm" class="card section review">{{ csrf_input() }}
+  {% if extracted %}
+  <div class="grid two">
+    <label>Provider
+      <select name="provider_id">
+        <option value="new" {{ 'selected' if not provider_id }}>New provider (name below)</option>
+        {% for p in providers %}<option value="{{ p.id }}" {{ 'selected' if p.id == provider_id }}>{{ p.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Patient{% if patient %} <span class="muted">(on the document: {{ patient }})</span>{% endif %}
+      <select name="member_id">
+        <option value="">Not a listed member</option>
+        {% for m in members %}<option value="{{ m.id }}" {{ 'selected' if m.id == member_id }}>{{ m.name }}</option>{% endfor %}
+      </select>
+    </label>
+    {% if ext.doc_type == 'eob' %}
+    <label>Plan
+      <select name="plan_id">
+        {% for p in plans %}<option value="{{ p.id }}" {{ 'selected' if p.id == plan_id }}>{{ p.insurer }} {{ p.plan_name or '' }} {{ p.plan_year }}</option>{% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    {% if ext.doc_type == 'eob' or not lines %}
+    <label>Visit
+      <select name="visit_id">
+        <option value="new" {{ 'selected' if not visit_id }}>New visit on the service date</option>
+        {% for v in visits %}<option value="{{ v.id }}" {{ 'selected' if v.id == visit_id }}>{{ v.date }} · {{ v.description or v.id }}</option>{% endfor %}
+      </select>
+    </label>
+    {% endif %}
+  </div>
+
+  <div class="grid two section">
+    {% for name, f in fields.items() %}
+    <label class="{{ 'low' if f.low }}">{{ f.label }}
+      {% if f.low %}<span class="badge s-balance_outstanding">check</span>{% endif %}
+      {% if name == 'claim_status' %}
+      <select name="claim_status">{% for s in ['processed', 'denied', 'pending', 'adjusted'] %}<option value="{{ s }}" {{ 'selected' if s == f.value }}>{{ s|humanize }}</option>{% endfor %}</select>
+      {% elif name == 'network_status' %}
+      <select name="network_status"><option value="">Not shown</option>{% for s in ['in_network', 'out_of_network'] %}<option value="{{ s }}" {{ 'selected' if s == f.value }}>{{ s|humanize }}</option>{% endfor %}</select>
+      {% else %}
+      <input name="{{ name }}" value="{{ f.value }}" {% if name.endswith('date') or name.startswith('service_') %}placeholder="YYYY-MM-DD"{% endif %}>
+      {% endif %}
+      <span class="muted small">{% if f.note %}{{ f.note }} · {% endif %}{{ (f.confidence * 100)|round|int }}%</span>
+    </label>
+    {% endfor %}
+    {% if ext.doc_type != 'eob' and not lines %}
+    <label>Date of service (for a new visit)<input name="service_start" placeholder="YYYY-MM-DD"></label>
+    {% endif %}
+  </div>
+
+  {% if lines %}
+  <h2 class="section">Lines on the document</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Date</th><th>Code</th><th>Description</th>{% if ext.doc_type == 'eob' %}<th class="num">Billed</th><th class="num">Allowed</th><th class="num">Plan paid</th><th class="num">You owe</th>{% else %}<th class="num">Charge</th><th class="num">Balance</th>{% endif %}</tr></thead>
+      <tbody>
+      {% for l in lines %}
+        <tr><td>{{ l.service_date }}</td><td>{{ l.code or '' }}</td><td>{{ l.description }}</td>
+          {% if ext.doc_type == 'eob' %}<td class="num">{{ l.billed or '' }}</td><td class="num">{{ l.allowed or '' }}</td><td class="num">{{ l.insurer_paid or '' }}</td><td class="num">{{ l.patient_responsibility or '' }}</td>
+          {% else %}<td class="num">{{ l.charge or '' }}</td><td class="num">{{ l.balance or '' }}</td>{% endif %}</tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  <p class="section"><button class="btn primary" type="submit">{{ 'Save changes' if rec.status == 'confirmed' else 'Confirm and add to my visits' }}</button></p>
+  {% else %}
+  <p>This kind of document is kept with your uploads; its fields aren't read yet. If it's a bill or an EOB, change its type above.</p>
+  <p><button class="btn" type="submit">Keep it</button></p>
+  {% endif %}
+</form>
+{% endblock %}
