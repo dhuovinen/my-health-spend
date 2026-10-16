@@ -38,7 +38,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 028 | AI extraction through the Claude API under a data-processing agreement | 2026-10-15 | Accepted |
 | 029 | OCR: PDF text layer first, then the cloud host's OCR; Presidio finds identifiers; images blanked from OCR word boxes | 2026-10-16 | Accepted |
 | 030 | Build and test locally on Docker Compose; production on Google Cloud | 2026-10-16 | Accepted |
-| 031 | Foundation build: roles and row-level security per household, envelope encryption per service, TOTP sign-in, passphrase-sealed vault backup | 2026-10-16 | Proposed |
+| 031 | Foundation build: roles and row-level security per household, envelope encryption per service, TOTP sign-in, passphrase-sealed vault backup | 2026-10-16 | Accepted |
 
 ## Records
 
@@ -149,8 +149,8 @@ AWS would win for a large provider-facing or enterprise healthcare product, or w
 - Before any real household data goes to Google Cloud: accept the BAA in the console, and confirm Cloud KMS on Google's HIPAA covered-products table (search results confirmed the other four services but not KMS).
 - Local and staging environments never hold real data; staging is a separate Google Cloud project with synthetic data only.
 
-### ADR-031 · Foundation build choices (Proposed)
-Implementation choices for phase 1.1 inside ADR-012, 025, 027 and 030. Proposed by the build session on 2026-10-16; the owner may revisit any of them before phase 1.2.
+### ADR-031 · Foundation build choices (Accepted)
+Implementation choices for phase 1.1 inside ADR-012, 025, 027 and 030. Proposed by the build session and accepted by the owner as written on 2026-10-16.
 
 **Decision.**
 - **Household isolation in the database, not only in code.** Each tier connects as its own Postgres role (`mhs_app`, `mhs_worker`, `mhs_vault`); a one-shot `migrate` job owns the tables. Household tables have row-level security keyed on a per-transaction setting (`mhs.household_id`), and every repository query also filters by household. A query that forgets the household returns nothing. The worker role has no grant on accounts, sessions or the vault schema.

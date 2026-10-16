@@ -2,7 +2,7 @@
 
 Reconciles provider bills, insurer EOBs and HSA payments per visit to find billing errors and overpayment. **Durable tier** (docs/DECISIONS.md ADR-020): read `docs/VISION.md`, `docs/ARCHITECTURE.md` and `docs/ROADMAP.md` before structural work, and record irreversible choices as an ADR in `docs/DECISIONS.md` first.
 
-**Current phase:** Release 1, phase 1.1 (Foundation) built on branch `feat/r1-foundation`: the Docker Compose stack, the four adapters, MFA sign-in with household isolation, encryption at rest, vault backup and restore, CSP, CI. ADR-031 (the build choices) awaits the owner's acceptance. Next is phase 1.2, porting Release 0 to the server. Release 0, the local MVP, is built and tagged `release-0`. Production target is Google Cloud (ADR-030). See `docs/ROADMAP.md`.
+**Current phase:** Release 1, phase 1.1 (Foundation) built on branch `feat/r1-foundation`: the Docker Compose stack, the four adapters, MFA sign-in with household isolation, encryption at rest, vault backup and restore, CSP, CI. Its build choices are ADR-031 (accepted). Next is phase 1.2, porting Release 0 to the server. Release 0, the local MVP, is built and tagged `release-0`. Production target is Google Cloud (ADR-030). See `docs/ROADMAP.md`.
 
 ## How to run
 
