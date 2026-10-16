@@ -9,7 +9,7 @@ reconciliation (ING-05), and every correction is kept beside what was extracted 
 import hashlib
 import re
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
@@ -27,9 +27,10 @@ from mhs.data.objects import ObjectStore
 from mhs.data.queue import JobQueue
 from mhs.ingest import claims, hsa
 from mhs.ingest.extract import EXTRACTED, REVIEW_THRESHOLD, TYPES
+from mhs.ingest.ocr import OcrEngine, StubOcr
 from mhs.ingest.resolve import Members, Providers, plan_for, slug
 from mhs.ingest.scrub import Scrubber
-from mhs.ingest.text import IMAGES, PDF, Unreadable, content_type, read_text
+from mhs.ingest.text import IMAGES, PDF, Unreadable, check_image, content_type, read_pdf, read_text
 from mhs.ingest.values import dollars, parse_amount, parse_date
 from mhs.vault.client import VaultClient
 from mhs.web.household.auth import Session
@@ -49,6 +50,7 @@ UPLOAD_KINDS = {
     "claims_export": "Insurer claims export (CSV)",
 }
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+TOKEN = re.compile(r"tok_[a-z2-7]{26}")
 EOB_MONEY = ("billed", "adjustment", "allowed", "insurer_paid", "deductible", "copay", "coinsurance", "not_covered",
              "patient_responsibility")
 STATEMENT_MONEY = ("balance_due", "billed", "insurance_paid", "adjustment", "patient_paid")
@@ -82,6 +84,9 @@ class Intake:
     check_csrf: Callable
     household_name: Callable[[str], str | None]
     preview_import: Callable
+    ocr: OcrEngine = field(default_factory=StubOcr)
+    scrubber: type[Scrubber] = Scrubber
+    ai_extraction: Callable[[str], bool] = lambda household_id: False
 
 
 class UploadRefused(Exception):
@@ -131,7 +136,8 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
 
     def uploads_page(request: Request, session: Session, status: int = 200, **ctx) -> HTMLResponse:
         return page(request, "uploads.html", status, household=it.household_name(session.household_id),
-                    originals=uploads_list(session), kinds=UPLOAD_KINDS, types=TYPES, **ctx)
+                    originals=uploads_list(session), kinds=UPLOAD_KINDS, types=TYPES,
+                    ai=it.ai_extraction(session.household_id), **ctx)
 
     def store_original(session: Session, filename: str, ctype: str, data: bytes, doc_kind: str) -> str:
         hid = session.household_id
@@ -150,12 +156,15 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
     def scrub_and_queue(session: Session, upload_id: str, ctype: str, data: bytes, forced_type: str | None) -> None:
         """Read the text here, swap identifiers for vault tokens, and hand only that to the worker (PRV-01)."""
         hid = session.household_id
-        text, pages, how = read_text(ctype, data)
+        doc = read_text(ctype, data, it.ocr)
         store = HouseholdStore(it.db, hid)
         names = [n for m in store.all("member") for n in [m["name"], *m.get("aliases", [])]]
-        scrubbed = Scrubber(lambda kind, value: it.vault.tokenize(hid, kind, value), names).scrub(text)
-        it.queue.enqueue(hid, "extract", {"upload_id": upload_id, "text": scrubbed.text, "pages": pages,
-                                          "how_read": how, "forced_type": forced_type})
+        keep = [p["name"] for p in store.all("provider")] + [p.get("insurer", "") for p in store.all("plan")]
+        scrubbed = it.scrubber(lambda kind, value: it.vault.tokenize(hid, kind, value), names, keep).scrub(doc.text)
+        kind = "extract_ai" if it.ai_extraction(hid) else "extract"
+        it.queue.enqueue(hid, kind, {"upload_id": upload_id, "text": scrubbed.text, "pages": doc.pages,
+                                          "how_read": doc.how, "text_confidence": doc.confidence,
+                                          "forced_type": forced_type})
 
     # --- upload ---
 
@@ -193,7 +202,9 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
                 raise UploadRefused(f"{filename}: only PDFs, photos (JPG, PNG, HEIC) and CSV, XLS or XLSX exports "
                                     "can be uploaded.", 415)
             if ctype == PDF:
-                read_text(PDF, data)  # refuse damaged and password-protected PDFs before storing anything
+                read_pdf(data)  # refuse damaged and password-protected PDFs before storing anything
+            else:
+                check_image(data, ctype)  # and photos that can't be opened
         except UploadRefused as e:
             return uploads_page(request, session, e.status, error=e.message)
         except Unreadable as e:
@@ -242,9 +253,13 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
     # --- review and confirm ---
 
     def reidentify(hid: str, value):
-        if isinstance(value, str) and value.startswith("tok_"):
-            found = it.vault.detokenize(hid, value)
-            return found[1] if found else ""
+        """Tokens back to what the document said, also inside a longer value ("Dr. tok_..., MD")."""
+        if isinstance(value, str) and "tok_" in value:
+            def real(m: re.Match) -> str:
+                found = it.vault.detokenize(hid, m.group(0))
+                return found[1] if found else ""
+
+            return TOKEN.sub(real, value).strip()
         return value
 
     def review_context(session: Session, rec: dict, ext: dict) -> dict:

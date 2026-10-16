@@ -1,13 +1,19 @@
 """Replace identifiers in document text with vault tokens before it leaves the application tier (PRV-01, PRV-04).
 
 Identifiers are normalized first (PRV-03), so "SMITH, PAT" and "Pat Smith" get one token and "W123-456" and
-"W123456" another. This first scrubber knows the household's member names and aliases, labelled identifiers
-(patient, member ID, account number, date of birth) and patterns (SSN, phone, email, street address); Presidio
-can replace it behind the same interface (ADR-029, ADR-033).
+"W123456" another. Two scrubbers, picked with MHS_SCRUBBER:
+
+- `rules`: the household's member names and aliases, labelled identifiers (patient, member ID, account number,
+  date of birth) and patterns (SSN, phone, email, street address).
+- `presidio` (ADR-029): the same rules first, then Microsoft Presidio's entity detection (spaCy names and places,
+  phone, email, SSN, card and bank numbers) for what the rules missed, such as a stranger's name in a letter.
+  The household's own providers and insurers are left in place, because extraction needs them.
 """
 
+import logging
 import re
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Callable
 
 from mhs.ingest.values import parse_date
@@ -27,6 +33,15 @@ LABELLED = [
 ]
 LABEL_LINE = re.compile(r"(?P<label>\b(?:" + "|".join(f"(?:{p})" for _, p in LABELLED) + r"))\s*[:#]\s*(?P<value>[^\n]*?)"
                         r"(?=\s{3,}|\t|$)", re.I | re.M)
+STATES = (r"(?:A[KLRZ]|C[AOT]|D[CE]|FL|GA|HI|I[ADLN]|K[SY]|LA|M[ADEINOST]|N[CDEHJMVY]|O[HKR]|P[AR]|RI|S[CD]|"
+          r"T[NX]|UT|V[AIT]|W[AIVY])")
+ZIP = rf"{STATES}\s+\d{{5}}(?:-\d{{4}})?\b"
+CITY = r"[A-Z][a-zA-Z]+(?: [A-Z][a-zA-Z]+)?"
+# A person's name after words that introduce one ("Dear Aisha Okafor", "spoke with ...", "I, ..."); doctors are
+# left to Presidio, and the household's providers are kept.
+CUE_NAME = re.compile(r"(?:\b(?:Dear|Mr|Mrs|Ms|Mx|Miss|spoke (?:with|to)|on behalf of|husband|wife|spouse|son|daughter|"
+                      r"mother|father|guardian)\.?|\bI,)[ \t]+(?P<name>[A-Z][a-z'’-]+(?:[ \t]+[A-Z]\.)?"
+                      r"(?:[ \t]+[A-Z][a-z'’-]+){1,2})\b")
 PATTERNS = [
     ("ssn", re.compile(r"\b\d{3}-\d{2}-\d{4}\b")),
     ("email", re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")),
@@ -34,7 +49,8 @@ PATTERNS = [
     ("address", re.compile(r"\b\d{1,6}\s+(?:[NSEW]\.?\s+)?(?:[A-Z][a-zA-Z]+\s+){1,3}"
                            r"(?:St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ln|Lane|Blvd|Boulevard|Ct|Court|Way|Pl|Place|"
                            r"Pkwy|Parkway|Cir|Circle|Ter|Terrace|Hwy|Highway)\b\.?(?:,?\s+(?:Apt|Unit|Suite|Ste|#)\s*"
-                           r"[\w-]+)?")),
+                           r"[\w-]+)?" rf"(?:,\s*{CITY}(?=,|\s*$|\s+{STATES}\b))?(?:,?\s+{ZIP})?", re.M)),
+    ("address", re.compile(rf"\b{CITY},\s+{ZIP}|(?<=, ){ZIP}")),  # city, state and ZIP on their own
 ]
 
 
@@ -78,9 +94,25 @@ class Scrubbed:
 
 
 class Scrubber:
-    def __init__(self, tokenize: Tokenize, known_names: list[str]):
+    """The rules scrubber. `keep` lists names that aren't identifiers here (the household's providers, insurers)."""
+
+    name = "rules"
+
+    def __init__(self, tokenize: Tokenize, known_names: list[str], keep: list[str] = ()):
         self.tokenize = tokenize
         self.known_names = [n for n in known_names if n and n.strip()]
+        self.keep = [k for k in keep if k and k.strip()]
+
+    def _kept(self, value: str) -> bool:
+        """A provider or insurer the household already has, which isn't an identifier: the whole name, or at
+        least two words of it ("Lakeside Family" of "Lakeside Family Medicine"). One word alone isn't enough."""
+        v = normalize("other", value)
+        if not v:
+            return True
+        for k in (normalize("other", k) for k in self.keep):
+            if k in v or (v in k and len(v.split()) >= 2):
+                return True
+        return False
 
     def _token(self, out: Scrubbed, kind: str, value: str) -> str:
         token = self.tokenize(kind, normalize(kind, value))
@@ -108,6 +140,7 @@ class Scrubber:
 
         found: list[tuple[str, str]] = []  # labelled identifiers other than names
         out.text = LABEL_LINE.sub(labelled, out.text)
+        names += [m.group("name") for m in CUE_NAME.finditer(out.text) if not self._kept(m.group("name"))]
         for kind, value in found:  # the same identifier repeated elsewhere in the text, unlabelled
             if len(value) >= 4:
                 out.text = re.sub(rf"(?<![\w-]){re.escape(value)}(?![\w-])",
@@ -118,3 +151,96 @@ class Scrubber:
         for kind, pattern in PATTERNS:
             out.text = pattern.sub(lambda m, k=kind: self._token(out, k, m.group(0)), out.text)
         return out
+
+
+# --- Presidio (ADR-029) ------------------------------------------------------------------------
+
+SPACY_MODEL = "en_core_web_md"
+ENTITIES = {  # Presidio entity -> vault kind. Dates stay (ADR-022); driver's licence and URL rules are too noisy.
+    "PERSON": "name", "PHONE_NUMBER": "phone", "EMAIL_ADDRESS": "email", "US_SSN": "ssn", "US_ITIN": "ssn",
+    "CREDIT_CARD": "card_number", "US_BANK_NUMBER": "account_number", "IBAN_CODE": "account_number",
+    "LOCATION": "address",
+}
+MIN_SCORE = {"PHONE_NUMBER": 0.4, "US_BANK_NUMBER": 0.4}
+DEFAULT_MIN_SCORE = 0.5
+
+
+@lru_cache(maxsize=1)
+def presidio_analyzer():
+    """Loaded once per process (the spaCy model takes a second or two)."""
+    from presidio_analyzer import AnalyzerEngine
+    from presidio_analyzer.nlp_engine import NlpEngineProvider
+
+    logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)  # it warns about every unmapped spaCy label
+    nlp = NlpEngineProvider(nlp_configuration={
+        "nlp_engine_name": "spacy", "models": [{"lang_code": "en", "model_name": SPACY_MODEL}],
+    }).create_engine()
+    return AnalyzerEngine(nlp_engine=nlp, supported_languages=["en"])
+
+
+def _trim(text: str, start: int, end: int) -> tuple[int, int]:
+    """Presidio's spans can run past the value: stop at a line break or a column gap, drop edge punctuation."""
+    span = text[start:end]
+    cut = re.search(r"\n|\s{3,}|\t", span)
+    if cut:
+        end = start + cut.start()
+    while end > start and not text[end - 1].isalnum() and text[end - 1] != ".":
+        end -= 1
+    while start < end and not text[start].isalnum() and text[start] not in "(+":
+        start += 1
+    return start, end
+
+
+class PresidioScrubber(Scrubber):
+    name = "presidio"
+
+    def __init__(self, tokenize: Tokenize, known_names: list[str], keep: list[str] = (), analyzer=None):
+        super().__init__(tokenize, known_names, keep)
+        self.analyzer = analyzer or presidio_analyzer()
+
+    def _spans(self, text: str) -> list[tuple[int, int, str, str]]:
+        """(start, end, kind, value) for each entity Presidio finds that isn't a token or a kept name."""
+        spans = []
+        for r in self.analyzer.analyze(text, language="en", entities=list(ENTITIES)):
+            if r.score < MIN_SCORE.get(r.entity_type, DEFAULT_MIN_SCORE):
+                continue
+            start, end = _trim(text, r.start, r.end)
+            value = text[start:end]
+            if len(value) < 2 or "tok_" in value:
+                continue
+            if r.entity_type in ("PERSON", "LOCATION") and self._kept(value):
+                continue
+            spans.append((start, end, ENTITIES[r.entity_type], value))
+        return _non_overlapping(spans)
+
+    def scrub(self, text: str) -> Scrubbed:
+        # People Presidio finds join the known names first, so the rules catch every spelling of them
+        # ("Maria Gonzalez", "GONZALEZ, MARIA") under one token (PRV-03).
+        people = [v for _, _, kind, v in self._spans(text) if kind == "name" and len(v.split()) > 1]
+        rules = Scrubber(self.tokenize, self.known_names + people, self.keep)
+        out = rules.scrub(text)
+        for start, end, kind, value in sorted(self._spans(out.text), reverse=True):  # what the rules missed
+            out.text = out.text[:start] + self._token(out, kind, value) + out.text[end:]
+        return out
+
+
+def _non_overlapping(spans: list[tuple]) -> list[tuple]:
+    """Longest span wins where Presidio's recognizers overlap."""
+    chosen: list[tuple] = []
+    for s in sorted(spans, key=lambda s: (s[1] - s[0]), reverse=True):
+        if all(s[1] <= c[0] or s[0] >= c[1] for c in chosen):
+            chosen.append(s)
+    return chosen
+
+
+SCRUBBERS: dict[str, type[Scrubber]] = {"rules": Scrubber, "presidio": PresidioScrubber}
+
+
+def scrubber_class(name: str = "rules") -> type[Scrubber]:
+    try:
+        cls = SCRUBBERS[name]
+    except KeyError:
+        raise ValueError(f"unknown scrubber {name!r}; known: {', '.join(SCRUBBERS)}") from None
+    if cls is PresidioScrubber:
+        presidio_analyzer()  # load the model now, so a broken install fails at start-up, not on an upload
+    return cls

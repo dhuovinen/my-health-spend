@@ -23,6 +23,8 @@ from mhs.data.keys import Keyring, LocalKeyFile, db_keyring
 from mhs.data.objects import LocalObjectStore, ObjectStore
 from mhs.data.queue import JobQueue
 from mhs.data.records import HouseholdRecords
+from mhs.ingest.ocr import get_engine
+from mhs.ingest.scrub import scrubber_class
 from mhs.stack import AppConfig, load_app_config
 from mhs.vault.client import VaultClient
 from mhs.web.household import security
@@ -258,7 +260,8 @@ def create_app(
 
     preview_import = add_pages(app, templates, HouseholdHost(app.state, db, keyring, objects))
     add_intake(app, templates, Intake(db, keyring, objects, vault, queue, member, check_csrf, accounts.household_name,
-                                      preview_import))
+                                      preview_import, get_engine(config.ocr_engine),
+                                      scrubber_class(config.scrubber), accounts.ai_extraction))
     return app
 
 

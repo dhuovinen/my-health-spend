@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <h1>Review: {{ rec.filename }}</h1>
-  <p class="muted small">Read from the {{ ext.how_read or 'file' }}{% if ext.pages %}, {{ ext.pages }} page{{ 's' if ext.pages != 1 }}{% endif %}. Check every field against the document; fields marked <span class="badge s-balance_outstanding">check</span> were read with less confidence or weren't found. <a href="/uploads/{{ rec.id }}">Open the original</a>.</p>
+  <p class="muted small">Read from the {{ ext.how_read or 'file' }}{% if ext.pages %}, {{ ext.pages }} page{{ 's' if ext.pages != 1 }}{% endif %}{% if ext.extractor == 'ai' %}, fields found by AI ({{ ext.ai_model }}){% endif %}. Check every field against the document; fields marked <span class="badge s-balance_outstanding">check</span> were read with less confidence or weren't found. <a href="/uploads/{{ rec.id }}">Open the original</a>.</p>
 </div>
 {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
 {% if rec.status == 'confirmed' %}<p class="alert good">Confirmed. Saving again updates the visit with your changes.</p>{% endif %}

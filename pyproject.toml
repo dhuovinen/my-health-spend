@@ -18,6 +18,12 @@ dependencies = [
     "httpx>=0.27",
     "pypdf>=5",
     "openpyxl>=3.1",
+    "pillow>=12.3.0",
+    "pillow-heif>=1.8.1",
+    "pypdfium2>=5.14.0",
+    "presidio-analyzer>=2.2.364",
+    "en-core-web-md",
+    "anthropic>=1.15.0",
 ]
 
 [project.scripts]
@@ -44,3 +50,6 @@ markers = [
     "postgres: needs a Postgres server (MHS_TEST_DATABASE_ADMIN_URL, or Docker to start a throwaway one)",
     "stack: runs against the live compose stack (docker compose --profile test run --rm tests)",
 ]
+
+[tool.uv.sources]
+en-core-web-md = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl" }

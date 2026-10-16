@@ -6,15 +6,16 @@ import hashlib
 import io
 import json
 import re
+import shutil
 from html.parser import HTMLParser
 
 import pytest
 
 from mhs.data.household_store import HouseholdStore
 from mhs.data.queue import JobQueue
-from mhs.ingest.worker import run_once
+from mhs.ingest.worker import make_handlers, run_once
 from tests.conftest import admin_sql
-from tests.pdfs import make_pdf
+from tests.pdfs import make_image, make_pdf, make_scanned_pdf
 from tests.test_web import CsrfClient
 
 pytestmark = pytest.mark.postgres
@@ -297,6 +298,7 @@ def test_claims_export_upload(member):
     ("empty.pdf", b"", "application/pdf", "is empty"),
     ("broken.pdf", b"%PDF-1.4 garbage", "application/pdf", "damaged"),
     ("notpdf.pdf", b"hello", "application/pdf", "a PDF, though"),
+    ("photo.jpg", b"\xff\xd8\xff not really a photo", "image/jpeg", "damaged or in a format"),
 ])
 def test_unreadable_uploads_are_refused(member, name, data, ctype, reason):
     """ING-01 (TC-5): each refused with a plain reason; nothing saved."""
@@ -323,8 +325,8 @@ def test_password_protected_and_oversized_pdfs_are_refused(member, monkeypatch):
 
 
 def test_photo_is_entered_by_hand(member):
-    """ING-01 (TC-2, partial), ING-05: a photo is stored; with no OCR yet the member enters the EOB's fields."""
-    png = b"\x89PNG\r\n\x1a\n" + b"synthetic photo bytes"
+    """ING-01 (TC-2, partial), ING-05: a photo is stored; with no OCR engine the member enters the EOB's fields."""
+    png = make_image("a photo")
     uid = member.upload_id(member.upload("eob-photo.png", png, kind="eob", ctype="image/png"))
     member.work()
     text, values = member.review(uid)
@@ -336,6 +338,96 @@ def test_photo_is_entered_by_hand(member):
     eob = member.store.get("document", "eob-l-9")
     assert eob["billed"] == 8000 and member.store.get("provider", "prov-example-labs")
     assert member.client.get("/files/eob-l-9").content == png
+
+
+@pytest.fixture
+def engines_member(make_household, app_db, worker_db):
+    """A member on an app configured like the compose stack: Tesseract OCR and the Presidio scrubber."""
+    if not shutil.which("tesseract"):
+        pytest.skip("tesseract isn't installed here; the compose tests runner has it")
+    pytest.importorskip("presidio_analyzer")
+    return Member(make_household(ocr_engine="tesseract", scrubber="presidio"), app_db, worker_db)
+
+
+@pytest.mark.parametrize("name,make,ctype", [
+    ("eob.png", lambda: make_image(EOB), "image/png"),
+    ("eob.heic", lambda: make_image(EOB, "HEIC"), "image/heic"),
+    ("eob-scan.pdf", lambda: make_scanned_pdf(EOB), "application/pdf"),
+])
+def test_photo_and_scan_are_read_by_ocr(engines_member, pgdb, name, make, ctype):
+    """ING-01 (TC-2, TC-3), ING-03, PRV-04: a photo (PNG or iPhone HEIC) or a scanned PDF of an EOB is read by OCR
+    in the application tier, scrubbed, and extracts like the PDF does; the worker sees tokens only."""
+    m = engines_member
+    uid = m.upload_id(m.upload(name, make(), ctype=ctype))
+    m.work()
+    text, values = m.review(uid)
+    assert "OCR (tesseract)" in text
+    assert values["billed"] == "320.00" and values["patient_responsibility"] == "45.00"
+    assert values["service_start"] == "2026-09-28" and values["provider"] == "Example Dermatology"
+    payload = admin_sql(pgdb, "SELECT payload::text FROM app.jobs WHERE household_id = %s",
+                        (m.who.household_id,))[0][0]
+    for value in IDENTIFIERS:
+        assert value.lower() not in payload.lower(), value
+    assert m.confirm(uid, values).status_code == 303
+
+
+def test_presidio_scrubs_strangers_in_a_letter(engines_member, pgdb):
+    """PRV-04 (TC-2) with Presidio: names the household doesn't know never reach the worker."""
+    m = engines_member
+    letter = ("Lakeside Family Medicine\nDear Pat Example,\nJordan Rivera called for you about the bill on 03/14/2026.\n"
+              "Our billing manager Aisha Okafor can be reached at 555-310-4000.")
+    m.upload_id(m.upload("letter.pdf", make_pdf(letter)))
+    m.work()
+    payload = admin_sql(pgdb, "SELECT payload::text FROM app.jobs WHERE household_id = %s", (m.who.household_id,))[0][0]
+    for value in ("Pat Example", "Jordan Rivera", "Aisha Okafor", "555-310-4000"):
+        assert value not in payload, value
+    assert "03/14/2026" in payload and "Lakeside Family Medicine" in payload
+
+
+def test_ai_extraction_for_a_household_that_turned_it_on(member, accounts, pgdb):
+    """ADR-028, ADR-034, PLT-04 (TC-1 in process, TC-2): with AI extraction on, the document goes to an AI worker as
+    scrubbed text only; the member sees which fields the AI found, a value the document doesn't show is marked,
+    and the member's correction is what gets confirmed."""
+    from tests.test_r1_ai import RecordedAi
+
+    hid = member.who.household_id
+    accounts.set_ai_extraction(hid, True)
+    assert "with the help of AI" in member.client.get("/uploads").text
+    uid = member.upload_id(member.upload("eob.pdf", make_pdf(EOB)))
+    assert admin_sql(pgdb, "SELECT kind FROM app.jobs WHERE household_id = %s", (hid,)) == [("extract_ai",)]
+    queue = JobQueue(member.worker_db)
+    assert run_once(queue, member.worker_db, kinds=["ping", "extract"], stale_kinds=["extract_ai"]) is None
+    ai = RecordedAi("eob")
+    assert run_once(queue, member.worker_db, make_handlers(ai.extractor), kinds=["ping", "extract", "extract_ai"])
+    text, values = member.review(uid)
+    assert "fields found by AI (claude-opus-5-5)" in text
+    assert values["billed"] == "320.00" and values["deductible"] == "25.00"
+    assert "not found in the document text" in text
+    sent = json.dumps([r["body"] for r in ai.requests])
+    assert "tok_" in sent and all(v.lower() not in sent.lower() for v in IDENTIFIERS)  # TC-PLT-04-1, in process
+    values["deductible"] = ""  # the member corrects what the AI concluded
+    assert member.confirm(uid, values).status_code == 303
+    ext = member.store.get("extraction", uid)
+    assert ext["extractor"] == "ai" and ext["fields"]["deductible"]["value"] == 2500  # the AI's value stays visible
+
+
+def test_ai_jobs_are_read_by_the_rules_when_ai_is_unavailable(member, accounts, pgdb):
+    """No AI worker after a minute, or the AI declines: the layout rules read the document and the review says so."""
+    from tests.test_r1_ai import RecordedAi
+
+    hid = member.who.household_id
+    accounts.set_ai_extraction(hid, True)
+    first = member.upload_id(member.upload("eob.pdf", make_pdf(EOB)))
+    admin_sql(pgdb, "UPDATE app.jobs SET created_at = now() - interval '2 minutes' WHERE household_id = %s", (hid,))
+    queue = JobQueue(member.worker_db)
+    assert run_once(queue, member.worker_db, kinds=["ping", "extract"], stale_kinds=["extract_ai"])
+    text, values = member.review(first)
+    assert "AI reading isn&#39;t running on this server" in text and values["billed"] == "320.00"
+    second = member.upload_id(member.upload("statement.pdf", make_pdf(STATEMENT)))
+    assert run_once(queue, member.worker_db, make_handlers(RecordedAi("refusal").extractor))
+    text, values = member.review(second)
+    assert "AI extraction declined this document, so the layout rules read this document" in text
+    assert values["balance_due"] == "320.00" and member.store.get("extraction", second)["extractor"] == "rules"
 
 
 def test_reclassify_reads_again(member):

@@ -4,7 +4,7 @@ classification and extraction (ING-02 to 04). No database."""
 import pytest
 
 from mhs.ingest.extract import classify, extract
-from mhs.ingest.scrub import Scrubber, normalize
+from mhs.ingest.scrub import PresidioScrubber, Scrubber, normalize
 from mhs.ingest.values import parse_amount, parse_date_range
 from mhs.vault.store import new_token
 
@@ -51,10 +51,19 @@ def test_other_types_are_recognised():
     assert classify("Hello there")[0] == "other"
 
 
+@pytest.fixture(params=["rules", "presidio"])
+def scrubber_cls(request):
+    """Every scrubbing test runs against the rules and against Presidio on top of them (ADR-029)."""
+    if request.param == "presidio":
+        pytest.importorskip("presidio_analyzer")
+        return PresidioScrubber
+    return Scrubber
+
+
 @pytest.fixture
-def scrubber():
+def scrubber(scrubber_cls):
     tokens: dict = {}
-    return Scrubber(lambda kind, value: tokens.setdefault((kind, value), new_token()), ["Pat Example"]), tokens
+    return scrubber_cls(lambda kind, value: tokens.setdefault((kind, value), new_token()), ["Pat Example"]), tokens
 
 
 def test_tc_prv_03_1_one_token_per_person_and_member_id(scrubber):
@@ -86,8 +95,8 @@ def test_tc_prv_01_3_tokens_are_random_and_unique():
     assert len(tokens) == 1000 and all(t.startswith("tok_") and len(t) == 30 for t in tokens)
 
 
-def test_scrubbing_leaves_amounts_dates_and_providers():
-    s = Scrubber(lambda kind, value: new_token(), [])
+def test_scrubbing_leaves_amounts_dates_and_providers(scrubber_cls):
+    s = scrubber_cls(lambda kind, value: new_token(), [], keep=["Example Dermatology"])
     text = "Provider: Example Dermatology\nDate of service: 09/28/2026\nAmount billed: $320.00\nClaim number: C-1"
     assert s.scrub(text).text == text
 

@@ -7,7 +7,7 @@ import pytest
 
 from mhs.data.keys import DecryptError, Keyring, LocalKeyFile, open_sealed, seal
 from mhs.data.objects import LocalObjectStore
-from mhs.ingest.ocr import StubOcr, get_engine
+from mhs.ingest.ocr import OcrUnavailable, StubOcr, TesseractOcr, get_engine
 from mhs.stack import SECRET_LAYOUT, init_secrets
 
 
@@ -77,11 +77,12 @@ def test_local_object_store(tmp_path):
             store.put(bad, b"x")
 
 
-def test_ocr_is_a_stub_until_phase_1_3():
+def test_ocr_engines_are_chosen_by_name():
     engine = get_engine()
     assert isinstance(engine, StubOcr)
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(OcrUnavailable):
         engine.read(b"%PDF", "application/pdf")
+    assert isinstance(get_engine("tesseract"), TesseractOcr)
     with pytest.raises(ValueError):
         get_engine("nope")
 

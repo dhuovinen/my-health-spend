@@ -24,7 +24,7 @@ def new_household(pgdb, name="H") -> str:
 def test_migrations_are_applied_once(pgdb, clean_db):
     assert migrate(pgdb.admin_url, pgdb.roles, pgdb.passwords) == []
     names = [r[0] for r in admin_sql(pgdb, "SELECT name FROM public.schema_migrations")]
-    assert names == sorted(p.stem for p in MIGRATIONS.glob("*.sql")) == ["001_foundation", "002_release0_port"]
+    assert names == sorted(p.stem for p in MIGRATIONS.glob("*.sql")) == ["001_foundation", "002_release0_port", "003_ai_extraction"]
 
 
 def test_records_crud_scoped_to_household(pgdb, app_db):

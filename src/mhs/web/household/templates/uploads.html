@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <h1>Uploads</h1>
-  <p class="muted">Bills, statements and EOBs as PDFs or photos, and HSA or insurer exports, for {{ household }}. Files are stored encrypted. Nothing reaches your visits until you check and confirm it.</p>
+  <p class="muted">Bills, statements and EOBs as PDFs or photos, and HSA or insurer exports, for {{ household }}. Files are stored encrypted. Nothing reaches your visits until you check and confirm it.{% if ai %} Documents are read with the help of AI (Claude): names, member IDs, account numbers and other identifiers are replaced with codes before it sees the text.{% endif %}</p>
 </div>
 {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
 {% if uploaded %}<p class="alert good">Uploaded. It's being read now; it appears below as ready to review in a moment.</p>{% endif %}

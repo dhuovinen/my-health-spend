@@ -198,10 +198,20 @@ def csrf_from(html: str) -> str:
 
 
 @pytest.fixture
-def household(tmp_path, app_db, app_keyring, vault_client, accounts) -> Household:
-    objects_dir = tmp_path / "objects"
-    config = AppConfig(database_url="unused", objects_dir=objects_dir, key_file=tmp_path / "unused",
-                       vault_url="http://vault", vault_token=VAULT_TOKEN)
-    app = create_household_app(config, db=app_db, keyring=app_keyring, objects=LocalObjectStore(objects_dir),
-                               vault=vault_client)
-    return Household(app, accounts, objects_dir)
+def make_household(tmp_path, app_db, app_keyring, vault_client, accounts):
+    """The application tier with config overrides, such as ocr_engine="tesseract" or scrubber="presidio"."""
+
+    def make(**overrides) -> Household:
+        objects_dir = tmp_path / "objects"
+        config = AppConfig(database_url="unused", objects_dir=objects_dir, key_file=tmp_path / "unused",
+                           vault_url="http://vault", vault_token=VAULT_TOKEN, **overrides)
+        app = create_household_app(config, db=app_db, keyring=app_keyring, objects=LocalObjectStore(objects_dir),
+                                   vault=vault_client)
+        return Household(app, accounts, objects_dir)
+
+    return make
+
+
+@pytest.fixture
+def household(make_household) -> Household:
+    return make_household()
