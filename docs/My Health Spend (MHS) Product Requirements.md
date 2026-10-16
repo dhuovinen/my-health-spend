@@ -22,7 +22,7 @@ The count is driven by multiplication: three parties (provider, insurer, member)
 | Regulatory and compliance | CMP | 6 | FTC, state health data laws, future HIPAA path |
 | Platform and non-functional | PLT | 8 | Integrations, accuracy targets, performance, auditability |
 
-**Priority key:** R0 = Release 0, the local MVP already built (see [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) and [Release 0 baseline](#release-0-baseline)). P1 = Release 1 (server-side post-visit reconciliation). P2 = the release after, including pre-visit strategy. P3 = later or provider-facing.
+**Priority key:** R0 = Release 0, the local MVP already built (see [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) and [Release 0 baseline](#release-0-baseline)). P1 = Release 1, the server-side responsive web app (see [Release 1 scope](#release-1-scope)). P2 = Release 2, including tax optimization, disputes and pre-visit strategy. P3 = later or provider-facing.
 
 **Do we need to go deeper?** Not yet. About 100 is the right altitude for a product spec. The next level down (field-level schemas, specific CARC/RARC code handling, UI specs) belongs in design docs per area, written as each area enters the backlog.
 
@@ -52,9 +52,9 @@ Release 1 runs on uploaded documents; direct connections to insurers come later 
 | ING-03 | Extract header fields: patient, provider, date(s) of service, claim number, account number, statement date, amounts billed, allowed, paid, owed | P1 |
 | ING-04 | Extract line items with CPT/HCPCS, revenue and NDC codes, units, modifiers and per-line amounts when present | P1 |
 | ING-05 | Show a confidence score per extracted field and let the user confirm or correct before data enters reconciliation | P1 |
-| ING-06 | Learn from corrections so the same provider or insurer layout extracts better next time | P2 |
-| ING-07 | Detect duplicate uploads (same document twice) and near-duplicates (a re-sent statement with a new date) | P1 |
-| ING-08 | Import HSA/FSA transactions by CSV export from the account administrator | P1 |
+| ING-06 | Learn from corrections so the same provider or insurer layout extracts better next time: the field error rate on the next 5 documents of that layout drops by at least 50% | P2 |
+| ING-07 | Detect duplicate uploads (same document twice) and near-duplicates (a re-sent statement with a new date). A near-duplicate has the same provider, account and visit lines with identical amounts; any changed balance, line or payment makes it a new version (MAT-08) | P1 |
+| ING-08 | Import HSA/FSA transactions from the account administrator's CSV, XLS or XLSX export | P1 |
 | ING-09 | Connect to insurers through the CMS patient access API (FHIR ExplanationOfBenefit, CARIN Blue Button) with per-app member consent | P2 |
 | ING-10 | Keep the original file unchanged, linked to its extracted data, for audit and dispute evidence | P1 |
 
@@ -70,10 +70,10 @@ The visit is the anchor object: every document, claim, line and payment attaches
 | MAT-02 | Model the household: member, spouse and dependents, each with their own coverage, accounts and visits | P1 |
 | MAT-03 | Model coverage per person and plan year: insurer, plan type, deductible, out-of-pocket max, copays, coinsurance, network | P1 |
 | MAT-04 | Normalize provider identity across documents (billing entity vs. rendering provider vs. facility; NPI when available) | P1 |
-| MAT-05 | Auto-match documents to visits using person, provider, date of service, claim number and amounts, with a match score and the reasons shown | P1 |
+| MAT-05 | Auto-match documents to visits using person, provider, date of service, claim number and amounts, with a match score and the reasons shown. A score of 0.9 or more links automatically (reversible); 0.6 to 0.9 is proposed for the member to confirm; below 0.6 stays unmatched | P1 |
 | MAT-06 | Match at line level: pair each bill line to its EOB line by code, date and charge; handle one-to-many (bundled codes) and many-to-one | P1 |
 | MAT-07 | Let the user confirm, reject, split or merge any proposed match. Member decisions win: a match, split, merge, correction or setting the member made is never overwritten by an import, re-extraction, payer feed or new document version. When new data conflicts, keep the member's version, show what differs, and let the member accept the new data explicitly | P1 |
-| MAT-08 | Track claim versions: original, reprocessed, corrected and appealed EOBs supersede earlier ones while history stays visible. If the member edited the earlier version, the new version does not apply automatically; the visit goes to Needs review with both versions side by side (MAT-07) | P1 |
+| MAT-08 | Track claim versions: original, reprocessed, corrected and appealed EOBs supersede earlier ones while history stays visible. If the member edited the earlier version, the new version does not apply automatically; the visit goes to Needs review with both versions side by side (MAT-07) | P2 |
 | MAT-09 | Link payments (HSA card swipe, HSA reimbursement, credit card, check) to the visit and lines they paid | P1 |
 | MAT-10 | Show a visit's document completeness: which of bill, itemized bill, EOB, receipt and payment proof are present, expected or not applicable. What is expected depends on the visit's payment path (insurance or self-pay) and category (REC-05) | P1 |
 
@@ -114,15 +114,15 @@ The decision behind these identities (Oct 15, 2026): adjudication buckets (ALC-0
 | ID | Requirement | Priority |
 | --- | --- | --- |
 | REC-01 | Check identities 1 (adjudication) and 2 (cost-sharing) per line and per claim, and flag any remainder | P1 |
-| REC-02 | Flag when the provider asks for more than the EOB's member responsibility (balance billing or a missed adjustment) | P1 |
-| REC-03 | Flag when the member paid more than member responsibility, across all payment methods combined (overpayment and credit owed) | P1 |
+| REC-02 | Flag when the provider asks for more than the EOB's member responsibility, as one of two finding types: balance billing, or a missed adjustment. No finding is raised until an EOB exists; until then the visit is Awaiting EOB | P1 |
+| REC-03 | Flag when the member paid more than member responsibility, across all payment methods combined (overpayment and credit owed). Checked per provider, because payments belong to the provider, and shown on the visits it was allocated to | P1 |
 | REC-04 | Flag duplicate charges: same code, date and provider billed twice, or the same bill paid twice | P1 |
 | REC-05 | Flag a bill with no matching claim (provider may not have filed with insurance) and treat a claim with no bill yet as a waiting state, not an error. Visits that never go through insurance are processed without a claim and are never flagged for lacking one: self-pay visits, and categories such as supplements, equipment and cash-price prescriptions. For those, a receipt or bill plus payment proof is complete | P1 |
-| REC-06 | Verify cost-sharing against the plan: copay amount, coinsurance rate, and deductible applied correctly given year-to-date accumulators | P1 |
-| REC-07 | Track deductible and out-of-pocket accumulators per person and family from EOBs, and flag charges after the out-of-pocket max is met | P1 |
-| REC-08 | Flag network status problems: an in-network provider processed as out-of-network, or a surprise out-of-network bill | P2 |
+| REC-06 | Verify cost-sharing against the plan: copay amount, coinsurance rate, and deductible applied correctly given year-to-date accumulators | P2 |
+| REC-07 | Track deductible and out-of-pocket accumulators per person and family from EOBs, and flag in-network covered cost-sharing charged after the out-of-pocket max is met (out-of-network and non-covered charges are still owed) | P1 |
+| REC-08 | Flag network status problems. Release 1: the bill, EOB and provider record disagree, or an in-network provider was processed as out-of-network. Release 2: a surprise out-of-network bill under the No Surprises Act | P1 |
 | REC-09 | Translate denial and adjustment codes into plain language, and flag denials that look appealable (e.g. missing information, coding error) | P2 |
-| REC-10 | Apply configurable tolerances: a difference under $1.00 per check auto-clears and is recorded as "cleared within tolerance" (visible on request). Cleared amounts at one provider are added up per plan year and flagged once they pass $5.00. A changed unit price is always flagged regardless of size: the same code from the same provider costing differently from an earlier bill or EOB in the plan year, or from the good faith estimate | P1 |
+| REC-10 | Apply configurable tolerances: a difference under $1.00 per check auto-clears and is recorded as "cleared within tolerance" (visible on request). Cleared amounts at one provider are added up per plan year and flagged once they pass $5.00. A changed unit price is always flagged regardless of size: the same code from the same provider costing differently from an earlier bill or EOB in the plan year, or from the good faith estimate | P2 |
 | REC-11 | Give each visit one status, the first that applies in this order: In dispute (an open case, DSP-01) → Discrepancy found (a check failed) → Needs review (unconfirmed data or a conflicting new version) → Balance outstanding (still owed > 0) → Awaiting EOB (insured visit, no EOB yet, within the waiting threshold) → Awaiting documents (another expected document missing within the threshold) → Missing documents (an expected document missing past the threshold) → Resolved (had a finding, now closed) → Complete. The waiting threshold defaults to 30 days and is configurable | P1 |
 | REC-12 | Compare self-pay or cash price against the negotiated rate when both are known, and surface the cheaper option (your $105 vs. $125 case) | P2 |
 | REC-13 | Check identity 3 (settlement) per visit and per provider: every dollar of member responsibility must be paid, refunded, written off or still owed. Flag any unexplained remainder, such as a visit that drops off a statement with no matching payment | P1 |
@@ -134,12 +134,12 @@ Each dollar billed must land with exactly one party, and the user must see that 
 | ID | Requirement | Priority |
 | --- | --- | --- |
 | ALC-01 | Split every line into adjudication buckets that sum to the billed amount: plan adjustment, other savings, primary paid, secondary paid, deductible, copay, coinsurance, not covered (self-pay: self-pay discount, member responsibility) | P1 |
-| ALC-02 | Split the member's share further by payment source: HSA card, HSA reimbursement, FSA, LPFSA, HRA, personal card, check, payment plan | P1 |
+| ALC-02 | Split the member's share further by payment source: HSA card, HSA reimbursement, FSA, LPFSA, HRA, personal card, check, payment plan | P2 |
 | ALC-03 | Keep settlement balances per party per visit: paid by source, refunds, provider write-offs, still owed to the provider, credit due from the provider, and reimbursement due from the HSA | P1 |
-| ALC-04 | Allocate a lump-sum payment across several visits or lines, by the provider's statement when available or by user choice | P1 |
+| ALC-04 | Allocate a lump-sum payment across several visits or lines: by the provider's statement when it shows the split, else oldest visit first; the member can override any split (MAT-07) | P1 |
 | ALC-05 | Handle secondary insurance and coordination of benefits: primary EOB, secondary EOB, then member remainder | P2 |
 | ALC-06 | Attribute every allocation to the household member who received care, for per-person and per-account reporting | P1 |
-| ALC-07 | Show the allocation as a visual breakdown per visit (billed to adjustment to insurer to you to which account) | P1 |
+| ALC-07 | Show the allocation as a visual breakdown per visit (billed to adjustment to insurer to you to which account) | P2 |
 | ALC-08 | Track refunds and credits from providers back to the original payment source, including refunds owed to an HSA | P2 |
 
 ## HSA, FSA and tax efficiency
@@ -148,13 +148,13 @@ The HSA is the primary vehicle. For an HSA-eligible member it is usually the bet
 
 | ID | Requirement | Priority |
 | --- | --- | --- |
-| TAX-01 | Tag each expense as qualified, not qualified, or needs documentation (e.g. a letter of medical necessity), using IRS Publication 502 categories | P1 |
+| TAX-01 | Tag each expense as likely qualified, likely not qualified, or needs documentation (e.g. a letter of medical necessity), citing the IRS Publication 502 category. Tags are possibilities, not eligibility rulings (CMP-04) | P2 |
 | TAX-02 | Model each account's rules: HSA, health FSA (grace period or carryover), limited-purpose FSA, HRA; plan year dates; claim run-out deadlines | P2 |
 | TAX-03 | Recommend which account should pay each expense, defaulting to the HSA when the member is HSA-eligible and the expense is qualified. A user setting chooses "pay from HSA now" (default) or "save HSA for later" (pay another way and add the expense to the receipt vault, TAX-04). Suggest an FSA, LPFSA or HRA only when it is the sole tax-advantaged account for that expense or its balance would otherwise be forfeited | P2 |
 | TAX-04 | Keep an HSA receipt vault: qualified expenses paid outside the HSA after it was opened, with a running total the member can reimburse later. With "pay from HSA now", these show as reimbursement opportunities (Release 0 C5); with "save HSA for later", as savings banked for later | P1 |
 | TAX-05 | Alert before FSA money expires: balance at risk, days left, and eligible expenses not yet claimed | P3 |
-| TAX-06 | Track contributions against yearly IRS limits, including family vs. self-only coverage, the 55+ catch-up, and mid-year proration | P2 |
-| TAX-07 | Flag an HSA payment for a non-qualified expense, and guide the member to return it to the custodian as a mistaken distribution before it becomes taxable | P1 |
+| TAX-06 | Track contributions against yearly IRS limits, including family vs. self-only coverage, the 55+ catch-up, and mid-year proration (monthly pro rata by default; the last-month rule as an option, with its testing-period warning) | P2 |
+| TAX-07 | Flag an HSA payment for a non-qualified expense. Where the payment was a genuine mistake, guide the member to return it to the custodian as a mistaken distribution before it becomes taxable, with the CMP-04 disclaimer | P2 |
 | TAX-08 | Flag eligibility conflicts: a general-purpose FSA or Medicare enrollment blocks HSA contributions | P2 |
 | TAX-09 | Respect who each account may pay for: HSA funds cover the spouse and tax dependents; FSA rules differ for adult children under 26 | P2 |
 | TAX-10 | Produce a year-end summary: HSA distributions by person and purpose, unreimbursed qualified expenses, and medical spend for a possible itemized deduction | P2 |
@@ -181,13 +181,13 @@ A finding only creates value when it turns into money back or a corrected bill. 
 
 | ID | Requirement | Priority |
 | --- | --- | --- |
-| DSP-01 | Turn any finding into a case with the evidence attached (bill, EOB, payment proof, the specific lines and amounts) | P1 |
+| DSP-01 | Turn any finding into a case with the evidence attached (bill, EOB, payment proof, the specific lines and amounts) | P2 |
 | DSP-02 | Draft the right message for the case: itemized bill request, billing correction to the provider, refund request, claim resubmission, or appeal to the insurer | P2 |
 | DSP-03 | Provide a call script and a log for phone calls: date, person spoken to, reference number, outcome | P1 |
-| DSP-04 | Track case status and follow-up dates, with reminders when a provider or insurer has not responded | P1 |
+| DSP-04 | Track case status and follow-up dates, with reminders when a provider or insurer has not responded (default follow-up 30 days, editable per case) | P2 |
 | DSP-05 | Track appeal deadlines from the EOB date, and No Surprises Act deadlines where they apply | P2 |
 | DSP-06 | Screen hospital bills for financial assistance (charity care) eligibility and point to the hospital's application | P3 |
-| DSP-07 | Record the outcome (corrected, refunded, written off, denied) and the dollars recovered, feeding a lifetime savings total | P1 |
+| DSP-07 | Record the outcome (corrected, refunded, written off, denied) and the dollars recovered, feeding a lifetime savings total | P2 |
 
 ## User experience and reporting
 
@@ -195,7 +195,7 @@ The visit card list from the original plan stays the home screen. The rest of th
 
 | ID | Requirement | Priority |
 | --- | --- | --- |
-| UX-01 | Home screen lists visits as cards with person, provider, date, status badge, document completeness and amount at issue | P1 |
+| UX-01 | Home screen shows the summary tiles, then the "needs your attention" queue (UX-04), then visits as cards with person, provider, date, status badge, document completeness and amount at issue | P1 |
 | UX-02 | Visit detail shows documents, line-by-line comparison, allocation breakdown, findings and case history in one place | P1 |
 | UX-03 | Filter and sort visits by person, provider, status, plan year and dollars at issue | P1 |
 | UX-04 | A "needs your attention" queue ranks open items by dollars at stake and deadline | P1 |
@@ -203,8 +203,8 @@ The visit card list from the original plan stays the home screen. The rest of th
 | UX-06 | Household view with per-person totals and a switch between individual and family | P1 |
 | UX-07 | Dashboard: spend by year, person, category and payment source; deductible and out-of-pocket progress; savings recovered | P2 |
 | UX-08 | Export a visit or a year as PDF and CSV (for taxes, a dispute or an advisor) | P2 |
-| UX-09 | Guided onboarding: add household, add plans and accounts, upload the first visit, see the first reconciliation | P1 |
-| UX-10 | Work well on a phone for capture and review, and on a desktop for detailed reconciliation | P1 |
+| UX-09 | Guided onboarding: add household, add plans and accounts, upload the first visit, see the first reconciliation | P2 |
+| UX-10 | Work well on a phone for capture and review, and on a desktop for detailed reconciliation: no horizontal scroll at 375px wide, capture and review possible one-handed, full detail at 1280px or wider | P1 |
 
 ## Privacy, security and pseudonymization
 
@@ -216,11 +216,11 @@ The visit card list from the original plan stays the home screen. The rest of th
 | PRV-02 | Resolve each person to one pseudonymous person ID, so all their documents link without exposing identity | P1 |
 | PRV-03 | Normalize identifiers before tokenizing (case, spacing, nicknames, dashes) so one person never becomes several tokens | P1 |
 | PRV-04 | Scrub identifiers from document text and images (OCR plus entity detection), not only from structured fields | P1 |
-| PRV-05 | Shift dates by a consistent per-person offset wherever exact dates are not needed in the back-end tier, keeping intervals intact | P2 |
-| PRV-06 | Encrypt all data in transit and at rest; encrypt the identity vault with per-member keys, kept separate from the data they protect (key custody is an open question) | P1 |
-| PRV-07 | Back up the identity vault, encrypted, with tested recovery, so a lost key or failed server does not mean lost linkage | P1 |
-| PRV-08 | Never send data to advertising pixels or third-party analytics; product analytics use pseudonymous events only | P1 |
-| PRV-09 | Let the member export all their data and delete their account and data, with a deletion confirmation | P1 |
+| PRV-05 | Shift dates by a consistent per-person offset in content sent to outside AI services and to analytics, keeping intervals intact. The back-end tier keeps real dates, because plan years, deadlines and matching need them; unredacted originals and drafted letters stay in the application tier | P2 |
+| PRV-06 | Encrypt all data in transit and at rest; encrypt the identity vault and originals with per-household data keys held in the host's key management service, separate from the data they protect | P1 |
+| PRV-07 | Back up the identity vault, encrypted, with tested restore, so a failed server does not mean lost linkage; a member who loses a device or password recovers through MFA account recovery | P1 |
+| PRV-08 | Never send data to advertising pixels or third-party analytics; product analytics events are limited to an allow-list (event name, pseudonymous install ID, timestamp, app version) with no amounts, providers, codes or identifiers | P1 |
+| PRV-09 | Let the member export all their data and delete their account and data, with a deletion confirmation. Deletion removes records, originals and vault entries at once and backups on their normal rotation within 35 days; only security and access logs without health content are kept, for one year | P2 |
 | PRV-10 | Keep an access log of who and what touched each record, viewable by the member | P2 |
 | PRV-11 | Authenticate every member with multi-factor sign-in, and isolate each household's data so no query can return another household's records | P1 |
 
@@ -230,12 +230,12 @@ As a consumer app, MHS is generally outside HIPAA but inside FTC and state consu
 
 | ID | Requirement | Priority |
 | --- | --- | --- |
-| CMP-01 | Meet the FTC Health Breach Notification Rule: breach detection, a response plan, and notice to users and the FTC on unauthorized disclosure | P1 |
-| CMP-02 | Collect opt-in consent for health data collection and any sharing, separately, as Washington's My Health My Data Act requires; apply it nationally for simplicity | P1 |
-| CMP-03 | Publish a plain-language privacy policy that matches actual data practices exactly | P1 |
-| CMP-04 | State clearly that MHS gives information, not legal, tax or medical advice, wherever it recommends an action | P1 |
+| CMP-01 | Meet the FTC Health Breach Notification Rule: breach detection, a response plan, and notice to users and the FTC on unauthorized disclosure | P2 |
+| CMP-02 | Collect opt-in consent for health data collection and any sharing, separately, as Washington's My Health My Data Act requires; apply it nationally for simplicity | P2 |
+| CMP-03 | Publish a plain-language privacy policy that matches actual data practices exactly | P2 |
+| CMP-04 | State clearly that MHS gives information, not legal, tax or medical advice, wherever it recommends an action | P2 |
 | CMP-05 | Keep provider-sourced data logically separate from consumer-uploaded data, ready for business associate agreements and the HIPAA Security Rule | P3 |
-| CMP-06 | Run a yearly review of rules that change: IRS limits, state health data laws, payer API rules | P2 |
+| CMP-06 | Run a yearly review of rules that change (IRS limits, state health data laws, payer API rules), recorded as a review note, with reference tables versioned by effective date (PLT-01) | P2 |
 
 ## Platform and non-functional
 
@@ -243,24 +243,36 @@ Accuracy and explainability matter more than speed: one wrong "you were overchar
 
 | ID | Requirement | Priority |
 | --- | --- | --- |
-| PLT-01 | Reference data as versioned tables: CPT/HCPCS descriptions, denial and adjustment codes, IRS limits, eligible expense categories | P1 |
-| PLT-02 | Accuracy targets: at least 95% of extracted amounts correct after user confirmation sampling, and a measured false-positive rate for findings | P1 |
-| PLT-03 | Every finding and recommendation is traceable to its rule, rule version and source documents | P1 |
+| PLT-01 | Reference data as versioned tables: CPT/HCPCS descriptions, denial and adjustment codes, IRS limits, eligible expense categories | P2 |
+| PLT-02 | Accuracy targets: at least 95% of extracted amounts correct before member confirmation, measured each release on a held-out sample of at least 50 documents; at most 5% of findings dismissed by the member as wrong | P2 |
+| PLT-03 | Every finding and recommendation is traceable to its rule, rule version and source documents | P2 |
 | PLT-04 | AI extraction runs on pseudonymized content only, and a person can always see and override what the AI concluded | P1 |
-| PLT-05 | Process a typical upload to a reconciled visit in under one minute | P2 |
+| PLT-05 | Process a typical upload (a PDF of 1 to 3 pages or one photo, for one visit) to a reconciled visit in under one minute of machine time at p95, not counting the member's confirmation | P2 |
 | PLT-06 | A test library of real-world scenarios (redacted) covering each REC rule, run on every change | P1 |
 | PLT-07 | An API and import layer designed for payer FHIR, HSA administrator and clearinghouse feeds | P2 |
 | PLT-08 | Measure first-pass match rate, findings per visit, dollars recovered and time to resolution as product KPIs | P2 |
 
 ## Priorities and open questions
 
-67 of the 100 requirements are P1 (Release 1), which is too much for one build. The leanest useful Release 1 is single-person, upload-only reconciliation on the server-side architecture, deferring household, vault backup and dispute drafting.
+Release 1 was cut to a lean core on Oct 15, 2026 (owner decision): 49 of the 100 requirements are P1, and the rest of the former P1 list moved to P2.
 
 | Priority | Count | Meaning |
 | --- | --- | --- |
-| P1 | 67 | Release 1: server-side post-visit reconciliation |
-| P2 | 29 | The release after: tax optimization, pre-visit, payer APIs |
+| P1 | 49 | Release 1: server-side post-visit reconciliation in a responsive web app, with the household |
+| P2 | 47 | Release 2: claim versions, cost-sharing checks, tolerance, tax, disputes, dashboards, compliance for other users, pre-visit, payer APIs |
 | P3 | 4 | Later: price transparency data, FSA expiry alerts, charity care, provider-facing |
+
+### Release 1 scope
+
+Release 1 moves MHS to the server-side architecture and replaces JSON import with document upload. Its 49 requirements fall into three groups.
+
+| Group | Requirements | Why |
+| --- | --- | --- |
+| Lean core (28) | ING-01, ING-02, ING-03, ING-04, ING-05, ING-07, MAT-01, MAT-05, MAT-06, MAT-10, REC-01, REC-02, REC-03, REC-04, REC-05, REC-13, ALC-01, UX-01, UX-02, UX-10, PRV-01, PRV-03, PRV-04, PRV-06, PRV-07, PRV-08, PRV-11, PLT-04 | Upload and extraction, matching, the money identities, visit cards and detail, the responsive web client, sign-in, and the privacy controls that real health data on a server needs before AI extraction (tokenizing, scrubbing, encryption, backup, no third-party trackers) |
+| Household (4) | MAT-02, PRV-02, ALC-06, UX-06 | Owner decision: spouse and dependents are in Release 1 |
+| Carried over from Release 0 (17) | ING-08, ING-10, MAT-03, MAT-04, MAT-07, MAT-09, ALC-03, ALC-04, REC-07, REC-08, REC-11, TAX-04, DSP-03, UX-03, UX-04, UX-05, PLT-06 | Already built in Release 0; ported to the server so Release 1 is not a step backwards |
+
+**Launch gate for other users.** Release 1 can serve the owner's household without these, but nobody else signs up until they are done: CMP-01 to CMP-04 (breach plan, consent, privacy policy, disclaimers) and PRV-09 (export and delete). They are P2 in the table but are pulled forward if Release 1 opens to others.
 
 ### Release 0 baseline
 
@@ -303,16 +315,22 @@ Release 0 is the local MVP built on Oct 9, 2026 from [`MVP_REQUIREMENTS.md`](MVP
 | 6 | Tolerance: under $1.00 per check auto-clears; cumulative cap $5.00 per provider per plan year (REC-10). |
 | 7 | Member decisions win over imports, feeds and new versions (MAT-07, MAT-08). Built into Release 0 import. |
 | 8 | Visits that never go through insurance are processed without a claim (REC-05, MAT-10). |
+| 9 | Release 1 is a lean core plus the household, with Release 0 behavior carried over ([Release 1 scope](#release-1-scope)). |
+| 10 | The household is in Release 1 (MAT-02, PRV-02, ALC-06, UX-06). |
+| 11 | Release 1 ships one responsive web client for phone and desktop (UX-10); a native app can follow on the same server. |
+| 12 | Payments belong to a provider. A lump sum is split by the provider's statement when it shows the split, else oldest visit first; the member can override any split. Overpayment is checked per provider and shown per visit (MAT-09, ALC-04, REC-03). |
+| 13 | Proposed decisions accepted: "likely" tax tags, real dates in the back-end tier, home page layout, network check in Release 1, key custody and deletion, HSA export formats, Postgres, Claude API for extraction (DECISIONS.md ADR-021 to ADR-028). |
+| 14 | Definitions for previously vague requirements written in: ING-06, ING-07, MAT-05, REC-02, REC-07, TAX-06, DSP-04, UX-10, PRV-08, CMP-06, PLT-02, PLT-05. |
 
 ### Open questions
 
-- [ ] Cut P1 further for Release 1? A candidate is ING-01 to 05, MAT-01, 05, 06, 10, REC-01 to 05, REC-13, ALC-01, UX-01 and 02, PRV-01, 06 and 11, about 23 items.
-- [ ] Is the household (MAT-02, UX-06) in Release 1, or single person first?
+- [x] Cut P1 further for Release 1? Yes: lean core plus household plus Release 0 carry-over ([Release 1 scope](#release-1-scope)).
+- [x] Is the household (MAT-02, UX-06) in Release 1? Yes.
 - [ ] Does self-pay count toward the deductible on your plan? This decides how REC-12 and PRE-04 compute savings.
 - [ ] Should these requirements go into a backlog and be groomed one by one, as on the family calendar app?
 - [x] Which tolerance should auto-clear small differences (REC-10)? $1.00 per check, with a $5.00 cumulative cap per provider per plan year.
-- [ ] Web app, mobile app, or both for Release 1 (UX-10)? Data resides server-side either way.
-- [ ] Identity vault key custody (PRV-06, PRV-07): who holds the keys, and how does a member recover?
+- [x] Web app, mobile app, or both for Release 1 (UX-10)? A responsive web app.
+- [x] Identity vault key custody (PRV-06, PRV-07)? Per-household keys in the host's key management service; recovery through MFA account recovery.
 
 ## Sources
 

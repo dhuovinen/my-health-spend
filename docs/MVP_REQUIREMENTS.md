@@ -110,8 +110,8 @@ A chart of charges, payments and balance over time is in the backlog.
 
 ## 4. Ingestion format
 
-- **Schema:** [`schema/mhs-ingest.schema.json`](schema/mhs-ingest.schema.json) (JSON Schema 2020-12), version `0.1`.
-- **Example:** [`samples/example-ingest.json`](samples/example-ingest.json): made-up data covering every status.
+- **Schema:** [`schema/mhs-ingest.schema.json`](../schema/mhs-ingest.schema.json) (JSON Schema 2020-12), version `0.1`.
+- **Example:** [`samples/example-ingest.json`](../samples/example-ingest.json): made-up data covering every status.
 - **Sections** (all optional): `plans`, `accounts`, `providers`, `visits`, `documents`.
 - **Document types:** `provider_bill`, `eob`, `payment`, `receipt`, `account_reimbursement`,
   `account_transaction` (HSA contributions, interest, fees, opening balance).

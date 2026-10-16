@@ -3,43 +3,14 @@
 ## What this is
 
 My Health Spend (MH$): a personal app that reconciles provider bills, insurer EOBs and payment
-records (HSA/FSA/card) per visit to find billing errors and overpayment. MVP is single-user, local
-only. Product docs live in `docs/`: `MVP_REQUIREMENTS.md`, `My Health Spend (MHS) Problem Statement & Plan.md`
-and `My Health Spend (MHS) Product Requirements.md` (full spec, 100 requirements), plus `TEST_PLAN.md`.
-The built MVP is Release 0; Release 1 (server-side) is the PRD's P1.
+records (HSA/FSA/card) per visit to find billing errors and overpayment. Release 0 (built) is
+single-user and local; Release 1 is a server-side web app for the household. The project is now
+durable tier: see `CLAUDE.md` (runbook, gotchas) and `docs/` (VISION, ARCHITECTURE, ROADMAP,
+DECISIONS, TESTING, SETUP, the Product Requirements, MVP_REQUIREMENTS and TEST_PLAN).
 
 ## How to run
 
-**App** (FastAPI + SQLite, Python 3.12 via uv). Registered in `~/Projects/app-registry` on port 3062:
-
-```bash
-uv run mhs
-```
-
-Then open http://127.0.0.1:3062. It binds to 127.0.0.1 only (no login; personal health data).
-Data lives in `data/` (`mhs.db`, `documents/`, `settings.json`); override with `MHS_DATA_DIR`, port
-with `MHS_PORT`. Settings page edits are also written back to `data/settings.json` (previous copy kept
-as `settings.json.bak`) so the converter below stays in step.
-
-**Tests:**
-
-```bash
-uv run pytest
-```
-
-**Load data:** build an ingest file (below), then in the app go to Import, check the file by path and
-save. Re-importing updates records by id.
-
-Build an ingest file from the insurer claims CSV, HSA export and provider statement PDFs (Python 3.12
-via uv; the script declares its own `pypdf` dependency):
-
-```bash
-uv run tools/build_ingest.py --settings data/settings.json --claims data/source/2026-10-09/claims.csv --hsa data/source/2026-10-09/TransactionHistory.xls --statements data/source/2026-10-09/patient-statements --out data/ingest-2026.json
-```
-
-Warnings list unmapped provider or member names (add them as `aliases` in `data/settings.json`),
-statement lines that don't add up, duplicate statements, and any break in the HSA running balance. `data/` holds real health data and is git-ignored.
-
+See `CLAUDE.md` ("How to run") and `docs/SETUP.md`.
 
 ## Status
 
@@ -57,3 +28,9 @@ limits, members, accounts, providers, provider matches), help stub. 22 tests pas
 server-side data, status order, money identities, tolerance, owner edits win). Re-import now keeps
 in-app edits unless replaced. Release 0 gaps closed: C6 balance age and second notice, HR-4 counts
 with links (32 tests passing). Records deleted in the app also stay deleted on re-import. Statements accept an optional `notice` field (schema still 0.1).
+2026-10-15: Release 1 planning started. Scope set (49 requirements: lean core, household, Release 0
+carry-over; responsive web; payments split by statement, else oldest first). Project moved to durable
+tier: VISION, ARCHITECTURE, ROADMAP, DECISIONS (ADR-001 to 028), TESTING, SETUP, CLAUDE.md.
+2026-10-15: ADR-021 to 028 and all ambiguity definitions accepted and written into the PRD; no
+Release 1 test case is blocked. Still open for phase 1.0: hosting, OCR approach, test environment,
+merge and tag Release 0.

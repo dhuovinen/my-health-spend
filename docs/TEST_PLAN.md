@@ -1,14 +1,14 @@
 # My Health Spend (MHS): Test Plan
 
-Oct 15, 2026 · Revised Oct 15, 2026 with owner decisions on X-01 to X-06, X-08 and X-12
+Oct 15, 2026 · Revised Oct 15, 2026: all conflicts and ambiguities decided; P1 = Release 1 (49 requirements)
 
 **Covers:** all 100 requirements in the [Product Requirements](<My Health Spend (MHS) Product Requirements.md>) (the PRD). They are checked against [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) (agreed and built 2026-10-09) and the [Problem Statement & Plan](<My Health Spend (MHS) Problem Statement & Plan.md>).
 
-**At a glance:** 326 test cases cover all 100 requirements. 8 of 16 conflicts are decided; 8 conflicts and 13 ambiguities remain open and block 47 cases across 36 requirements. 22 cases are already partly or fully automated by the existing 32 tests.
+**At a glance:** 326 test cases cover all 100 requirements; 183 are for Release 1 (P1), none of them blocked. All 16 conflicts and 14 ambiguities are decided. 3 Release 2 cases still wait on one PRD open question (does self-pay count toward the deductible). 22 cases are already partly or fully automated by the existing 32 tests.
 
 **How to use it**
 
-1. Section 1 lists each conflict (X-01 to X-16) and ambiguity (A-01 to A-14) with its decision. 8 conflicts are decided; the rest still need your call. Test cases marked **Blocked** cannot get a fixed expected result until they are decided.
+1. Section 1 lists each conflict (X-01 to X-16) and ambiguity (A-01 to A-14) with its decision. All are decided; the records are in [DECISIONS.md](DECISIONS.md). Test cases marked **Blocked** cannot get a fixed expected result until they are decided.
 2. Section 3 has the test cases by area. Section 4 is the traceability matrix, one row per requirement.
 3. Appendix A maps the 32 existing automated tests to requirements. Appendix B lists built MVP behavior that has no PRD requirement.
 
@@ -26,16 +26,16 @@ Severity: **High** means the build or existing tests would have to change, or tw
 | X-04 | High | Where data lives: local laptop app vs device-plus-server | PRV-01, 04, 05, 07, 08, PLT-04, ING-01, UX-10 vs MVP D1, NM-1, NM-5 | **Decided:** data resides server-side; application tier + back-end tier |
 | X-05 | Medium | The billed identity is missing terms that other requirements create | REC-01, ALC-01, ALC-05 vs MVP C1 | **Decided:** three identities: adjudication, cost-sharing, settlement |
 | X-06 | Medium | $1 auto-clear tolerance vs to-the-cent checks | REC-10 vs MVP C1 | **Decided:** under $1.00 auto-clears; $5.00 cumulative cap |
-| X-07 | Medium | Payments belong to a visit vs to a provider | MAT-01, MAT-09, ALC-04, REC-03, PRD "visit is the anchor" vs MVP D4, C4, payment allocation rule | Open |
+| X-07 | Medium | Payments belong to a visit vs to a provider | MAT-01, MAT-09, ALC-04, REC-03, PRD "visit is the anchor" vs MVP D4, C4, payment allocation rule | **Decided:** statement split, else oldest first; member can override (ADR-016) |
 | X-08 | Medium | Manual decisions never overwritten vs automatic superseding and re-import | MAT-07 vs MAT-08, ING-05, ING-06, MVP IM-4 | **Decided:** member decisions win; built into Release 0 import |
-| X-09 | Medium | Items marked P1 that the PRD's own text defers | MAT-02, UX-06, ALC-06, PRV-07 vs PRD "Priorities" paragraph; MVP out-of-scope list vs D9 | Open |
-| X-10 | Medium | Eligibility rulings vs "possibilities only" | TAX-01, TAX-07 vs MVP D7, B-5, ND-14, CMP-04 | Open |
-| X-11 | Medium | Pseudonymization breaks features that need real dates or identity | PRV-01, PRV-04, PRV-05 vs REC-06, REC-07, TAX-05, DSP-02, DSP-05, ING-10, MAT-05 | Open |
+| X-09 | Medium | Items marked P1 that the PRD's own text defers | MAT-02, UX-06, ALC-06, PRV-07 vs PRD "Priorities" paragraph; MVP out-of-scope list vs D9 | **Decided:** household in Release 1 (ADR-018) |
+| X-10 | Medium | Eligibility rulings vs "possibilities only" | TAX-01, TAX-07 vs MVP D7, B-5, ND-14, CMP-04 | **Decided:** "likely" tax tags (ADR-021) |
+| X-11 | Medium | Pseudonymization breaks features that need real dates or identity | PRV-01, PRV-04, PRV-05 vs REC-06, REC-07, TAX-05, DSP-02, DSP-05, ING-10, MAT-05 | **Decided:** real dates in the back-end tier (ADR-022) |
 | X-12 | Medium | "Bill with no claim" flag vs visits that never go through insurance | REC-05 vs REC-12, PRE-04, MVP required-documents rule | **Decided:** non-insurance visits processed without a claim |
-| X-13 | Low | Home screen: visit list vs hero summary | UX-01, UX-04 vs MVP HR-1 to HR-8, VL-1 | Open |
-| X-14 | Low | Built MVP check demoted to P2 | REC-08 (P2), MAT-03 vs MVP C3 (built), B-11 | Open |
-| X-15 | Low | Member-held key vs recovery, and deletion vs retention | PRV-06, PRV-07, PRV-09 vs ING-10, PLT-03, PRV-10, CMP-01 | Open |
-| X-16 | Low | CSV-only HSA import vs the real export format | ING-08 vs NOTES.md converter (`TransactionHistory.xls`) | Open |
+| X-13 | Low | Home screen: visit list vs hero summary | UX-01, UX-04 vs MVP HR-1 to HR-8, VL-1 | **Decided:** summary, queue, then cards (ADR-023) |
+| X-14 | Low | Built MVP check demoted to P2 | REC-08 (P2), MAT-03 vs MVP C3 (built), B-11 | **Decided:** basic check in Release 1 (ADR-024) |
+| X-15 | Low | Member-held key vs recovery, and deletion vs retention | PRV-06, PRV-07, PRV-09 vs ING-10, PLT-03, PRV-10, CMP-01 | **Decided:** KMS keys; deletion policy (ADR-025) |
+| X-16 | Low | CSV-only HSA import vs the real export format | ING-08 vs NOTES.md converter (`TransactionHistory.xls`) | **Decided:** CSV, XLS or XLSX (ADR-026) |
 
 ### X-01 · High · Two different definitions of "MVP"
 
@@ -118,6 +118,8 @@ Severity: **High** means the build or existing tests would have to change, or tw
 
 ### X-07 · Medium · Payments belong to a visit vs to a provider
 
+> **Decision (Oct 15, 2026):** payments belong to a provider. A lump sum is split by the provider's statement when it shows the split, else oldest visit first; the member can override any split. Overpayment is checked per provider and shown per visit (ADR-016; ALC-04, REC-03).
+
 - **PRD:** "every document, claim, line and payment attaches to one [visit]". MAT-01 also allows "many-to-many" in the same doc. MAT-09 links a payment to "the visit and lines". ALC-04 allocates "by the provider's statement when available or by user choice". REC-03 tests overpayment per visit.
 - **MVP D4 and the allocation rule (built):** payments belong to a provider, are applied oldest visit first with no user choice, and overpayment is computed per provider group (C4).
 - **Also unanchored:** HSA contributions, interest and fees attach to no visit.
@@ -134,12 +136,16 @@ Severity: **High** means the build or existing tests would have to change, or tw
 
 ### X-09 · Medium · P1 items the PRD's own text defers
 
+> **Decision (Oct 15, 2026):** the household is in Release 1. Release 1 is a lean core plus the household plus Release 0 carry-over, 49 requirements (ADR-018). PRV-07 vault backup is in the lean core.
+
 - The PRD's "Priorities" paragraph says the leanest MVP defers "household, vault backup and dispute drafting".
 - Household items are still P1: MAT-02, ALC-06, UX-06. Vault backup is still P1: PRV-07.
 - The MVP doc lists "multiple household members" as out of scope. Yet D9, ST-4 and HR-8 (family limits) are built.
 - **Decide:** is the household in or out of the next build? Re-tier PRV-07 to match.
 
 ### X-10 · Medium · Eligibility rulings vs "possibilities only"
+
+> **Decision (Oct 15, 2026):** the proposal below, accepted as ADR-021 in DECISIONS.md and written into the PRD.
 
 - **TAX-01:** tags each expense "qualified / not qualified". **TAX-07:** flags non-qualified HSA payments and guides the member to return them as a mistaken distribution.
 - **MVP D7, B-5, ND-14:** HSA flags "are possibilities, not eligibility rulings". **CMP-04:** information, not tax advice.
@@ -148,7 +154,7 @@ Severity: **High** means the build or existing tests would have to change, or tw
 
 ### X-11 · Medium · Pseudonymization vs features that need real dates or identity
 
-> **Still open; X-04 narrows it.** With reconciliation in the back-end tier, that tier needs real dates for plan years, deadlines and matching. Recommendation: no date shifting in the back-end tier; apply PRV-05 only to data sent to outside AI services and to analytics. Drafts (DSP-02) are filled with real identifiers in the application tier, and unredacted originals are stored there, never in the back-end tier.
+> **Decision (Oct 15, 2026): accepted as ADR-022.** With reconciliation in the back-end tier, that tier needs real dates for plan years, deadlines and matching. Recommendation: no date shifting in the back-end tier; apply PRV-05 only to data sent to outside AI services and to analytics. Drafts (DSP-02) are filled with real identifiers in the application tier, and unredacted originals are stored there, never in the back-end tier.
 
 - **PRV-05 date shifting** moves a Dec 30 visit across the plan year boundary. That breaks deductible and out-of-pocket resets (REC-06, REC-07), FSA days-left (TAX-05), appeal deadlines (DSP-05) and date matching against card swipes (MAT-05). It is only safe if those all run on the device.
 - **PRV-01 / PRV-04 tokenizing** vs **DSP-02:** drafted letters need the real account number and name. **ING-10:** originals kept as dispute evidence contain every identifier.
@@ -164,6 +170,8 @@ Severity: **High** means the build or existing tests would have to change, or tw
 
 ### X-13 · Low · Home screen
 
+> **Decision (Oct 15, 2026):** the proposal below, accepted as ADR-023 in DECISIONS.md and written into the PRD.
+
 - **UX-01:** "the visit card list ... stays the home screen".
 - **MVP (built):** a hero summary screen (HR-1 to HR-8) is the landing page, and the visit list is a separate screen (VL).
 - **UX-04's attention queue** overlaps HR-3 and HR-5.
@@ -171,13 +179,15 @@ Severity: **High** means the build or existing tests would have to change, or tw
 
 ### X-14 · Low · A built check demoted to P2
 
+> **Decision (Oct 15, 2026):** the proposal below, accepted as ADR-024 in DECISIONS.md and written into the PRD.
+
 - **REC-08** (network status) is P2. Yet the MVP's C3 network check is built, and it was check 3 in the Problem Statement.
 - **MAT-03** puts network on the plan per year. The MVP keeps one status per provider (B-11).
 - **Proposal:** raise the basic agree/disagree part of REC-08 to P1, and keep surprise-bill detection at P2.
 
 ### X-15 · Low · Member-held key vs recovery, and deletion vs retention
 
-> **Still open; X-04 changes it.** With data server-side, "a key the member controls" became "per-member keys kept apart from the data" (PRV-06). Who holds those keys, and how a member recovers, is now a PRD open question.
+> **Decision (Oct 15, 2026), ADR-025:** per-household data keys in the host's key management service; recovery through MFA account recovery. Deletion removes records, originals and vault entries at once and backups within 35 days; only security and access logs without health content are kept, for one year.
 
 - **PRV-06 vs PRV-07:** if only the member holds the key, recovering after a lost key needs a recovery key or escrow design. Otherwise PRV-07 cannot pass.
 - **PRV-09** deletes "all their data". **ING-10, PLT-03, PRV-10 and CMP-01** keep originals, rule traces, access logs and breach records.
@@ -185,26 +195,28 @@ Severity: **High** means the build or existing tests would have to change, or tw
 
 ### X-16 · Low · HSA import format
 
+> **Decision (Oct 15, 2026):** the proposal below, accepted as ADR-026 in DECISIONS.md and written into the PRD.
+
 - **ING-08** says CSV. The real HSA export in use is `TransactionHistory.xls`, which `tools/build_ingest.py` already reads.
 - **Proposal:** "CSV or XLS/XLSX export".
 
 ## 1b. Ambiguities that make a requirement untestable as written
 
-| # | Requirement | Question | Proposed definition |
+| # | Requirement | Question | Decision (Oct 15, 2026; written into the PRD) |
 | --- | --- | --- | --- |
-| A-01 | PLT-02 | "95% correct *after* user confirmation" is circular, because confirmed data is correct by definition | Measure field accuracy *before* confirmation on a held-out sample of at least 50 documents per release; set a numeric false-positive ceiling, e.g. at most 5% of findings dismissed as wrong |
-| A-02 | PLT-05 | Does "under one minute" include the user's confirmation time (ING-05)? | Machine time only, from upload complete to ready to confirm, then confirm to reconciled; p95 |
-| A-03 | PLT-05 | What is a "typical upload"? | A PDF of 1 to 3 pages or a single photo, for one visit |
-| A-04 | ING-07 | When is a re-sent statement a near-duplicate, and when is it a new version? | Same provider, account and visit lines with identical amounts = near-duplicate; any changed balance, line or payment = new version (MAT-08) |
-| A-05 | MAT-05 | What score auto-links, and what only proposes? | Score ≥ 0.9 auto-links (still reversible); 0.6 to 0.9 proposes; below 0.6 leaves unmatched |
-| A-06 | REC-02 | "Missed adjustment" vs balance billing: is there one finding type or two, and what if the bill predates the EOB? | Two finding types; no REC-02 finding until an EOB exists (state Awaiting EOB) |
-| A-07 | REC-07 | "Flag charges after the out-of-pocket max is met": does this include out-of-network and non-covered services? | In-network covered cost-sharing only |
-| A-08 | UX-10 | What does "work well" mean? | No horizontal scroll at 375px wide; capture and review tasks done one-handed; desktop at 1280px or wider |
-| A-09 | ING-06 | What does "extracts better" mean? | Field error rate on the next 5 documents of the same layout drops by at least 50% |
-| A-10 | TAX-06 | Which mid-year proration rule? | Monthly pro rata by default; last-month rule as an option, with the testing-period warning |
-| A-11 | CMP-06 | Process or software? | Process; tested by a review record plus versioned reference tables (PLT-01) |
-| A-12 | PRV-08 | What may a "pseudonymous event" contain? | An allow-list schema: event name, pseudonymous install ID, timestamp, app version; no amounts, providers or codes |
-| A-13 | DSP-04 | Default follow-up interval? | 30 days for providers and insurers; user-editable per case |
+| A-01 | PLT-02 | "95% correct *after* user confirmation" is circular, because confirmed data is correct by definition | **Decided:** Measure field accuracy *before* confirmation on a held-out sample of at least 50 documents per release; set a numeric false-positive ceiling, e.g. at most 5% of findings dismissed as wrong |
+| A-02 | PLT-05 | Does "under one minute" include the user's confirmation time (ING-05)? | **Decided:** Machine time only, from upload complete to ready to confirm, then confirm to reconciled; p95 |
+| A-03 | PLT-05 | What is a "typical upload"? | **Decided:** A PDF of 1 to 3 pages or a single photo, for one visit |
+| A-04 | ING-07 | When is a re-sent statement a near-duplicate, and when is it a new version? | **Decided:** Same provider, account and visit lines with identical amounts = near-duplicate; any changed balance, line or payment = new version (MAT-08) |
+| A-05 | MAT-05 | What score auto-links, and what only proposes? | **Decided:** Score ≥ 0.9 auto-links (still reversible); 0.6 to 0.9 proposes; below 0.6 leaves unmatched |
+| A-06 | REC-02 | "Missed adjustment" vs balance billing: is there one finding type or two, and what if the bill predates the EOB? | **Decided:** Two finding types; no REC-02 finding until an EOB exists (state Awaiting EOB) |
+| A-07 | REC-07 | "Flag charges after the out-of-pocket max is met": does this include out-of-network and non-covered services? | **Decided:** In-network covered cost-sharing only |
+| A-08 | UX-10 | What does "work well" mean? | **Decided:** No horizontal scroll at 375px wide; capture and review tasks done one-handed; desktop at 1280px or wider |
+| A-09 | ING-06 | What does "extracts better" mean? | **Decided:** Field error rate on the next 5 documents of the same layout drops by at least 50% |
+| A-10 | TAX-06 | Which mid-year proration rule? | **Decided:** Monthly pro rata by default; last-month rule as an option, with the testing-period warning |
+| A-11 | CMP-06 | Process or software? | **Decided:** Process; tested by a review record plus versioned reference tables (PLT-01) |
+| A-12 | PRV-08 | What may a "pseudonymous event" contain? | **Decided:** An allow-list schema: event name, pseudonymous install ID, timestamp, app version; no amounts, providers or codes |
+| A-13 | DSP-04 | Default follow-up interval? | **Decided:** 30 days for providers and insurers; user-editable per case |
 | A-14 | REC-10 | A "changed unit price" relative to what? | **Decided (with X-06):** the same code from the same provider on an earlier bill or EOB within the plan year, or the GFE (PRE-06). Now in REC-10 |
 
 ---
@@ -283,7 +295,7 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-ING-01-3 | ING-01 | Upload a 5-page PDF, and capture a 3-page statement as 3 photos | Each becomes one multi-page document, pages in order | E | New |
 | TC-ING-01-4 | ING-01 | Forward an email with a PDF attachment, and one with an HTML-only statement body, to the member's inbound address | One document per attachment; the body is captured as a document when it holds the statement; unknown senders rejected | I | New |
 | TC-ING-01-5 | ING-01 | Upload .docx, .zip, a 0-byte file, a corrupt PDF, a password-protected PDF and a file over the size limit | Each rejected with a plain message naming the reason; nothing saved | I | New |
-| TC-ING-02-1 | ING-02 | Classify the extraction corpus (≥5 per type, 8 types) | Every document gets one of the 8 types; accuracy per type is recorded and meets the PLT-02 target | I | Blocked: A-01 |
+| TC-ING-02-1 | ING-02 | Classify the extraction corpus (≥5 per type, 8 types), before confirmation | Every document gets one of the 8 types; accuracy per type recorded; overall ≥ 95% | I | New |
 | TC-ING-02-2 | ING-02 | Summary statement and itemized bill from the same provider | Classified as provider statement and itemized bill respectively | I | New |
 | TC-ING-02-3 | ING-02 | EOB printed "THIS IS NOT A BILL" | Classified EOB, never provider statement | I | New |
 | TC-ING-02-4 | ING-02 | A letter that fits no type | Classified "other" with low confidence; user reclassifies; new type persists and re-runs extraction | E | New |
@@ -299,18 +311,18 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-ING-05-2 | ING-05 | Extracted but unconfirmed EOB | Excluded from reconciliation; visit status Needs review; no findings computed from it | I | New |
 | TC-ING-05-3 | ING-05 | Correct member responsibility $45.00 → $54.00 and confirm | Reconciliation uses $54.00; correction recorded with old value, new value and time | I | New |
 | TC-ING-05-4 | ING-05 | Edit a field after confirmation | Findings for that visit recompute immediately | I | New |
-| TC-ING-06-1 | ING-06 | Correct a field position on layout X, then upload a second layout-X document | Field extracted correctly or with higher confidence than before | I | Blocked: A-09 |
+| TC-ING-06-1 | ING-06 | Correct fields on 2 documents of layout X, then extract the next 5 layout-X documents | Field error rate on those 5 is at least 50% lower than on the first 2 | I | New |
 | TC-ING-06-2 | ING-06 | Corrections on layout X | No change in extraction for layout Y | I | New |
 | TC-ING-07-1 | ING-07 | Upload the same file twice | Second upload flagged as duplicate; no second document; no double-counted amounts | I | New |
 | TC-ING-07-2 | ING-07 | Two different photos of the same paper EOB | Flagged "likely duplicate" for the user to decide | I | New |
-| TC-ING-07-3 | ING-07 | Re-sent statement: same lines and amounts, new statement date | Near-duplicate: linked as a newer copy; REC-04 duplicate charge not raised | I | Blocked: A-04 |
-| TC-ING-07-4 | ING-07 | New statement with a changed balance or an added visit | Not a duplicate; stored as a new version (MAT-08) | I | Blocked: A-04 |
+| TC-ING-07-3 | ING-07 | Re-sent statement: same provider, account and visit lines with identical amounts, new statement date | Near-duplicate: linked as a newer copy; amounts not counted twice; REC-04 not raised | I | New |
+| TC-ING-07-4 | ING-07 | New statement with a changed balance, line or payment | Not a duplicate; stored as a new version (MAT-08) | I | New |
 | TC-ING-07-5 | ING-07 | Re-import an HSA export overlapping the previous one by 2 months | No duplicated transactions | I | New |
 | TC-ING-08-1 | ING-08 | Import an HSA administrator CSV export | Each row becomes a transaction with date, amount, payee, kind (distribution, contribution, interest, fee) and balance | I | New |
 | TC-ING-08-2 | ING-08 | Import the same export twice | Second import changes nothing (idempotent) | I | New |
 | TC-ING-08-3 | ING-08 | Export with a gap in the running balance | Warning naming the date where the balance breaks | I | New |
 | TC-ING-08-4 | ING-08 | CSV missing the amount column | Error naming the missing columns; nothing saved | I | New |
-| TC-ING-08-5 | ING-08 | Import the real `.xls` export layout | Accepted, or rejected with guidance to export as CSV | I | Blocked: X-16 |
+| TC-ING-08-5 | ING-08 | Import the real `.xls` export layout, and the same data as CSV and XLSX | All three accepted with identical transactions | I | New |
 | TC-ING-09-1 | ING-09 | Connect to a payer sandbox (e.g. CMS Blue Button sandbox), grant consent | ExplanationOfBenefit resources imported as claims and lines | I | New |
 | TC-ING-09-2 | ING-09 | Map FHIR adjudication categories (submitted, eligible, benefit, deductible, copay, coinsurance, noncovered) | Values land in the right fields; the REC-01 identity holds | U | New |
 | TC-ING-09-3 | ING-09 | Same claim arrives by API and by uploaded PDF | One claim with two sources, not two claims | I | New |
@@ -325,13 +337,13 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC | Req | Scenario | Expected result | Level | Status |
 | --- | --- | --- | --- | --- | --- |
 | TC-MAT-01-1 | MAT-01 | Create a visit with 2 claims, 3 lines each, with allocations; reload | Full tree round-trips; no orphan records | U | New |
-| TC-MAT-01-2 | MAT-01 | One $300.00 payment covering 3 visits | Payment linked to all 3; allocated parts sum to $300.00 | U | Blocked: X-07 |
+| TC-MAT-01-2 | MAT-01 | One $300.00 payment to a provider with 3 open visits | Payment belongs to the provider; allocated across the 3 visits per ALC-04; parts sum to $300.00 | U | New |
 | TC-MAT-01-3 | MAT-01 | One visit paid by an HSA card swipe and a personal card | Both payments linked to the visit | U | New |
 | TC-MAT-01-4 | MAT-01 | Delete a visit that has lines and allocations | Blocked with a message, or cascades with confirmation; never leaves orphans | I | New |
-| TC-MAT-01-5 | MAT-01 | HSA contribution, interest and fee transactions | Stored without a visit and excluded from visit totals | U | Blocked: X-07 |
-| TC-MAT-02-1 | MAT-02 | Add self, spouse and 2 dependents, each with coverage, accounts and visits | All saved; each visit belongs to exactly one member | I | Blocked: X-09 |
-| TC-MAT-02-2 | MAT-02 | Dependent's visit | Never counted in another member's totals | U | Blocked: X-09 |
-| TC-MAT-02-3 | MAT-02 | Remove a member (child ages off the plan) | History and visits kept; member hidden from new-entry lists | U | Blocked: X-09 |
+| TC-MAT-01-5 | MAT-01 | HSA contribution, interest and fee transactions | Stored as account transactions with no visit; excluded from visit totals | U | New |
+| TC-MAT-02-1 | MAT-02 | Add self, spouse and 2 dependents, each with coverage, accounts and visits | All saved; each visit belongs to exactly one member | I | New |
+| TC-MAT-02-2 | MAT-02 | Dependent's visit | Never counted in another member's totals | U | New |
+| TC-MAT-02-3 | MAT-02 | Remove a member (child ages off the plan) | History and visits kept; member hidden from new-entry lists | U | New |
 | TC-MAT-03-1 | MAT-03 | Plan with deductible, OOP max, copays, coinsurance and network tiers; visit on 2026-03-01 | Visit resolves to the 2026 plan and its terms | U | Exists: `test_individual_and_family_limits` (limits only) |
 | TC-MAT-03-2 | MAT-03 | Plan changes on 2026-07-01 (new job) | Visits before and after resolve to different plans; accumulators kept separate | U | New |
 | TC-MAT-03-3 | MAT-03 | Person with primary and secondary coverage | Both plans attached with coverage order | U | New |
@@ -341,7 +353,7 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-MAT-04-3 | MAT-04 | Similar names, different NPIs | Not merged; proposed as a suspected relationship for the owner to confirm | U | Exists: `test_suspected_relationship_joins_ledgers_and_flags_until_confirmed` |
 | TC-MAT-04-4 | MAT-04 | Card merchant "SQ *ABC MED" | Mapped to the provider through its alias | U | New |
 | TC-MAT-05-1 | MAT-05 | Bill and EOB with same person, provider, DOS and claim # | Linked with a high score and reasons listed: same claim #, same DOS, same provider, same person | U | New |
-| TC-MAT-05-2 | MAT-05 | Same provider and amount, DOS one day apart, no claim # | Proposed (not auto-linked) with a mid score and reasons | U | Blocked: A-05 |
+| TC-MAT-05-2 | MAT-05 | Match scores of 0.95, 0.75 and 0.5 | 0.95 links automatically and can be undone; 0.75 is proposed for the member; 0.5 stays unmatched | U | New |
 | TC-MAT-05-3 | MAT-05 | Two members see the same provider on the same day | Each document matched to the right member's visit | U | New |
 | TC-MAT-05-4 | MAT-05 | Same amount and date, different provider | No match | U | New |
 | TC-MAT-05-5 | MAT-05 | Open a proposed match | Reasons shown in plain language beside the score | E | New |
@@ -363,7 +375,7 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-MAT-09-1 | MAT-09 | HSA card swipe matching provider alias, amount and date window | Linked to the visit | U | New |
 | TC-MAT-09-2 | MAT-09 | Personal card payment later reimbursed from the HSA | Reimbursement linked to the card payment; no HSA gap | U | Exists: `test_hsa_flags` (lab visit) |
 | TC-MAT-09-3 | MAT-09 | Check payment manually linked to two lines | Both lines show their part; parts ≤ payment | I | New |
-| TC-MAT-09-4 | MAT-09 | Payment linked to lines | Sum of line-level paid never exceeds the payment amount | U | Blocked: X-07 |
+| TC-MAT-09-4 | MAT-09 | Payment allocated to visits and lines | Allocated parts never exceed the payment; any surplus is a credit at the provider | U | New |
 | TC-MAT-10-1 | MAT-10 | Visit with bill and EOB, no payment | Bill present, EOB present, payment proof expected | U | New |
 | TC-MAT-10-2 | MAT-10 | Supplement purchase | EOB not applicable; receipt required | U | Exists: `test_sample_statuses_match_the_notes_in_the_sample_file` (vitamins visit) |
 | TC-MAT-10-3 | MAT-10 | User marks the itemized bill "not applicable" | Completeness counts it as satisfied | I | New |
@@ -382,16 +394,16 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-REC-01-6 | REC-01 | Self-pay visit: billed $250.00, self-pay discount $145.00, member $105.00, no EOB | Pass; no EOB expected | U | New |
 | TC-REC-02-1 | REC-02 | EOB member responsibility $100.00; provider asks $180.00 | Finding: provider asks $80.00 more than the EOB | U | Exists: `test_bill_vs_eob_discrepancy_and_provider_overpayment` |
 | TC-REC-02-2 | REC-02 | Provider asks exactly the EOB amount | No finding | U | Exists: `test_sample_statuses_match_the_notes_in_the_sample_file` |
-| TC-REC-02-3 | REC-02 | Bill arrives, no EOB yet | No finding; status Awaiting EOB | U | Blocked: A-06 |
+| TC-REC-02-3 | REC-02 | Bill arrives, no EOB yet | No finding; status Awaiting EOB | U | New |
 | TC-REC-02-4 | REC-02 | Provider asks less than the EOB amount | No overcharge finding; informational note only | U | New |
 | TC-REC-02-5 | REC-02 | Statement billed amount differs from the claim's billed amount | Finding: charges sent to the insurer not shown to the member (MVP C2 second rule) | U | New |
-| TC-REC-03-1 | REC-03 | Responsibility $45.00; paid $45.00 HSA + $45.00 card | Overpayment $45.00, credit owed | U | Blocked: X-07 |
+| TC-REC-03-1 | REC-03 | Responsibility $45.00; paid $45.00 by HSA and $45.00 by card to the same provider | Overpayment $45.00 at the provider, shown on the visit the surplus was allocated to | U | New |
 | TC-REC-03-2 | REC-03 | Provider-level: should owe $240.00, paid $320.00 | Overpaid $80.00 | U | Exists: `test_bill_vs_eob_discrepancy_and_provider_overpayment` |
 | TC-REC-03-3 | REC-03 | Responsibility paid across 3 methods summing exactly | No finding | U | New |
 | TC-REC-03-4 | REC-03 | Overpayment, then a $45.00 refund recorded | Finding resolved | U | New |
 | TC-REC-03-5 | REC-03 | Overpayment of $0.40 | Cleared within tolerance and recorded; counts toward the $5.00 provider cap | U | New |
 | TC-REC-04-1 | REC-04 | Same code, DOS and provider twice on one statement | Duplicate-charge finding for the second line's amount | U | New |
-| TC-REC-04-2 | REC-04 | Same charge on two successive statements | Not a duplicate (a re-sent version) | U | Blocked: A-04 |
+| TC-REC-04-2 | REC-04 | Same charge on two successive statements with identical amounts | Not a duplicate charge (near-duplicate statement, ING-07) | U | New |
 | TC-REC-04-3 | REC-04 | Two payments of $18.53 to the same provider 3 days apart for one visit | Probable duplicate payment; overpaid $18.53 | U | Exists: `test_possible_duplicate_payments` |
 | TC-REC-04-4 | REC-04 | Same code twice with modifier 76/77, or 2 units | No duplicate finding (or marked low confidence) | U | New |
 | TC-REC-05-1 | REC-05 | Bill with no claim for an insured visit, past the waiting threshold | Finding "provider may not have filed with insurance" | U | New |
@@ -406,10 +418,10 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-REC-07-1 | REC-07 | EOB deductible amounts across visits | Per-person and family progress equal the sums | U | Exists: `test_limit_progress_uses_eob_deductible`, `test_individual_and_family_limits` |
 | TC-REC-07-2 | REC-07 | One member meets the individual (embedded) deductible before the family | That member's later EOBs expected at coinsurance, not deductible | U | New |
 | TC-REC-07-3 | REC-07 | Family in-network OOP max $9,000 met; later in-network covered charge with $40.00 responsibility | Finding $40.00 | U | New |
-| TC-REC-07-4 | REC-07 | OOP max met; later out-of-network or non-covered charge | No finding | U | Blocked: A-07 |
+| TC-REC-07-4 | REC-07 | Out-of-pocket max met; later out-of-network charge and later non-covered charge | No finding for either | U | New |
 | TC-REC-07-5 | REC-07 | Visit on 2027-01-02 after a 2026 plan year | Accumulators reset for 2027 | U | New |
 | TC-REC-07-6 | REC-07 | Covered member with no claims imported | Note that family totals may be incomplete | U | New |
-| TC-REC-08-1 | REC-08 | Provider in network; EOB processed out of network | Finding: network status mismatch | U | Blocked: X-14 |
+| TC-REC-08-1 | REC-08 | Provider in network; EOB processed out of network | Finding: network status mismatch (Release 1 basic check) | U | New |
 | TC-REC-08-2 | REC-08 | Out-of-network anesthesiologist bill at an in-network facility | Surprise-bill finding citing the No Surprises Act | U | New |
 | TC-REC-08-3 | REC-08 | Provider in network in 2025, out in 2026 | Each year's visits checked against that year's status | U | New |
 | TC-REC-08-4 | REC-08 | Bill, EOB and provider record agree | Pass | U | New |
@@ -450,14 +462,14 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-ALC-03-2 | ALC-03 | Qualified $45.00 paid by personal card | "Pay from HSA now": reimbursement due from HSA $45.00. "Save HSA for later": receipt-vault entry, nothing due | U | New |
 | TC-ALC-03-3 | ALC-03 | Per-visit balances for one provider | Sum equals the provider ledger balance (MVP PL-2) | U | New |
 | TC-ALC-04-1 | ALC-04 | $300.00 lump sum; provider statement applies $200.00 to visit A and $100.00 to B | Allocation follows the statement | U | New |
-| TC-ALC-04-2 | ALC-04 | Lump sum with no statement; user chooses the split | User split saved and used | I | Blocked: X-07 |
-| TC-ALC-04-3 | ALC-04 | No statement, no user choice | Default allocation (MVP: oldest visit first) | U | Exists: `test_visit_that_drops_off_a_later_statement_is_settled`; Blocked: X-07 |
+| TC-ALC-04-2 | ALC-04 | Lump sum with no statement split; member changes the default split | Member's split saved and used; kept on re-import (ADR-011) | I | New |
+| TC-ALC-04-3 | ALC-04 | Lump sum with no statement split and no member override | Oldest visit first, up to what each visit was billed | U | Exists: `test_visit_that_drops_off_a_later_statement_is_settled` |
 | TC-ALC-04-4 | ALC-04 | Lump sum exceeds everything outstanding | Leftover shown as credit at the provider | U | New |
 | TC-ALC-05-1 | ALC-05 | Billed $200.00; primary pays $80.00, secondary $15.00, adjustment $100.00, member $5.00 | All parts shown; identity 1 holds | U | New |
 | TC-ALC-05-2 | ALC-05 | Primary EOB in, secondary EOB not yet | Member remainder pending; status Awaiting EOB | U | New |
 | TC-ALC-05-3 | ALC-05 | Coverage order in settings | Primary and secondary applied in that order | U | New |
 | TC-ALC-06-1 | ALC-06 | Allocations on visits for 2 members | Each allocation carries the visit's member; per-person totals sum to the family total | U | New |
-| TC-ALC-06-2 | ALC-06 | One HSA payment covering visits for 2 members | Split by member in reports | U | Blocked: X-09 |
+| TC-ALC-06-2 | ALC-06 | One HSA payment covering visits for 2 members | Split by member in reports | U | New |
 | TC-ALC-07-1 | ALC-07 | Visit detail breakdown | Billed → adjustment → insurer → you → each account, amounts match the data | E | New |
 | TC-ALC-07-2 | ALC-07 | Breakdown accessibility | Every segment has a text label and value; not color-only | E | New |
 | TC-ALC-07-3 | ALC-07 | Visit with $0 insurer paid | Zero segment shown or omitted cleanly; no broken chart | E | New |
@@ -469,8 +481,8 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 
 | TC | Req | Scenario | Expected result | Level | Status |
 | --- | --- | --- | --- | --- | --- |
-| TC-TAX-01-1 | TAX-01 | Office visit copay | Tagged qualified (Pub 502 "Physicians") with the category cited | U | Blocked: X-10 (wording) |
-| TC-TAX-01-2 | TAX-01 | General vitamins | Not qualified, or "needs documentation" when a letter of medical necessity applies | U | Blocked: X-10 |
+| TC-TAX-01-1 | TAX-01 | Office visit copay | Tagged "likely qualified" citing Pub 502 "Physicians" | U | New |
+| TC-TAX-01-2 | TAX-01 | General vitamins; then the same with a letter of medical necessity on file | "Likely not qualified"; then "needs documentation" satisfied | U | New |
 | TC-TAX-01-3 | TAX-01 | Massage therapy | Needs documentation (letter of medical necessity) | U | New |
 | TC-TAX-01-4 | TAX-01 | Category table updated to a new version | Existing tags keep their old version; new tags use the new one (PLT-01) | U | New |
 | TC-TAX-02-1 | TAX-02 | Health FSA with a 2.5-month grace period; expense on 2027-03-10 | 2026 funds usable | U | New |
@@ -492,10 +504,10 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-TAX-05-3 | TAX-05 | FSA balance $0.00 | No alert | U | New |
 | TC-TAX-06-1 | TAX-06 | Family coverage, $8,000.00 contributed in 2026 | Under the $8,750 limit; $750.00 room left | U | New |
 | TC-TAX-06-2 | TAX-06 | Account holder aged 55 or older | Limit includes the $1,000 catch-up | U | New |
-| TC-TAX-06-3 | TAX-06 | Self-only Jan to Jun, family Jul to Dec | Prorated limit per the chosen rule | U | Blocked: A-10 |
+| TC-TAX-06-3 | TAX-06 | Self-only Jan to Jun, family Jul to Dec 2026, default rule | Limit = 6/12 × $4,400 + 6/12 × $8,750 = $6,575.00; switching to the last-month rule gives $8,750.00 with the testing-period warning | U | New |
 | TC-TAX-06-4 | TAX-06 | Contributions exceed the limit by $300.00 | Finding: excess contribution $300.00 | U | New |
 | TC-TAX-06-5 | TAX-06 | 2025 vs 2026 contributions | Each year checked against its own reference table row | U | New |
-| TC-TAX-07-1 | TAX-07 | HSA paid $40.00 for a non-qualified item | Finding with guidance on returning a mistaken distribution, and the CMP-04 disclaimer | U | Blocked: X-10 |
+| TC-TAX-07-1 | TAX-07 | HSA paid $40.00 for a non-qualified item the member marks as a mistake | Finding with mistaken-distribution guidance and the CMP-04 disclaimer; without the mistake mark, no return guidance | U | New |
 | TC-TAX-07-2 | TAX-07 | HSA paid for a "needs documentation" item | Prompt to get a letter of medical necessity; not labeled non-qualified | U | New |
 | TC-TAX-07-3 | TAX-07 | Guidance screen | Disclaimer present | E | New |
 | TC-TAX-08-1 | TAX-08 | Member has a general-purpose FSA and makes HSA contributions | Eligibility conflict flagged | U | New |
@@ -534,17 +546,17 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC | Req | Scenario | Expected result | Level | Status |
 | --- | --- | --- | --- | --- | --- |
 | TC-DSP-01-1 | DSP-01 | Create a case from a REC-02 finding | Case holds the bill, EOB, payment proof, the lines and amounts | I | New |
-| TC-DSP-01-2 | DSP-01 | Evidence files in the case | Same originals as ING-10 (hash match), not altered copies | I | Blocked: X-11 |
+| TC-DSP-01-2 | DSP-01 | Evidence files in the case | Same originals as ING-10 (hash match), served from the application tier only | I | New |
 | TC-DSP-01-3 | DSP-01 | Finding with the payment proof missing | Case created; missing evidence listed | I | New |
-| TC-DSP-02-1 | DSP-02 | Draft each of: itemized bill request, billing correction, refund request, claim resubmission, insurer appeal | Each draft has claim #, DOS, amounts and the specific request | U | Blocked: X-11 (identifiers in drafts) |
+| TC-DSP-02-1 | DSP-02 | Draft each of: itemized bill request, billing correction, refund request, claim resubmission, insurer appeal | Each draft has the real claim #, DOS, amounts and request, filled in by the application tier; the back-end tier only ever sees tokens | U | New |
 | TC-DSP-02-2 | DSP-02 | Any draft | Never sent without an explicit user action; no auto-send | E | New |
 | TC-DSP-03-1 | DSP-03 | Open a call script for a refund case | Script includes what to ask for and the reference numbers to record | U | New |
 | TC-DSP-03-2 | DSP-03 | Log a call: date, person, reference #, outcome | Saved and shown in the case history | I | Exists (provider-level log): `test_provider_notes_can_be_added_edited_and_deleted` |
 | TC-DSP-03-3 | DSP-03 | Log a call with no outcome | Validation message; nothing saved | I | New |
 | TC-DSP-04-1 | DSP-04 | Case status changes open → waiting on provider → resolved | Each change dated and shown | U | New |
-| TC-DSP-04-2 | DSP-04 | Follow-up date passes with no response logged | Reminder appears in the attention queue (UX-04) | U | Blocked: A-13 |
+| TC-DSP-04-2 | DSP-04 | Case with no response logged 30 days after the last contact; another with a 10-day override | Reminders appear in the attention queue at 30 and 10 days respectively | U | New |
 | TC-DSP-04-3 | DSP-04 | Response logged | Reminder cleared | U | New |
-| TC-DSP-05-1 | DSP-05 | EOB dated 2026-03-01, 180-day appeal window | Deadline 2026-08-28 shown | U | Blocked: X-11 (date shifting) |
+| TC-DSP-05-1 | DSP-05 | EOB dated 2026-03-01, 180-day appeal window | Deadline 2026-08-28 shown (real dates in the back-end tier) | U | New |
 | TC-DSP-05-2 | DSP-05 | Self-pay bill exceeds GFE | No Surprises Act dispute deadline 120 days from the bill date | U | New |
 | TC-DSP-05-3 | DSP-05 | Deadline within 14 days | Item rises in the attention queue | U | New |
 | TC-DSP-06-1 | DSP-06 | Hospital bill; household income below the hospital's assistance threshold | Screen says "may qualify" with a link to the hospital's application | U | New |
@@ -557,7 +569,7 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 
 | TC | Req | Scenario | Expected result | Level | Status |
 | --- | --- | --- | --- | --- | --- |
-| TC-UX-01-1 | UX-01 | Home after import | Visit cards show person, provider, date, status badge, document completeness and amount at issue | E | Blocked: X-13 |
+| TC-UX-01-1 | UX-01 | Home after import | Summary tiles, then the attention queue, then visit cards with person, provider, date, status badge, document completeness and amount at issue | E | New |
 | TC-UX-01-2 | UX-01 | No visits yet | Empty state explains what to gather and links to import/upload | E | Exists: `test_empty_home_has_hero_help_and_settings` |
 | TC-UX-01-3 | UX-01 | Card amount at issue | Equals the sum of that visit's open findings | U | New |
 | TC-UX-02-1 | UX-02 | Open a visit with all document kinds and a case | Documents, line comparison, allocation, findings and case history on one page | E | Exists (MVP subset): `test_every_page_renders_after_import` |
@@ -571,16 +583,16 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-UX-05-1 | UX-05 | Each finding type | Has a plain-language sentence with the amounts, e.g. "The provider is asking for $80.00 more than your insurer says you owe" | U | New |
 | TC-UX-05-2 | UX-05 | Scan all finding templates | None renders only a code (e.g. "CO-45") without explanation | U | New |
 | TC-UX-05-3 | UX-05 | Readability of finding text | Grade 8 or below on a standard readability score | R | New |
-| TC-UX-06-1 | UX-06 | Household with 3 members | Per-person totals sum to the family total | U | Blocked: X-09 |
-| TC-UX-06-2 | UX-06 | Switch individual ↔ family | View changes; choice kept across pages | E | Blocked: X-09 |
+| TC-UX-06-1 | UX-06 | Household with 3 members | Per-person totals sum to the family total | U | New |
+| TC-UX-06-2 | UX-06 | Switch individual ↔ family | View changes; choice kept across pages | E | New |
 | TC-UX-07-1 | UX-07 | Dashboard figures | Spend by year, person, category and payment source equal the underlying totals; deductible and OOP progress equal REC-07 | U | New |
 | TC-UX-07-2 | UX-07 | Savings recovered tile | Equals DSP-07 lifetime total | U | New |
 | TC-UX-08-1 | UX-08 | Export one visit as PDF and CSV | Content matches the visit detail; totals tie | I | New |
 | TC-UX-08-2 | UX-08 | Export a year as CSV | One row per allocation; column totals equal the dashboard | I | New |
 | TC-UX-08-3 | UX-08 | Provider name beginning with "=" | Escaped in CSV (no formula injection) | S | New |
-| TC-UX-09-1 | UX-09 | First run | Wizard: household → plans and accounts → first upload → first reconciliation | E | Blocked: X-09 (household step) |
+| TC-UX-09-1 | UX-09 | First run | Wizard: household → plans and accounts → first upload → first reconciliation | E | New |
 | TC-UX-09-2 | UX-09 | Quit the wizard midway and return | Resumes at the step left | E | New |
-| TC-UX-10-1 | UX-10 | 375px-wide phone: capture a photo and review the visit list | No horizontal scroll; camera capture works; tap targets ≥ 44px | E | Blocked: A-08, PRD open question (web or mobile) |
+| TC-UX-10-1 | UX-10 | 375px-wide phone: capture a photo and review the visit list | No horizontal scroll; camera capture works one-handed; tap targets ≥ 44px | E | New |
 | TC-UX-10-2 | UX-10 | 1280px desktop: full reconciliation of a 6-line visit | All panels usable without zooming | E | New |
 
 ### 3.9 Privacy, security and pseudonymization (PRV)
@@ -601,19 +613,19 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-PRV-04-2 | PRV-04 | Free text (letter body, notes field) | Identifiers replaced by tokens | S | New |
 | TC-PRV-04-3 | PRV-04 | Scrubbing recall across the corpus | Meets the agreed target (propose ≥ 99% of seeded identifiers) | S | New |
 | TC-PRV-05-1 | PRV-05 | Two visits 14 days apart, shifted | Interval still 14 days; offset consistent per person | U | New |
-| TC-PRV-05-2 | PRV-05 | Visit on 2026-12-30 shifted by +5 days | Plan-year logic still assigns it to 2026 | U | Blocked: X-11 |
+| TC-PRV-05-2 | PRV-05 | Visit on 2026-12-30; content for it sent to the AI service | Back-end records keep 2026-12-30 (plan year 2026); the AI payload carries the person's shifted date | S | New |
 | TC-PRV-06-1 | PRV-06 | Scan client-to-application and every inter-tier connection | TLS 1.2 or later only; no plaintext connection carries data | S | New |
 | TC-PRV-06-2 | PRV-06 | Read the database and document folder from disk without the key | Contents unreadable | S | New |
-| TC-PRV-06-3 | PRV-06 | Back-end tier operator tries to read the identity vault | Cannot decrypt it; vault keys are held apart from the data | S | Blocked: X-15 |
-| TC-PRV-07-1 | PRV-07 | Back up the vault; restore on a new device | Linkage restored; documents resolve to the same people | E | Blocked: X-09, X-15 |
+| TC-PRV-06-3 | PRV-06 | Back-end tier operator tries to read the identity vault or originals | Cannot decrypt them; per-household keys live in the key management service | S | New |
+| TC-PRV-07-1 | PRV-07 | Restore the identity vault from backup onto a fresh server | Linkage restored; documents resolve to the same people | S | New |
 | TC-PRV-07-2 | PRV-07 | Restore with the wrong passphrase | Fails; nothing decrypted; no hint leaks | S | New |
-| TC-PRV-07-3 | PRV-07 | Member loses the key | Recovery behaves per the X-15 decision | S | Blocked: X-15 |
+| TC-PRV-07-3 | PRV-07 | Member loses their phone and password | Regains access through MFA account recovery; all data and linkage intact | E | New |
 | TC-PRV-08-1 | PRV-08 | Outbound capture during a full session | No requests to advertising or third-party analytics domains | S | New |
-| TC-PRV-08-2 | PRV-08 | Analytics events | Only allow-listed fields; no amounts, providers, codes or identifiers | S | Blocked: A-12 |
+| TC-PRV-08-2 | PRV-08 | Analytics events | Only event name, pseudonymous install ID, timestamp and app version; no amounts, providers, codes or identifiers | S | New |
 | TC-PRV-08-3 | PRV-08 | Content Security Policy | Third-party scripts blocked | S | New |
 | TC-PRV-09-1 | PRV-09 | Export all data | Every record and original file present (compared with a store inventory) | I | New |
-| TC-PRV-09-2 | PRV-09 | Delete account | Records, files and backups removed per policy; confirmation shown | I | Blocked: X-15 |
-| TC-PRV-09-3 | PRV-09 | After deletion | Login and restore impossible; retained items (if any) match the policy | S | Blocked: X-15 |
+| TC-PRV-09-2 | PRV-09 | Delete account | Records, originals and vault entries removed at once; confirmation shown; backups age out within 35 days | I | New |
+| TC-PRV-09-3 | PRV-09 | After deletion | Sign-in and restore impossible; only security and access logs without health content remain, deleted after one year | S | New |
 | TC-PRV-10-1 | PRV-10 | Read and change records | Each action logged with actor, action, record and time | U | New |
 | TC-PRV-10-2 | PRV-10 | Member opens the access log; attempt to edit a log entry | Log visible; edits impossible or detected | S | New |
 | TC-PRV-11-1 | PRV-11 | Sign in with password only | Second factor required; no data reachable before it | S | New |
@@ -634,7 +646,7 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-CMP-03-2 | CMP-03 | Policy readability | Plain language (grade 8 or below) | R | New |
 | TC-CMP-04-1 | CMP-04 | Every screen that recommends an action (TAX-03, TAX-07, PRE-02 to PRE-07, DSP-02, REC-09 appealable) | Shows the information-not-advice disclaimer | U | New |
 | TC-CMP-05-1 | CMP-05 | Provider-sourced and consumer-uploaded records | Stored in separate logical stores; no query joins them without an explicit path | R | New |
-| TC-CMP-06-1 | CMP-06 | Annual review | Review record exists; reference tables carry new versions with effective dates | R | Blocked: A-11 |
+| TC-CMP-06-1 | CMP-06 | Annual review | Review note recorded; reference tables carry new versions with effective dates | R | New |
 | TC-CMP-06-2 | CMP-06 | 2027 limits loaded | 2026 records still checked against 2026 values | U | New |
 
 ### 3.11 Platform and non-functional (PLT)
@@ -644,13 +656,13 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-PLT-01-1 | PLT-01 | Look up the HSA family limit for 2025 and 2026 | Each year returns its own value from a versioned table | U | New |
 | TC-PLT-01-2 | PLT-01 | Update a reference table | Past findings keep the version they used | U | New |
 | TC-PLT-01-3 | PLT-01 | Inspect the code | No IRS limits, codes or categories hard-coded outside the tables | R | New |
-| TC-PLT-02-1 | PLT-02 | Release sample of extracted documents graded by hand | Amount accuracy measured and ≥ 95% (definition per A-01) | M | Blocked: A-01 |
-| TC-PLT-02-2 | PLT-02 | Findings dismissed by the user as wrong | False-positive rate computed and reported per release | U | Blocked: A-01 |
+| TC-PLT-02-1 | PLT-02 | Each release: held-out sample of ≥ 50 documents graded by hand before confirmation | Extracted amounts ≥ 95% correct | M | New |
+| TC-PLT-02-2 | PLT-02 | Findings dismissed by the member as wrong | False-positive rate computed per release and ≤ 5% | U | New |
 | TC-PLT-03-1 | PLT-03 | Any finding or recommendation | Stores rule ID, rule version and source document IDs; "why" view shows them | U | New |
 | TC-PLT-03-2 | PLT-03 | Rule changes to a new version | Old findings still show the old version | U | New |
 | TC-PLT-04-1 | PLT-04 | Capture AI extraction calls from the back-end tier | Only pseudonymized content sent | S | New |
 | TC-PLT-04-2 | PLT-04 | Override an AI-extracted value and classification | Override saved and used; AI value still visible for audit | E | New |
-| TC-PLT-05-1 | PLT-05 | 50 typical uploads, timed | p95 under 60 seconds (timing per A-02, A-03) | P | Blocked: A-02, A-03 |
+| TC-PLT-05-1 | PLT-05 | 50 typical uploads (1 to 3 page PDF or one photo, one visit), timed without confirmation time | p95 machine time under 60 seconds | P | New |
 | TC-PLT-06-1 | PLT-06 | Scenario library coverage report | At least one redacted real scenario per REC rule; report lists REC IDs without one | R | New |
 | TC-PLT-06-2 | PLT-06 | CI pipeline | Library runs on every change; failure blocks merge | R | New |
 | TC-PLT-06-3 | PLT-06 | Seeded-identifier scan of the library | No real identifiers in fixtures | S | New |
@@ -663,58 +675,58 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 
 One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities that hold back at least one of its cases.
 
-**Totals:** 100 requirements, 326 test cases (P1 238, P2 79, P3 9). 47 cases (36 requirements) are blocked on a decision; 22 are already partly or fully automated.
+**Totals:** 100 requirements, 326 test cases (P1 183, P2 134, P3 9). 3 cases (2 requirements) are blocked on a decision; 22 are already partly or fully automated.
 
 | Req | Priority | Test cases | Levels | Blocked by | Automated today |
 | --- | --- | --- | --- | --- | --- |
 | ING-01 | P1 | 1, 2, 3, 4, 5 (5) | EI | — | — |
-| ING-02 | P1 | 1, 2, 3, 4 (4) | EI | A-01 | — |
+| ING-02 | P1 | 1, 2, 3, 4 (4) | EI | — | — |
 | ING-03 | P1 | 1, 2, 3, 4 (4) | IU | — | — |
 | ING-04 | P1 | 1, 2, 3, 4 (4) | IU | — | — |
 | ING-05 | P1 | 1, 2, 3, 4 (4) | EI | — | — |
-| ING-06 | P2 | 1, 2 (2) | I | A-09 | — |
-| ING-07 | P1 | 1, 2, 3, 4, 5 (5) | I | A-04 | — |
-| ING-08 | P1 | 1, 2, 3, 4, 5 (5) | I | X-16 | — |
+| ING-06 | P2 | 1, 2 (2) | I | — | — |
+| ING-07 | P1 | 1, 2, 3, 4, 5 (5) | I | — | — |
+| ING-08 | P1 | 1, 2, 3, 4, 5 (5) | I | — | — |
 | ING-09 | P2 | 1, 2, 3, 4, 5 (5) | IU | — | — |
 | ING-10 | P1 | 1, 2, 3 (3) | EI | — | 1 partly |
-| MAT-01 | P1 | 1, 2, 3, 4, 5 (5) | IU | X-07 | — |
-| MAT-02 | P1 | 1, 2, 3 (3) | IU | X-09 | — |
+| MAT-01 | P1 | 1, 2, 3, 4, 5 (5) | IU | — | — |
+| MAT-02 | P1 | 1, 2, 3 (3) | IU | — | — |
 | MAT-03 | P1 | 1, 2, 3, 4 (4) | U | — | 1 partly |
 | MAT-04 | P1 | 1, 2, 3, 4 (4) | U | — | 1 partly |
-| MAT-05 | P1 | 1, 2, 3, 4, 5 (5) | EU | A-05 | — |
+| MAT-05 | P1 | 1, 2, 3, 4, 5 (5) | EU | — | — |
 | MAT-06 | P1 | 1, 2, 3, 4, 5 (5) | U | — | — |
 | MAT-07 | P1 | 1, 2, 3, 4, 5 (5) | EI | — | 2 partly |
-| MAT-08 | P1 | 1, 2, 3, 4, 5 (5) | U | — | — |
-| MAT-09 | P1 | 1, 2, 3, 4 (4) | IU | X-07 | 1 partly |
+| MAT-08 | P2 | 1, 2, 3, 4, 5 (5) | U | — | — |
+| MAT-09 | P1 | 1, 2, 3, 4 (4) | IU | — | 1 partly |
 | MAT-10 | P1 | 1, 2, 3, 4, 5 (5) | EIU | — | 1 partly |
 | REC-01 | P1 | 1, 2, 3, 4, 5, 6 (6) | U | — | 1 partly |
-| REC-02 | P1 | 1, 2, 3, 4, 5 (5) | U | A-06 | 2 partly |
-| REC-03 | P1 | 1, 2, 3, 4, 5 (5) | U | X-07 | 1 partly |
-| REC-04 | P1 | 1, 2, 3, 4 (4) | U | A-04 | 1 partly |
+| REC-02 | P1 | 1, 2, 3, 4, 5 (5) | U | — | 2 partly |
+| REC-03 | P1 | 1, 2, 3, 4, 5 (5) | U | — | 1 partly |
+| REC-04 | P1 | 1, 2, 3, 4 (4) | U | — | 1 partly |
 | REC-05 | P1 | 1, 2, 3, 4 (4) | U | — | 1 partly |
-| REC-06 | P1 | 1, 2, 3, 4, 5 (5) | U | — | — |
-| REC-07 | P1 | 1, 2, 3, 4, 5, 6 (6) | U | A-07 | 1 partly |
-| REC-08 | P2 | 1, 2, 3, 4 (4) | U | X-14 | — |
+| REC-06 | P2 | 1, 2, 3, 4, 5 (5) | U | — | — |
+| REC-07 | P1 | 1, 2, 3, 4, 5, 6 (6) | U | — | 1 partly |
+| REC-08 | P1 | 1, 2, 3, 4 (4) | U | — | — |
 | REC-09 | P2 | 1, 2, 3 (3) | U | — | — |
-| REC-10 | P1 | 1, 2, 3, 4, 5 (5) | IU | — | — |
+| REC-10 | P2 | 1, 2, 3, 4, 5 (5) | IU | — | — |
 | REC-11 | P1 | 1, 2, 3, 4, 5 (5) | EU | — | 1 partly |
 | REC-12 | P2 | 1, 2, 3 (3) | U | PRD open question | — |
 | REC-13 | P1 | 1, 2, 3, 4 (4) | U | — | 1 partly |
 | ALC-01 | P1 | 1, 2, 3, 4 (4) | U | — | — |
-| ALC-02 | P1 | 1, 2, 3, 4 (4) | U | — | — |
+| ALC-02 | P2 | 1, 2, 3, 4 (4) | U | — | — |
 | ALC-03 | P1 | 1, 2, 3 (3) | U | — | — |
-| ALC-04 | P1 | 1, 2, 3, 4 (4) | IU | X-07 | 1 partly |
+| ALC-04 | P1 | 1, 2, 3, 4 (4) | IU | — | 1 partly |
 | ALC-05 | P2 | 1, 2, 3 (3) | U | — | — |
-| ALC-06 | P1 | 1, 2 (2) | U | X-09 | — |
-| ALC-07 | P1 | 1, 2, 3 (3) | E | — | — |
+| ALC-06 | P1 | 1, 2 (2) | U | — | — |
+| ALC-07 | P2 | 1, 2, 3 (3) | E | — | — |
 | ALC-08 | P2 | 1, 2, 3 (3) | U | — | — |
-| TAX-01 | P1 | 1, 2, 3, 4 (4) | U | X-10 | — |
+| TAX-01 | P2 | 1, 2, 3, 4 (4) | U | — | — |
 | TAX-02 | P2 | 1, 2, 3, 4, 5 (5) | U | — | — |
 | TAX-03 | P2 | 1, 2, 3, 4, 5 (5) | U | — | — |
 | TAX-04 | P1 | 1, 2, 3, 4 (4) | IU | — | 1 partly |
 | TAX-05 | P3 | 1, 2, 3 (3) | U | — | — |
-| TAX-06 | P2 | 1, 2, 3, 4, 5 (5) | U | A-10 | — |
-| TAX-07 | P1 | 1, 2, 3 (3) | EU | X-10 | — |
+| TAX-06 | P2 | 1, 2, 3, 4, 5 (5) | U | — | — |
+| TAX-07 | P2 | 1, 2, 3 (3) | EU | — | — |
 | TAX-08 | P2 | 1, 2, 3 (3) | U | — | — |
 | TAX-09 | P2 | 1, 2, 3 (3) | U | — | — |
 | TAX-10 | P2 | 1, 2, 3 (3) | U | — | — |
@@ -725,45 +737,45 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | PRE-05 | P2 | 1, 2 (2) | U | — | — |
 | PRE-06 | P2 | 1, 2 (2) | U | — | — |
 | PRE-07 | P2 | 1 (1) | U | — | — |
-| DSP-01 | P1 | 1, 2, 3 (3) | I | X-11 | — |
-| DSP-02 | P2 | 1, 2 (2) | EU | X-11 | — |
+| DSP-01 | P2 | 1, 2, 3 (3) | I | — | — |
+| DSP-02 | P2 | 1, 2 (2) | EU | — | — |
 | DSP-03 | P1 | 1, 2, 3 (3) | IU | — | 1 partly |
-| DSP-04 | P1 | 1, 2, 3 (3) | U | A-13 | — |
-| DSP-05 | P2 | 1, 2, 3 (3) | U | X-11 | — |
+| DSP-04 | P2 | 1, 2, 3 (3) | U | — | — |
+| DSP-05 | P2 | 1, 2, 3 (3) | U | — | — |
 | DSP-06 | P3 | 1, 2 (2) | U | — | — |
-| DSP-07 | P1 | 1, 2, 3 (3) | U | — | — |
-| UX-01 | P1 | 1, 2, 3 (3) | EU | X-13 | 1 partly |
+| DSP-07 | P2 | 1, 2, 3 (3) | U | — | — |
+| UX-01 | P1 | 1, 2, 3 (3) | EU | — | 1 partly |
 | UX-02 | P1 | 1, 2 (2) | E | — | 1 partly |
 | UX-03 | P1 | 1, 2, 3, 4 (4) | EI | — | 1 partly |
 | UX-04 | P1 | 1, 2 (2) | U | — | — |
 | UX-05 | P1 | 1, 2, 3 (3) | RU | — | — |
-| UX-06 | P1 | 1, 2 (2) | EU | X-09 | — |
+| UX-06 | P1 | 1, 2 (2) | EU | — | — |
 | UX-07 | P2 | 1, 2 (2) | U | — | — |
 | UX-08 | P2 | 1, 2, 3 (3) | IS | — | — |
-| UX-09 | P1 | 1, 2 (2) | E | X-09 | — |
-| UX-10 | P1 | 1, 2 (2) | E | A-08, PRD open question | — |
+| UX-09 | P2 | 1, 2 (2) | E | — | — |
+| UX-10 | P1 | 1, 2 (2) | E | — | — |
 | PRV-01 | P1 | 1, 2, 3 (3) | SU | — | — |
 | PRV-02 | P1 | 1, 2 (2) | U | — | — |
 | PRV-03 | P1 | 1, 2, 3 (3) | U | — | — |
 | PRV-04 | P1 | 1, 2, 3 (3) | S | — | — |
-| PRV-05 | P2 | 1, 2 (2) | U | X-11 | — |
-| PRV-06 | P1 | 1, 2, 3 (3) | S | X-15 | — |
-| PRV-07 | P1 | 1, 2, 3 (3) | ES | X-09, X-15 | — |
-| PRV-08 | P1 | 1, 2, 3 (3) | S | A-12 | — |
-| PRV-09 | P1 | 1, 2, 3 (3) | IS | X-15 | — |
+| PRV-05 | P2 | 1, 2 (2) | SU | — | — |
+| PRV-06 | P1 | 1, 2, 3 (3) | S | — | — |
+| PRV-07 | P1 | 1, 2, 3 (3) | ES | — | — |
+| PRV-08 | P1 | 1, 2, 3 (3) | S | — | — |
+| PRV-09 | P2 | 1, 2, 3 (3) | IS | — | — |
 | PRV-10 | P2 | 1, 2 (2) | SU | — | — |
 | PRV-11 | P1 | 1, 2, 3 (3) | S | — | — |
-| CMP-01 | P1 | 1, 2, 3 (3) | MRS | — | — |
-| CMP-02 | P1 | 1, 2, 3 (3) | EI | — | — |
-| CMP-03 | P1 | 1, 2 (2) | R | — | — |
-| CMP-04 | P1 | 1 (1) | U | — | — |
+| CMP-01 | P2 | 1, 2, 3 (3) | MRS | — | — |
+| CMP-02 | P2 | 1, 2, 3 (3) | EI | — | — |
+| CMP-03 | P2 | 1, 2 (2) | R | — | — |
+| CMP-04 | P2 | 1 (1) | U | — | — |
 | CMP-05 | P3 | 1 (1) | R | — | — |
-| CMP-06 | P2 | 1, 2 (2) | RU | A-11 | — |
-| PLT-01 | P1 | 1, 2, 3 (3) | RU | — | — |
-| PLT-02 | P1 | 1, 2 (2) | MU | A-01 | — |
-| PLT-03 | P1 | 1, 2 (2) | U | — | — |
+| CMP-06 | P2 | 1, 2 (2) | RU | — | — |
+| PLT-01 | P2 | 1, 2, 3 (3) | RU | — | — |
+| PLT-02 | P2 | 1, 2 (2) | MU | — | — |
+| PLT-03 | P2 | 1, 2 (2) | U | — | — |
 | PLT-04 | P1 | 1, 2 (2) | ES | — | — |
-| PLT-05 | P2 | 1 (1) | P | A-02, A-03 | — |
+| PLT-05 | P2 | 1 (1) | P | — | — |
 | PLT-06 | P1 | 1, 2, 3 (3) | RS | — | — |
 | PLT-07 | P2 | 1 (1) | I | — | — |
 | PLT-08 | P2 | 1 (1) | U | — | — |
