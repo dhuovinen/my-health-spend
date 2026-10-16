@@ -100,10 +100,23 @@ docker compose exec -it app mhs-admin add-member --household <household-id> --em
 
 On the Uploads page, choose a file and what it is (or let the app decide):
 
-- **Provider bills, statements, EOBs** as PDF, or a photo (JPG, PNG, HEIC). The app reads the text, replaces names and ID numbers with vault tokens, and the worker extracts the fields. When the status turns to Review, open it, check the fields ("check" marks the doubtful ones), correct them and confirm. Only then does the document reach your visits. Photos aren't read yet (no OCR): type the fields on the review page.
+- **Provider bills, statements, EOBs** as PDF, or a photo (JPG, PNG, HEIC). The app reads the text, replaces names and ID numbers with vault tokens, and the worker extracts the fields. When the status turns to Review, open it, check the fields ("check" marks the doubtful ones), correct them and confirm. Only then does the document reach your visits. Photos and scanned PDFs are read with OCR (Tesseract); iPhone HEIC photos are converted first. A photo that can't be opened is refused with the reason.
 - **HSA/FSA exports** (CSV, XLS, XLSX) and the **insurer's claims export** (CSV) go straight to the import preview; confirm there.
 
 The same file twice is refused. Add your household members and the year's plan in Settings first, so patients and claims match.
+
+### AI extraction (optional, off by default)
+
+Claude can read a household's documents instead of the layout rules (ADR-028, ADR-034). It only ever gets the scrubbed text, with identifiers replaced by tokens. Two switches, both needed:
+
+1. A worker with `MHS_EXTRACTOR=claude`, an API key (`MHS_ANTHROPIC_API_KEY` or `MHS_ANTHROPIC_API_KEY_FILE`) and a way out: the compose `backend` network has no route to the internet, so set `MHS_AI_PROXY` to an egress proxy that allows only the Anthropic API (or run that worker on a network that can reach it). The compose test profile has such a worker (`worker-ai`), pointed at the `capture` proxy, which answers with recorded responses.
+2. The household turned on:
+
+```bash
+docker compose exec app mhs-admin ai-extraction --household <household-id> on
+```
+
+`off` turns it off and `status` shows it. With it on, the Uploads page says documents are read with AI's help and the review page names the model. If no AI worker is running, or the AI declines or fails, the layout rules read the document after a minute and the review page says so.
 
 ### Load data
 
@@ -151,4 +164,9 @@ This runs the whole suite in the `tests` container: unit and integration tests o
 | `MHS_COOKIE_SECURE` | app | `1` once served over TLS (staging, production) |
 | `MHS_SESSION_IDLE_MINUTES`, `MHS_SESSION_MAX_HOURS` | app | Session timeouts (15, 12) |
 | `MHS_WORKER_POLL_SECONDS` | worker | Queue poll interval (1) |
+| `MHS_OCR_ENGINE` | app | `tesseract` (compose) or `stub` (default: photos are typed by hand) |
+| `MHS_SCRUBBER` | app | `presidio` (compose) or `rules` (default) |
+| `MHS_EXTRACTOR` | worker | `rules` (default) or `claude`, which lets the worker take AI extraction jobs |
+| `MHS_ANTHROPIC_API_KEY(_FILE)` | worker | Anthropic API key, when `MHS_EXTRACTOR=claude` |
+| `MHS_AI_MODEL`, `MHS_AI_BASE_URL`, `MHS_AI_PROXY`, `MHS_AI_TIMEOUT_SECONDS` | worker | Model (`claude-opus-5-5`), API address, egress proxy, request timeout (120) |
 

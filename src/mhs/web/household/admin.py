@@ -90,6 +90,9 @@ def main(argv: list[str] | None = None) -> None:
     i.add_argument("path", type=Path)
     i.add_argument("--yes", action="store_true", help="save; without it, only preview")
     i.add_argument("--replace-edits", action="store_true", help="let the file overwrite edits made in the app")
+    a = sub.add_parser("ai-extraction", help="let Claude read this household's scrubbed documents (ADR-028, ADR-034)")
+    a.add_argument("--household", required=True)
+    a.add_argument("state", choices=["on", "off", "status"])
     args = parser.parse_args(argv)
 
     db, accounts = accounts_from_env()
@@ -105,6 +108,12 @@ def main(argv: list[str] | None = None) -> None:
             show_totp(accounts, args.email, accounts.reset_mfa(args.email))
         elif args.command == "import":
             import_file(accounts, args.household, args.path, args.yes, args.replace_edits)
+        elif args.command == "ai-extraction":
+            if args.state != "status":
+                accounts.set_ai_extraction(args.household, args.state == "on")
+            state = "on" if accounts.ai_extraction(args.household) else "off"
+            print(f"AI extraction is {state} for household {args.household}. It needs a worker with "
+                  "MHS_EXTRACTOR=claude; without one, documents are read with the layout rules after a minute.")
     except AccountError as e:
         sys.exit(str(e))
     finally:

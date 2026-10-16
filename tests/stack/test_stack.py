@@ -113,6 +113,63 @@ def test_full_session_over_the_stack(member, browser):
     assert browser.get("/api/uploads").status_code == 401
 
 
+AI_HOST = "ai.capture.test"  # the capture proxy answers it with recorded responses (compose `worker-ai`)
+SEEDS = ["Pat Example", "W123-456-789", "W123456789", "Jordan Rivera", "555-310-4000", "5553104000"]
+
+
+@pytest.fixture(scope="module")
+def ai_browser(member):
+    """A second household, with AI extraction turned on, signed in over the stack."""
+    from mhs.web.household.admin import accounts_from_env
+
+    db, accounts = accounts_from_env()
+    hid = accounts.create_household(f"Stack AI test {uuid.uuid4().hex[:6]}")
+    accounts.set_ai_extraction(hid, True)
+    password = secrets.token_urlsafe(18)
+    m, totp_secret = accounts.add_member(hid, f"stack-ai-{uuid.uuid4().hex[:8]}@example.test", "AI Tester", password)
+    db.close()
+    with httpx.Client(base_url=STACK_URL, proxy=os.environ.get("MHS_STACK_PROXY"), timeout=10,
+                      follow_redirects=False) as c:
+        c.post("/signin", data={"email": m.email, "password": password})
+        r = c.post("/signin/mfa", data={"code": pyotp.TOTP(totp_secret).now(),
+                                        "csrf_token": csrf(c.get("/signin/mfa").text)})
+        assert r.status_code == 303 and r.headers["location"] == "/"
+        yield c
+
+
+def test_photo_read_by_ocr_scrubbed_and_extracted_by_ai(ai_browser):
+    """Phase 1.3 engines on the stack: a photo of an EOB is read by Tesseract in the app, scrubbed with Presidio
+    and sent by the AI worker through `capture`; TC-PLT-04-1: the captured AI requests carry tokens, never the
+    seeded identifiers."""
+    from tests.pdfs import make_image
+
+    browser = ai_browser
+    log = Path(os.environ["MHS_STACK_CAPTURE_LOG"])
+    seen = len(log.read_text().splitlines()) if log.exists() else 0
+    photo = make_image(EOB + "Questions? Jordan Rivera in billing can help at 555-310-4000.\n" + MARKER.decode())
+    home = browser.get("/uploads")
+    assert "with the help of AI" in home.text
+    upload = browser.post("/uploads", data={"csrf_token": csrf(home.text), "kind": "auto"},
+                          files={"file": ("eob-photo.png", photo, "image/png")})
+    assert upload.status_code == 303, upload.text[:1000]
+    upload_id = upload.headers["location"].split("uploaded=")[1]
+    deadline = time.monotonic() + 60
+    while browser.get(f"/api/uploads/{upload_id}").json()["status"] != "review":
+        assert time.monotonic() < deadline, "the AI worker didn't read the upload"
+        time.sleep(0.5)
+    review = browser.get(f"/uploads/{upload_id}/review").text
+    assert "photo, OCR (tesseract)" in review and "fields found by AI (claude-opus-5-5)" in review
+    assert form_values(review, f"/uploads/{upload_id}/confirm")["billed"] == "320.00"
+
+    flows = [json.loads(line) for line in log.read_text().splitlines()[seen:]]
+    sent = [f["request_body"] for f in flows if f["host"] == AI_HOST]
+    assert sent, "capture saw no AI request for the photo"
+    for body in sent:
+        assert "tok_" in body
+        for seed in SEEDS:
+            assert seed.lower() not in body.lower(), seed
+
+
 def test_originals_volume_holds_only_ciphertext(member):
     root = Path(os.environ["MHS_STACK_OBJECTS_DIR"])
     files = [p for p in root.rglob("*") if p.is_file()]
@@ -121,13 +178,13 @@ def test_originals_volume_holds_only_ciphertext(member):
 
 
 def test_captured_traffic_stays_first_party(member):
-    """TC-PRV-08-1 (partial): every request the session made went to the app, and no response pulled in
-    a third-party resource."""
+    """TC-PRV-08-1 (partial): every request the session made went to the app, the AI worker's went only to the
+    (stand-in) AI service, and no response pulled in a third-party resource."""
     log = Path(os.environ["MHS_STACK_CAPTURE_LOG"])
     flows = [json.loads(line) for line in log.read_text().splitlines()]
     assert flows, "capture saw no traffic"
     app_host = urlsplit(STACK_URL).hostname
-    assert {f["host"] for f in flows} == {app_host}
+    assert {f["host"] for f in flows} <= {app_host, AI_HOST}
     for f in flows:
         if f["response_headers"].get("content-type", "").startswith("text/html"):
             assert not re.search(r'(?:src|href)="(?:https?:)?//', f["response_body"]), f["path"]

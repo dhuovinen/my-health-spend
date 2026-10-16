@@ -99,6 +99,8 @@ services:
       MHS_VAULT_TOKEN_FILE: /run/secrets/mhs/vault_token
       MHS_KEY_FILE: /run/secrets/mhs/kek
       MHS_OBJECTS_DIR: /srv/objects
+      MHS_OCR_ENGINE: tesseract  # photos and scanned PDFs (ADR-029)
+      MHS_SCRUBBER: presidio     # identifier detection on top of the rules (ADR-029)
     ports:
       - "127.0.0.1:3063:3063"
     volumes:
@@ -119,6 +121,7 @@ services:
       MHS_DB_HOST: postgres
       MHS_DB_USER: mhs_worker
       MHS_DB_PASSWORD_FILE: /run/secrets/mhs/db_password
+      MHS_EXTRACTOR: rules  # `claude` lets it take AI extraction jobs (ADR-034; needs an API key and a way out)
     volumes:
       - { <<: *secrets, volume: { subpath: worker } }
     networks: [backend]
@@ -133,10 +136,35 @@ services:
     command: ["mitmdump", "--listen-port", "8080", "--set", "block_global=false", "-s", "/addons/log_flows.py"]
     environment:
       CAPTURE_LOG: /home/mitmproxy/.mitmproxy/flows.jsonl
+      CAPTURE_AI_HOST: ai.capture.test
+      CAPTURE_AI_RECORDINGS: /recorded
     volumes:
       - ./docker/capture:/addons:ro
+      - ./tests/fixtures/ai:/recorded:ro
       - captures:/home/mitmproxy/.mitmproxy  # an image folder the proxy's own user can write
-    networks: [frontend]
+    networks: [frontend, backend]  # the browser's path to the app, and the AI worker's only way out
+
+  worker-ai:
+    # A worker with Claude extraction on (MHS_EXTRACTOR=claude). It has no route out of the backend network, so its
+    # AI calls go through `capture`, which answers them with recorded responses and logs every request for the
+    # TC-PLT-04-1 check. Nothing reaches the real API and no key is needed.
+    <<: *image
+    profiles: [test]
+    command: ["mhs-worker"]
+    environment:
+      MHS_DB_HOST: postgres
+      MHS_DB_USER: mhs_worker
+      MHS_DB_PASSWORD_FILE: /run/secrets/mhs/db_password
+      MHS_EXTRACTOR: claude
+      MHS_ANTHROPIC_API_KEY: test-key-not-real
+      MHS_AI_BASE_URL: http://ai.capture.test
+      MHS_AI_PROXY: http://capture:8080
+    volumes:
+      - { <<: *secrets, volume: { subpath: worker } }
+    networks: [backend]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      capture: { condition: service_started }
 
   tests:
     profiles: [test]
@@ -167,6 +195,7 @@ services:
     depends_on:
       app: { condition: service_healthy }
       worker: { condition: service_started }
+      worker-ai: { condition: service_started }
       capture: { condition: service_started }
 
 networks:

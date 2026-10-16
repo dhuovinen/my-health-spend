@@ -40,3 +40,40 @@ def make_pdf(*pages: str) -> bytes:
         out += f"{off:010d} 00000 n \n".encode()
     out += f"trailer\n<< /Size {len(objects) + 1} /Root {catalog} 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
     return bytes(out)
+
+
+def render_text(text: str, size: int = 28, margin: int = 60):
+    """A white page with black text, like a phone photo or a scan of a printed document."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    font = ImageFont.load_default(size=size)
+    rows = text.strip("\n").splitlines()
+    width = max(int(font.getlength(r)) for r in rows) + 2 * margin
+    image = Image.new("RGB", (width, len(rows) * int(size * 1.6) + 2 * margin), "white")
+    draw = ImageDraw.Draw(image)
+    for i, row in enumerate(rows):
+        draw.text((margin, margin + i * int(size * 1.6)), row, fill="black", font=font)
+    return image
+
+
+def make_image(text: str, fmt: str = "PNG") -> bytes:
+    """A synthetic photo of `text` as PNG, JPEG or HEIC bytes."""
+    import io
+
+    if fmt == "HEIC":
+        import pillow_heif
+
+        pillow_heif.register_heif_opener()
+    buf = io.BytesIO()
+    render_text(text).save(buf, "HEIF" if fmt == "HEIC" else fmt, **({"quality": 90} if fmt != "PNG" else {}))
+    return buf.getvalue()
+
+
+def make_scanned_pdf(*pages: str) -> bytes:
+    """A PDF of page images with no text layer, like a scanner makes."""
+    import io
+
+    images = [render_text(p) for p in pages]
+    buf = io.BytesIO()
+    images[0].save(buf, "PDF", resolution=150, save_all=True, append_images=images[1:])
+    return buf.getvalue()

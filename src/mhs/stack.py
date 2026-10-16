@@ -55,6 +55,8 @@ class AppConfig:
     cookie_secure: bool = False  # True once served over TLS (staging, production)
     session_idle_minutes: int = 15
     session_max_hours: int = 12
+    ocr_engine: str = "stub"  # MHS_OCR_ENGINE: stub | tesseract (ingest/ocr.py)
+    scrubber: str = "rules"  # MHS_SCRUBBER: rules | presidio (ingest/scrub.py)
 
 
 def load_app_config() -> AppConfig:
@@ -69,6 +71,8 @@ def load_app_config() -> AppConfig:
         cookie_secure=os.environ.get("MHS_COOKIE_SECURE", "") == "1",
         session_idle_minutes=int(os.environ.get("MHS_SESSION_IDLE_MINUTES", "15")),
         session_max_hours=int(os.environ.get("MHS_SESSION_MAX_HOURS", "12")),
+        ocr_engine=os.environ.get("MHS_OCR_ENGINE", "stub"),
+        scrubber=os.environ.get("MHS_SCRUBBER", "rules"),
     )
 
 

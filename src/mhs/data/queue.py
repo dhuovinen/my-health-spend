@@ -42,13 +42,18 @@ class JobQueue:
             ).fetchone()
         return row["status"] if row else None
 
-    def claim(self) -> Job | None:
+    def claim(self, kinds: list[str] | None = None, stale_kinds: list[str] = (), stale_after: int = 60) -> Job | None:
+        """The oldest ready job: of any kind, or of `kinds`, or of `stale_kinds` once it has waited `stale_after`
+        seconds (a worker without AI picks up AI jobs no AI worker took, so they never wait forever)."""
         with self.db.tx() as c:
             row = c.execute(
                 "UPDATE app.jobs SET status = 'running', attempts = attempts + 1, locked_at = now() "
                 "WHERE id = (SELECT id FROM app.jobs WHERE status = 'queued' AND run_after <= now() "
+                "AND (%(any)s OR kind = ANY(%(kinds)s) OR (kind = ANY(%(stale)s) "
+                "AND created_at <= now() - make_interval(secs => %(after)s))) "
                 "ORDER BY run_after, id FOR UPDATE SKIP LOCKED LIMIT 1) "
-                "RETURNING id, household_id, kind, payload, attempts, max_attempts"
+                "RETURNING id, household_id, kind, payload, attempts, max_attempts",
+                {"any": kinds is None, "kinds": list(kinds or []), "stale": list(stale_kinds), "after": stale_after},
             ).fetchone()
         if not row:
             return None

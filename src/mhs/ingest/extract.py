@@ -2,8 +2,8 @@
 
 Pure functions over text in which identifiers are already tokens. Every field carries a confidence; a field the
 document doesn't show is None with confidence 0 and is never guessed (TC-ING-03-3). Layout rules come first
-(the statement layout Release 0's converter reads); label rules cover EOBs and statements in general. An AI
-extractor can sit behind the same `extract()` later (ADR-028, ADR-033).
+(the statement layout Release 0's converter reads); label rules cover EOBs and statements in general. The Claude
+extractor (ingest/ai.py, ADR-028) returns the same Extraction and goes through the same checks.
 """
 
 import re
@@ -310,6 +310,14 @@ def _ser_statement(text: str) -> Extraction | None:
     if "(PAR)" in text:
         f["network_status"] = Field("in_network", 0.8)
     return x
+
+
+def check(x: Extraction) -> None:
+    """The arithmetic checks, for extractions made any way (layout rules or AI)."""
+    if x.doc_type == "eob":
+        _check_eob(x)
+    elif x.doc_type in ("provider_statement", "itemized_bill"):
+        _check_line_total(x, "charge", "billed")
 
 
 def extract(text: str, forced_type: str | None = None) -> Extraction:

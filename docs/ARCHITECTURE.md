@@ -82,7 +82,7 @@ Keep the Release 0 layering and add two packages:
 | --- | --- |
 | `core/` | Reconciliation, matching and identities (pure) |
 | `data/` | Repositories for the records database and owner-edit protection |
-| `ingest/` (new) | The upload pipeline (ADR-033): reading values (`values.py`), HSA and claims exports (`hsa.py`, `claims.py`), text from PDFs and photos (`text.py`, OCR interface `ocr.py`) and identifier scrubbing (`scrub.py`), all run in the application tier; classification and field extraction (`extract.py`) and the queue worker (`worker.py`), run in the back-end tier. Routes and review pages in `web/household/intake.py` |
+| `ingest/` (new) | The upload pipeline (ADR-033): reading values (`values.py`), HSA and claims exports (`hsa.py`, `claims.py`), text from PDFs and photos (`text.py`; OCR in `ocr.py`, Tesseract locally) and identifier scrubbing (`scrub.py`, rules plus Presidio), all run in the application tier; classification and field extraction (`extract.py` layout rules, `ai.py` Claude for households that turned it on, ADR-034) and the queue worker (`worker.py`), run in the back-end tier. Routes and review pages in `web/household/intake.py` |
 | `vault/` (new) | Identity vault service, client, encrypted backup and restore; tokenize, normalize (PRV-03), re-identify |
 | `web/` | The Release 0 pages (`web/pages.py`, `web/templates/`), mounted by both the Release 0 app (`web/app.py`) and the Release 1 application tier (`web/household/`: sign-in, sessions, uploads, `mhs-admin`), each through a `PagesHost` (ADR-032) |
 
@@ -110,7 +110,7 @@ The same containers run in every environment. Only four adapters change, so the 
 | Records database and job queue | `postgres` container | Cloud SQL for PostgreSQL |
 | Object storage (originals, scrubbed images) | Local folder on a Docker volume | Cloud Storage, one bucket per environment |
 | Keys (ADR-025) | Key file on a Docker volume, same envelope-encryption code path | Cloud KMS, one key ring per environment, a data key per household |
-| OCR (ADR-029) | Tesseract in the worker image | Document AI Enterprise OCR |
+| OCR (ADR-029) | Tesseract in the image, run by the app tier (ADR-034) | Document AI Enterprise OCR |
 
 | Environment | Runs | Data | Purpose |
 | --- | --- | --- | --- |

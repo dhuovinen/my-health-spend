@@ -78,6 +78,18 @@ class Accounts:
             row = c.execute("SELECT name FROM app.households WHERE id = %s", (household_id,)).fetchone()
         return row["name"] if row else None
 
+    def ai_extraction(self, household_id: str) -> bool:
+        """Whether the household's documents may be read by Claude (scrubbed text only; ADR-028, ADR-034)."""
+        with self.db.tx() as c:
+            row = c.execute("SELECT ai_extraction FROM app.households WHERE id = %s", (household_id,)).fetchone()
+        return bool(row and row["ai_extraction"])
+
+    def set_ai_extraction(self, household_id: str, on: bool) -> None:
+        with self.db.tx() as c:
+            if c.execute("UPDATE app.households SET ai_extraction = %s WHERE id = %s",
+                         (on, household_id)).rowcount != 1:
+                raise AccountError("No such household.")
+
     def add_member(self, household_id: str, email: str, display_name: str, password: str) -> tuple[Member, str]:
         """Create a member. Returns the member and the TOTP secret to enrol in an authenticator app."""
         email = email.strip().lower()

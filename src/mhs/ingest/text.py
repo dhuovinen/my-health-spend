@@ -1,13 +1,15 @@
-"""Read an upload's text in the application tier (ADR-029, ADR-033): a PDF's own text layer, or OCR for a photo.
+"""Read an upload's text in the application tier (ADR-029, ADR-033): a PDF's own text layer, or OCR for a photo
+or a scanned page.
 
-Rejected files get a plain reason (TC-ING-01-5). Photos go to the OCR engine; until one is configured the
-member enters the fields by hand.
+Rejected files get a plain reason (TC-ING-01-5). Photos and pages without a text layer go to the OCR engine
+(ingest/ocr.py); without one the member enters the fields by hand.
 """
 
 import io
 import logging
+from dataclasses import dataclass
 
-from mhs.ingest.ocr import OcrEngine, get_engine
+from mhs.ingest.ocr import OcrEngine, OcrUnavailable, UnreadableImage, get_engine, open_image
 
 PDF = "application/pdf"
 IMAGES = {"image/jpeg", "image/png", "image/heic", "image/heif", "image/webp"}
@@ -19,6 +21,14 @@ logging.getLogger("pypdf").setLevel(logging.ERROR)
 
 class Unreadable(ValueError):
     """The upload can't be accepted; the message says why, in plain words."""
+
+
+@dataclass(frozen=True)
+class DocumentText:
+    text: str  # empty when there is nothing machine-readable
+    pages: int
+    how: str  # how it was read, shown on the review page
+    confidence: float = 1.0  # OCR's mean word confidence; 1.0 for a text layer
 
 
 def content_type(filename: str, declared: str) -> str:
@@ -50,18 +60,37 @@ def read_pdf(data: bytes) -> list[str]:
         raise Unreadable("This PDF is damaged and can't be read.") from e
 
 
-def read_text(kind: str, data: bytes, ocr: OcrEngine | None = None) -> tuple[str, int, str]:
-    """(text, page count, how it was read). Text is empty when there is nothing machine-readable yet."""
+def check_image(data: bytes, kind: str) -> None:
+    """Refuse a photo that can't be opened before anything is stored."""
+    try:
+        open_image(data, kind)
+    except UnreadableImage as e:
+        raise Unreadable(str(e)) from e
+
+
+def read_text(kind: str, data: bytes, ocr: OcrEngine | None = None) -> DocumentText:
+    """The document's text. Pages without a text layer are read by OCR when an engine is available."""
+    ocr = ocr or get_engine("stub")
     if kind == PDF:
         pages = read_pdf(data)
-        text = "\n\f\n".join(pages)
-        if text.strip():
-            return text, len(pages), "pdf text layer"
-        return "", len(pages), "scanned PDF: needs OCR"
+        if all(p.strip() for p in pages):
+            return DocumentText("\n\f\n".join(pages), len(pages), "pdf text layer")
+        try:
+            result = ocr.read(data, PDF)
+        except OcrUnavailable:
+            text = "\n\f\n".join(pages)
+            return DocumentText(text if text.strip() else "", len(pages), "scanned PDF: OCR not available")
+        scanned = sum(1 for p in pages if not p.strip())
+        merged = [p if p.strip() else (result.pages[i] if i < len(result.pages) else "") for i, p in enumerate(pages)]
+        how = (f"scanned PDF, OCR ({result.engine})" if scanned == len(pages)
+               else f"pdf text layer, {scanned} scanned page{'s' if scanned != 1 else ''} by OCR ({result.engine})")
+        return DocumentText("\n\f\n".join(merged), len(pages), how, result.confidence)
     if kind in IMAGES:
         try:
-            result = (ocr or get_engine()).read(data, kind)
-        except NotImplementedError:
-            return "", 1, "photo: OCR not configured"
-        return result.text, 1, f"OCR ({result.engine})"
+            result = ocr.read(data, kind)
+        except OcrUnavailable:
+            return DocumentText("", 1, "photo: OCR not available")
+        except UnreadableImage as e:
+            raise Unreadable(str(e)) from e
+        return DocumentText(result.text, 1, f"photo, OCR ({result.engine})", result.confidence)
     raise Unreadable("Only PDFs and photos (JPG, PNG, HEIC) can be read as documents.")

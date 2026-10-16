@@ -6,7 +6,7 @@ import pytest
 
 from mhs.data.keys import DecryptError, LocalKeyFile, db_keyring
 from tests.conftest import admin_sql
-from tests.pdfs import make_pdf
+from tests.pdfs import make_image, make_pdf
 
 pytestmark = pytest.mark.postgres
 
@@ -77,4 +77,6 @@ def test_upload_rules(household):
     assert c.post("/uploads", files={"file": ("x.pdf", b"", "application/pdf")},
                   data={"csrf_token": csrf}).status_code == 400
     assert c.post("/uploads", files={"file": ("x.png", b"\x89PNG", "image/png")},
+                  data={"csrf_token": csrf}).status_code == 400  # not really a photo
+    assert c.post("/uploads", files={"file": ("x.png", make_image("photo"), "image/png")},
                   data={"csrf_token": csrf}, follow_redirects=False).status_code == 303
