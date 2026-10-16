@@ -59,7 +59,7 @@ def test_unshifting_an_answer():
     assert record["lines"][0]["service_date"] == "2026-12-30" and record["warnings"] == ["Visit on 12/30/2026 looks odd"]
 
 
-def ai_extract(member, accounts, text: str, name: str):
+def ai_extract(member, accounts, text: str, name: str):  # noqa: F811 - the fixture value, passed through
     from mhs.data.queue import JobQueue
     from mhs.ingest.worker import make_handlers, run_once
     from tests.test_r1_ai import RecordedAi
