@@ -4,7 +4,7 @@
 <form method="get" action="{{ action }}" class="inline">
   {% for k, v in extra.items() if v %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
   <label>Plan year
-    <select name="year" onchange="this.form.submit()">
+    <select name="year" data-autosubmit>
       {% for y in report.years %}<option value="{{ y }}" {{ 'selected' if y == report.year }}>{{ y }}</option>{% endfor %}
     </select>
   </label>
@@ -25,7 +25,7 @@
     <div><span>Billed</span>{{ v.total_billed|money }}</div>
     <div><span>You owe (EOB)</span>{{ v.insurer_owed|money }}</div>
     <div><span>Paid</span>{{ v.paid|money }}</div>
-    {% if v.at_stake %}<div><span>At stake</span><strong style="color:var(--bad)">{{ v.at_stake|money }}</strong></div>{% endif %}
+    {% if v.at_stake %}<div><span>At stake</span><strong class="bad-ink">{{ v.at_stake|money }}</strong></div>{% endif %}
   </div>
   {% for f in v.hsa_flags %}<span class="chip">HSA: {{ f }}</span>{% endfor %}
 </a>

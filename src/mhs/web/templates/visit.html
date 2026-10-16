@@ -20,7 +20,7 @@
   <div class="card tile"><div class="label">Billed to insurer</div><div class="value">{{ v.total_billed|money }}</div></div>
   <div class="card tile"><div class="label">You owe per EOB</div><div class="value">{{ v.insurer_owed|money }}</div></div>
   <div class="card tile"><div class="label">Provider billed you</div><div class="value">{{ v.billed_to_me|money }}</div></div>
-  <div class="card tile"><div class="label">Paid (allocated)</div><div class="value">{{ v.paid|money }}</div>{% if v.remaining %}<div class="small" style="color:var(--warn)">{{ v.remaining|money }} still unpaid</div>{% endif %}</div>
+  <div class="card tile"><div class="label">Paid (allocated)</div><div class="value">{{ v.paid|money }}</div>{% if v.remaining %}<div class="small warn-ink">{{ v.remaining|money }} still unpaid</div>{% endif %}</div>
 </div>
 
 <div class="grid two">

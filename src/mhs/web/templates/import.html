@@ -4,27 +4,39 @@
 <div class="page-head"><h1>Import data</h1></div>
 {% if done %}<div class="alert good">Import saved.</div>{% endif %}
 {% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
+{% if path_import %}
 <div class="grid two">
   <div class="card">
     <h2>From a file on this computer</h2>
     <p class="muted small">Use this for files that reference statement PDFs: the path lets the app find and store them.</p>
-    <form method="post" action="/import" class="inline">
-      <label style="flex:1 1 320px">Path to ingest JSON<input name="path" value="{{ default_path }}" placeholder="data/ingest-2026.json"></label>
+    <form method="post" action="/import" class="inline">{{ csrf_input() }}
+      <label class="grow-wide">Path to ingest JSON<input name="path" value="{{ default_path }}" placeholder="data/ingest-2026.json"></label>
       <button class="btn primary">Check file</button>
     </form>
   </div>
   <div class="card">
     <h2>Upload</h2>
     <p class="muted small">Attached documents (PDFs) can't be read from an upload; their records still import.</p>
-    <form method="post" action="/import" enctype="multipart/form-data" class="inline">
+    <form method="post" action="/import" enctype="multipart/form-data" class="inline">{{ csrf_input() }}
       <input type="file" name="file" accept=".json,application/json">
       <button class="btn">Check file</button>
     </form>
   </div>
 </div>
+{% else %}
+<div class="card">
+  <h2>Upload an ingest file</h2>
+  <p class="muted small">Add the statement and EOB files the ingest file refers to; they're matched by file name and stored encrypted.</p>
+  <form method="post" action="/import" enctype="multipart/form-data" class="inline">{{ csrf_input() }}
+    <label>Ingest JSON<input type="file" name="file" accept=".json,application/json" required></label>
+    <label class="grow-wide">Attached files (optional)<input type="file" name="attachments" multiple accept="application/pdf,image/*"></label>
+    <button class="btn primary">Check file</button>
+  </form>
+</div>
+{% endif %}
 <div class="card section">
   <h2>How ingest files are made</h2>
-  <p class="small">The format is defined in <code>schema/mhs-ingest.schema.json</code>. <code>tools/build_ingest.py</code> builds one from your insurer's claims CSV, the HSA transaction export and provider statement PDFs (see NOTES.md). Re-importing a file updates records with the same ids.</p>
+  <p class="small">The format is defined in <code>schema/mhs-ingest.schema.json</code>. <code>tools/build_ingest.py</code> builds one from your insurer's claims CSV, the HSA transaction export and provider statement PDFs (see NOTES.md){% if not path_import %}, using the settings file from <a href="/settings/export">Settings</a>{% endif %}. Re-importing a file updates records with the same ids.</p>
 </div>
 <h2 class="section">Recent imports</h2>
 <div class="card table-wrap">

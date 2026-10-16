@@ -83,7 +83,7 @@
     {% for l in report.limits %}
     <div class="limit">
       <div class="row"><span>{{ l.label }}</span><span class="num">{{ l.used|money }} of {{ l.limit.amount|money }}</span></div>
-      <div class="bar"><span style="width: {{ l.pct }}%"></span></div>
+      <div class="bar"><span data-pct="{{ l.pct }}"></span></div>
       {% if l.note %}<div class="muted small">{{ l.note }}</div>{% endif %}
     </div>
     {% else %}

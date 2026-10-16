@@ -6,10 +6,11 @@ owner changed in the app (Settings, provider notes) keeps the owner's version wh
 unless the owner chooses to replace their edits at confirm time.
 """
 
+import hashlib
 import json
-import shutil
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from typing import Protocol
 
 from jsonschema import Draft202012Validator, FormatChecker
 
@@ -36,6 +37,75 @@ REFERENCES = [
 LIST_REFERENCES = [("member_ids", "member"), ("visit_ids", "visit"), ("payment_ids", "document")]
 
 
+# Fields the importer adds to a document record; they don't count as differences on re-import.
+BOOKKEEPING = ("stored_file", "file_sha256")
+
+
+class FileSource(Protocol):
+    """Where the files an ingest file attaches (documents[].file) are read from."""
+
+    def exists(self, name: str) -> bool: ...
+
+    def read(self, name: str) -> bytes: ...
+
+    def missing(self, name: str) -> str:
+        """Why a file is missing, for the preview's warning."""
+        ...
+
+
+class FolderSource:
+    """Files beside the ingest file on disk (Release 0 import by path; the mhs-admin import command)."""
+
+    def __init__(self, base_dir: Path):
+        self.base_dir = Path(base_dir)
+
+    def exists(self, name: str) -> bool:
+        return (self.base_dir / name).is_file()
+
+    def read(self, name: str) -> bytes:
+        return (self.base_dir / name).read_bytes()
+
+    def missing(self, name: str) -> str:
+        return f"file {name!r} not found"
+
+
+class UploadedSource:
+    """Files uploaded together with the ingest file, matched by file name (Release 1 import page)."""
+
+    def __init__(self, files: dict[str, bytes]):
+        self.files = {PurePosixPath(n).name: data for n, data in files.items()}
+
+    def exists(self, name: str) -> bool:
+        return PurePosixPath(name).name in self.files
+
+    def read(self, name: str) -> bytes:
+        return self.files[PurePosixPath(name).name]
+
+    def missing(self, name: str) -> str:
+        if not self.files:
+            return f"file {name!r} not attached (add it with the ingest file to store it)"
+        return f"file {name!r} not among the attached files"
+
+
+class DocumentFiles(Protocol):
+    """Where attached files are kept once imported. save() returns the fields to set on the document record."""
+
+    def save(self, doc_id: str, name: str, data: bytes) -> dict: ...
+
+
+class FolderFiles:
+    """Release 0: plain copies in the data folder's documents/."""
+
+    def __init__(self, documents_dir: Path):
+        self.documents_dir = Path(documents_dir)
+
+    def save(self, doc_id: str, name: str, data: bytes) -> dict:
+        self.documents_dir.mkdir(parents=True, exist_ok=True)
+        stored = f"{doc_id}{PurePosixPath(name).suffix.lower()}"
+        (self.documents_dir / stored).write_bytes(data)
+        return {"stored_file": stored, "file_sha256": hashlib.sha256(data).hexdigest()}
+
+
 @dataclass
 class KeptEdit:
     section: str
@@ -48,7 +118,7 @@ class KeptEdit:
 class ImportPlan:
     source: str
     data: dict
-    base_dir: Path | None
+    files: FileSource | None
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     counts: dict[str, dict[str, int]] = field(default_factory=dict)
@@ -138,7 +208,7 @@ def reference_errors(data: dict, store: Store) -> list[str]:
 
 def _comparable(rec: dict) -> dict:
     """A record without bookkeeping and empty fields, so a missing list and an empty one compare equal."""
-    return {k: v for k, v in rec.items() if k != "stored_file" and v not in (None, "", [], {})}
+    return {k: v for k, v in rec.items() if k not in BOOKKEEPING and v not in (None, "", [], {})}
 
 
 def _kept_edit(section: str, kind: str, rec: dict, old: dict | None, edited: set[str]) -> KeptEdit | None:
@@ -153,8 +223,11 @@ def _kept_edit(section: str, kind: str, rec: dict, old: dict | None, edited: set
     return KeptEdit(section, kind, rec["id"], sorted(k for k in old.keys() | new.keys() if old.get(k) != new.get(k)))
 
 
-def prepare(data: dict, store: Store, source: str, base_dir: Path | None) -> ImportPlan:
-    plan = ImportPlan(source=source, data=data, base_dir=base_dir)
+def prepare(data: dict, store: Store, source: str, files: Path | FileSource | None) -> ImportPlan:
+    """files: where attached files are read from (a folder, or uploaded files); None when there are none."""
+    if isinstance(files, Path):
+        files = FolderSource(files)
+    plan = ImportPlan(source=source, data=data, files=files)
     plan.errors = schema_errors(data)
     if plan.errors:
         return plan
@@ -184,17 +257,19 @@ def prepare(data: dict, store: Store, source: str, base_dir: Path | None) -> Imp
     for doc in data.get("documents", []):
         if "file" not in doc:
             continue
-        if base_dir is None:
+        if files is None:
             plan.warnings.append(f"documents ({doc['id']}): file {doc['file']!r} not attached (uploaded JSON has no folder to read it from; import by path instead)")
-        elif not (base_dir / doc["file"]).is_file():
-            plan.warnings.append(f"documents ({doc['id']}): file {doc['file']!r} not found")
+        elif not files.exists(doc["file"]):
+            plan.warnings.append(f"documents ({doc['id']}): {files.missing(doc['file'])}")
     return plan
 
 
-def commit(plan: ImportPlan, store: Store, documents_dir: Path, replace_edits: bool = False) -> dict:
+def commit(plan: ImportPlan, store: Store, documents: Path | DocumentFiles, replace_edits: bool = False) -> dict:
+    """Save the plan. documents: where attached files go (a folder for Release 0, or encrypted storage)."""
     if not plan.ok:
         raise ValueError("Cannot import a file with errors")
-    documents_dir.mkdir(parents=True, exist_ok=True)
+    if isinstance(documents, Path):
+        documents = FolderFiles(documents)
     existing_docs = {d["id"]: d for d in store.all("document")}
     # Re-check owner edits now: the owner may have edited something since the preview.
     kept = set()
@@ -210,13 +285,12 @@ def commit(plan: ImportPlan, store: Store, documents_dir: Path, replace_edits: b
                 continue
             rec = to_cents(rec)
             if kind == "document":
-                src = plan.base_dir / rec["file"] if plan.base_dir and "file" in rec else None
-                if src and src.is_file():
-                    name = f"{rec['id']}{src.suffix.lower()}"
-                    shutil.copyfile(src, documents_dir / name)
-                    rec["stored_file"] = name
-                elif rec["id"] in existing_docs and "stored_file" in existing_docs[rec["id"]]:
-                    rec["stored_file"] = existing_docs[rec["id"]]["stored_file"]
+                for k in BOOKKEEPING:  # only the importer sets these; never trust them from a file
+                    rec.pop(k, None)
+                if plan.files is not None and "file" in rec and plan.files.exists(rec["file"]):
+                    rec.update(documents.save(rec["id"], rec["file"], plan.files.read(rec["file"])))
+                elif rec["id"] in existing_docs:
+                    rec.update({k: existing_docs[rec["id"]][k] for k in BOOKKEEPING if k in existing_docs[rec["id"]]})
             items.append((kind, rec))
     store.upsert_many(items)
     if replace_edits:

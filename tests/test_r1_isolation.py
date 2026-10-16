@@ -15,7 +15,7 @@ def two(household, app_db):
     ca, cb = household.sign_in(a), household.sign_in(b)
     HouseholdRecords(app_db, a.household_id).put("visit", {"id": "visit-a", "provider": "Clinic A"})
     HouseholdRecords(app_db, b.household_id).put("visit", {"id": "visit-b", "provider": "Clinic B"})
-    r = ca.post("/documents", files={"file": ("a-eob.pdf", b"%PDF-1.4 household A only", "application/pdf")},
+    r = ca.post("/uploads", files={"file": ("a-eob.pdf", b"%PDF-1.4 household A only", "application/pdf")},
                 data={"csrf_token": household.csrf(ca)}, follow_redirects=False)
     doc_a = r.headers["location"].split("uploaded=")[1]
     return household, a, b, ca, cb, doc_a
@@ -25,18 +25,18 @@ def test_visits_and_documents_of_another_household_are_not_found(two):
     household, a, b, ca, cb, doc_a = two
     # A sees its own.
     assert ca.get("/api/visits/visit-a").json()["provider"] == "Clinic A"
-    assert ca.get(f"/api/documents/{doc_a}").json()["filename"] == "a-eob.pdf"
-    assert ca.get(f"/documents/{doc_a}").content == b"%PDF-1.4 household A only"
+    assert ca.get(f"/api/uploads/{doc_a}").json()["filename"] == "a-eob.pdf"
+    assert ca.get(f"/uploads/{doc_a}").content == b"%PDF-1.4 household A only"
     # B asks for A's ids: the same 404 as an id that doesn't exist, nothing of A's in the body.
-    for path in (f"/api/documents/{doc_a}", "/api/visits/visit-a", f"/documents/{doc_a}"):
+    for path in (f"/api/uploads/{doc_a}", "/api/visits/visit-a", f"/uploads/{doc_a}"):
         r = cb.get(path)
         assert r.status_code == 404 and r.json() == NOT_FOUND, path
-        missing = cb.get(path.replace(doc_a, "doc_000000000000000000000000").replace("visit-a", "visit-zz"))
+        missing = cb.get(path.replace(doc_a, "upl_000000000000000000000000").replace("visit-a", "visit-zz"))
         assert (missing.status_code, missing.json()) == (r.status_code, r.json())
     # Lists hold only the member's own household.
     assert [v["id"] for v in cb.get("/api/visits").json()] == ["visit-b"]
-    assert cb.get("/api/documents").json() == []
-    assert "a-eob.pdf" not in cb.get("/").text and "Household A" not in cb.get("/").text
+    assert cb.get("/api/uploads").json() == []
+    assert "a-eob.pdf" not in cb.get("/uploads").text and "Household A" not in cb.get("/uploads").text
 
 
 def test_jobs_of_another_household_are_not_found(two):
@@ -49,7 +49,7 @@ def test_jobs_of_another_household_are_not_found(two):
 
 def test_bad_ids_leak_nothing(two):
     household, a, b, ca, cb, doc_a = two
-    for path in ("/api/documents/..%2F..%2Fetc", "/api/visits/" + "x" * 200, "/api/jobs/not-a-number"):
+    for path in ("/api/uploads/..%2F..%2Fetc", "/api/visits/" + "x" * 200, "/api/jobs/not-a-number"):
         r = cb.get(path)
         assert r.status_code in (400, 404) and set(r.json()) == {"detail"}, path
         assert "x" * 20 not in r.text and "etc" not in r.text

@@ -39,6 +39,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 029 | OCR: PDF text layer first, then the cloud host's OCR; Presidio finds identifiers; images blanked from OCR word boxes | 2026-10-16 | Accepted |
 | 030 | Build and test locally on Docker Compose; production on Google Cloud | 2026-10-16 | Accepted |
 | 031 | Foundation build: roles and row-level security per household, envelope encryption per service, TOTP sign-in, passphrase-sealed vault backup | 2026-10-16 | Accepted |
+| 032 | Release 0 pages shared by both apps; Release 1 imports by upload only, files encrypted, edits and history per household | 2026-10-16 | Proposed |
 
 ## Records
 
@@ -161,3 +162,16 @@ Implementation choices for phase 1.1 inside ADR-012, 025, 027 and 030. Proposed 
 - **Code layout.** Adapters for records, queue, object storage and keys in `data/`; OCR and the worker in `ingest/`; the vault service, client and backup in `vault/`; the application tier in `web/household/`, beside the untouched Release 0 app.
 
 **Consequences.** Two compose services beyond the four in ARCHITECTURE.md (`setup` and `migrate`, both one-shot). Losing a key file loses that service's data locally, so the key files must be backed up with the vault backup. The test suite starts a throwaway Postgres container when no test database is given, so `uv run pytest` needs Docker for the Release 1 tests (they skip without it).
+
+### ADR-032 · Porting Release 0 to the server (Proposed)
+Implementation choices for phase 1.2. Proposed by the build session on 2026-10-16.
+
+**Decision.**
+- **One set of pages.** The Release 0 routes and templates move into a shared module (`web/pages.py`) that both apps mount. Release 0 (`uv run mhs`) hosts them over its SQLite store; the Release 1 application tier hosts them behind MFA sign-in, over a household-scoped Postgres store with the same interface. The Release 0 test suite (TEST_PLAN Appendix A) runs against both apps, so the two can't drift apart.
+- **Pages work under the Content Security Policy.** Inline styles and inline event handlers leave the templates for `style.css` and one small same-origin script (`/static/app.js`); every form carries a CSRF token in Release 1.
+- **Imports in Release 1 are by upload only.** A member uploads the ingest JSON together with its attached statement and EOB files; the server never reads a path a member types. Attached files are stored encrypted with the household's data key and hashed (ING-10). The admin command `mhs-admin import` reads a path inside the app container, for migrating Release 0 data.
+- **Member edits and import history per household.** Owner-edit marks (ADR-011) and the import log become household tables with row-level security, so one household's edits never protect or expose another's.
+- **Settings for the converter by download.** Release 1 has no `data/settings.json`; Settings offers the same file as a download for `tools/build_ingest.py`.
+- **Uploaded originals are their own kind.** Phase 1.1 uploads (photos and PDFs awaiting extraction in phase 1.3) are stored as `original` records at `/uploads`, apart from the ingest `document` records the engine reconciles.
+
+**Consequences.** Release 0 gains the same template changes (no visible difference). The import preview is held in the app process between preview and confirm, keyed by household, which is fine for one app instance and must move to the database before Cloud Run runs more than one.

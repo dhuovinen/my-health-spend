@@ -84,9 +84,9 @@ Keep the Release 0 layering and add two packages:
 | `data/` | Repositories for the records database and owner-edit protection |
 | `ingest/` (new) | Back-end tier pipeline: OCR, scrub, classify, extract, dedupe |
 | `vault/` (new) | Identity vault service, client, encrypted backup and restore; tokenize, normalize (PRV-03), re-identify |
-| `web/` | Release 0 app (`web/app.py`) and the Release 1 application tier (`web/household/`: sign-in, sessions, routes, templates, `mhs-admin`) |
+| `web/` | The Release 0 pages (`web/pages.py`, `web/templates/`), mounted by both the Release 0 app (`web/app.py`) and the Release 1 application tier (`web/household/`: sign-in, sessions, uploads, `mhs-admin`), each through a `PagesHost` (ADR-032) |
 
-Phase 1.1 placed the adapters in `data/` (`db.py`, `records.py`, `queue.py`, `objects.py`, `keys.py`, `migrate.py` with SQL in `data/migrations/`), the worker and the OCR interface in `ingest/`, and the stack's runtime settings and `mhs-stack` setup commands in `stack.py` (ADR-031).
+Phase 1.1 placed the adapters in `data/` (`db.py`, `records.py`, `queue.py`, `objects.py`, `keys.py`, `migrate.py` with SQL in `data/migrations/`; phase 1.2 added `household_store.py`, Release 0's store interface over a household's records, owner-edit marks and import log), the worker and the OCR interface in `ingest/`, and the stack's runtime settings and `mhs-stack` setup commands in `stack.py` (ADR-031).
 
 The Release 0 JSON importer stays as an admin path for migrating the owner's data and for test fixtures.
 

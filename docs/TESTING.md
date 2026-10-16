@@ -18,15 +18,17 @@ docker compose --profile test run --rm tests
 uv run --with pytest-cov pytest --cov=mhs
 ```
 
-## Current state (2026-10-16, phase 1.1)
+## Current state (2026-10-16, phase 1.2)
 
 | Measure | Value |
 | --- | --- |
-| Automated tests | 95: 32 Release 0, 60 Release 1 (`tests/test_r1_*.py`), 3 stack (`tests/stack/`); all passing on the compose stack |
+| Automated tests | 126 on the compose stack: the 32 Release 0 tests (Appendix A), 16 of which run a second time against Release 1 (`[release1]`, `[postgres]` ids); 75 Release 1 tests (`tests/test_r1_*.py`); 3 stack tests (`tests/stack/`) |
 | Coverage, `core/` | 96% (target ≥ 80%) |
 | Coverage, `data/` | 89 to 100% per module |
-| Coverage, `web/household/app.py` and `auth.py` | 96%, 98% |
-| Coverage, total | 88% (`mhs-admin` and process entry points are run in the stack, not under coverage) |
+| Coverage, `web/pages.py` (shared pages), `web/household/app.py`, `auth.py` | 85%, 95%, 98% |
+| Coverage, total | 92% |
+
+**Appendix A on the server (phase 1.2 exit).** `tests/test_web.py` runs each Release 0 web test against both apps through the `web` fixture: Release 0 over SQLite, and the Release 1 application tier as a signed-in member, importing by upload, with CSRF tokens on every post. `tests/test_importer.py` runs each store-backed importer test against the SQLite store and a household's Postgres store (`store` fixture). The core tests (`test_reconcile.py`) are shared code. `tests/test_r1_pages.py` adds household isolation on every ported page, encrypted import attachments and `mhs-admin import`.
 
 Release 1 test cases covered in phase 1.1:
 

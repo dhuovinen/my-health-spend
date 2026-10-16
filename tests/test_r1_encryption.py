@@ -13,7 +13,7 @@ MARKER = b"SYNTHETIC-MARKER-7f3a9c Pat Example DOB 1970-01-01"
 
 
 def upload(household, client, name="Pat Example statement.pdf", data=b"%PDF-1.4 " + MARKER):
-    r = client.post("/documents", files={"file": (name, data, "application/pdf")},
+    r = client.post("/uploads", files={"file": (name, data, "application/pdf")},
                     data={"csrf_token": household.csrf(client)}, follow_redirects=False)
     assert r.status_code == 303, r.text
     return r.headers["location"].split("uploaded=")[1]
@@ -26,13 +26,13 @@ def test_tc_prv_06_2_original_is_unreadable_on_disk(household, pgdb):
     stored = (household.objects_dir / "households" / who.household_id / "originals" / doc_id).read_bytes()
     assert MARKER not in stored and b"%PDF" not in stored
     # The records database holds the hash and metadata, never the file name in the clear.
-    rows = admin_sql(pgdb, "SELECT data::text FROM app.records WHERE kind = 'document'")
+    rows = admin_sql(pgdb, "SELECT data::text FROM app.records WHERE kind = 'original'")
     assert "Pat Example" not in rows[0][0]
     # The member gets the original back, byte for byte, with its recorded hash.
-    data = c.get(f"/documents/{doc_id}").content
+    data = c.get(f"/uploads/{doc_id}").content
     assert data == b"%PDF-1.4 " + MARKER
-    assert c.get(f"/api/documents/{doc_id}").json()["sha256"] == hashlib.sha256(data).hexdigest()
-    assert 'filename="Pat Example statement.pdf"' in c.get(f"/documents/{doc_id}").headers["content-disposition"]
+    assert c.get(f"/api/uploads/{doc_id}").json()["sha256"] == hashlib.sha256(data).hexdigest()
+    assert 'filename="Pat Example statement.pdf"' in c.get(f"/uploads/{doc_id}").headers["content-disposition"]
 
 
 def test_tc_prv_06_2_vault_entries_and_totp_secrets_are_sealed(household, vault_client, pgdb):
@@ -70,9 +70,9 @@ def test_upload_rules(household):
     who = household.enrol()
     c = household.sign_in(who)
     csrf = household.csrf(c)
-    assert c.post("/documents", files={"file": ("x.exe", b"MZ", "application/octet-stream")},
+    assert c.post("/uploads", files={"file": ("x.exe", b"MZ", "application/octet-stream")},
                   data={"csrf_token": csrf}).status_code == 415
-    assert c.post("/documents", files={"file": ("x.pdf", b"", "application/pdf")},
+    assert c.post("/uploads", files={"file": ("x.pdf", b"", "application/pdf")},
                   data={"csrf_token": csrf}).status_code == 400
-    assert c.post("/documents", files={"file": ("x.png", b"\x89PNG", "image/png")},
+    assert c.post("/uploads", files={"file": ("x.png", b"\x89PNG", "image/png")},
                   data={"csrf_token": csrf}, follow_redirects=False).status_code == 303

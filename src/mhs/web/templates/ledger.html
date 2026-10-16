@@ -40,12 +40,12 @@
       <div class="note-text">{{ n.text }}</div>
       <details class="small">
         <summary>Edit</summary>
-        <form method="post" action="/notes/{{ n.id }}" class="inline section">
+        <form method="post" action="/notes/{{ n.id }}" class="inline section">{{ csrf_input() }}
           <input type="hidden" name="next" value="{{ here }}">
           {{ note_fields(g, n, today, channels, directions) }}
           <button class="btn primary">Save note</button>
         </form>
-        <form method="post" action="/notes/{{ n.id }}/delete" class="section" onsubmit="return confirm('Delete this note?')">
+        <form method="post" action="/notes/{{ n.id }}/delete" class="section" data-confirm="Delete this note?">{{ csrf_input() }}
           <input type="hidden" name="next" value="{{ here }}">
           <button class="btn small danger">Delete note</button>
         </form>
@@ -54,7 +54,7 @@
     {% endfor %}
     <details {{ 'open' if not notes }} class="{{ 'section' if notes }}">
       <summary><strong>Add a note</strong></summary>
-      <form method="post" action="/notes" class="inline section">
+      <form method="post" action="/notes" class="inline section">{{ csrf_input() }}
         <input type="hidden" name="next" value="{{ here }}">
         {{ note_fields(g, {}, today, channels, directions) }}
         <button class="btn primary">Add note</button>
