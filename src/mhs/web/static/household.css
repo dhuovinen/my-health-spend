@@ -1,0 +1,7 @@
+/* Release 1 application tier additions to style.css */
+.auth { max-width: 420px; margin: 2rem auto; }
+.auth h1 { font-size: 1.4rem; }
+form.stack { display: flex; flex-direction: column; gap: .8rem; margin-top: 1rem; }
+form.stack .btn { align-self: flex-start; }
+.topbar .icons form { margin: 0; }
+.section form.inline { margin-bottom: 1rem; }
