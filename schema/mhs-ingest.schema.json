@@ -410,6 +410,10 @@
         "due_date": {
           "$ref": "#/$defs/date"
         },
+        "notice": {
+          "type": "string",
+          "description": "Notice wording printed on the statement, if any, e.g. \"Second notice\", \"Past due\", \"Final notice\"."
+        },
         "balance_due": {
           "$ref": "#/$defs/money"
         },

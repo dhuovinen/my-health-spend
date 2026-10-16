@@ -7,10 +7,11 @@
   'unconfirmed': ('Unconfirmed match', 'idle')} %}
 <div class="page-head"><h1>Providers</h1>{{ year_select(report, "/providers") }}</div>
 <p class="muted">Payments are balanced against everything you owe each provider. Providers joined by a match in Settings are shown together.</p>
+{% if flag %}<p class="small">Showing providers flagged <span class="chip {{ FLAG_TEXT.get(flag, ('', ''))[1] }}">{{ FLAG_TEXT.get(flag, (flag, ''))[0] }}</span> <a href="/providers?year={{ report.year }}">Show all</a></p>{% endif %}
 <div class="card table-wrap">
 <table>
   <tr><th>Provider</th><th class="num">Visits</th><th class="num">You owe (EOB)</th><th class="num">Paid</th><th class="num">Unpaid</th><th class="num">Overpaid</th><th>Flags</th><th class="num">Notes</th></tr>
-  {% for g in report.groups %}
+  {% for g in groups %}
   <tr>
     <td><a href="/providers/{{ g.id }}?year={{ report.year }}">{{ g.name }}</a></td>
     <td class="num">{{ g.visits|rejectattr('carry_in')|list|length }}</td>

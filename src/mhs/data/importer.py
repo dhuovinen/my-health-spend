@@ -1,7 +1,9 @@
 """Validate an ingest file, preview what it would change, and save it.
 
 Nothing is written unless the file passes schema and cross-reference validation. Records are
-upserted by id, so re-importing a corrected file is how data is fixed.
+upserted by id, so re-importing a corrected file is how data is fixed. The one exception: a record the
+owner changed in the app (Settings, provider notes) keeps the owner's version when the file differs,
+unless the owner chooses to replace their edits at confirm time.
 """
 
 import json
@@ -35,6 +37,14 @@ LIST_REFERENCES = [("member_ids", "member"), ("visit_ids", "visit"), ("payment_i
 
 
 @dataclass
+class KeptEdit:
+    section: str
+    kind: str
+    id: str
+    fields: list[str]  # fields the file would change; empty when the owner deleted the record
+
+
+@dataclass
 class ImportPlan:
     source: str
     data: dict
@@ -42,10 +52,14 @@ class ImportPlan:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     counts: dict[str, dict[str, int]] = field(default_factory=dict)
+    kept: list[KeptEdit] = field(default_factory=list)  # owner edits the file would overwrite
 
     @property
     def ok(self) -> bool:
         return not self.errors
+
+    def kept_in(self, section: str) -> int:
+        return sum(k.section == section for k in self.kept)
 
 
 def _schema() -> dict:
@@ -122,6 +136,23 @@ def reference_errors(data: dict, store: Store) -> list[str]:
     return errors
 
 
+def _comparable(rec: dict) -> dict:
+    """A record without bookkeeping and empty fields, so a missing list and an empty one compare equal."""
+    return {k: v for k, v in rec.items() if k != "stored_file" and v not in (None, "", [], {})}
+
+
+def _kept_edit(section: str, kind: str, rec: dict, old: dict | None, edited: set[str]) -> KeptEdit | None:
+    """The owner's edit this record would overwrite, if any (old is the stored record, None if deleted)."""
+    if rec["id"] not in edited:
+        return None
+    if old is None:
+        return KeptEdit(section, kind, rec["id"], [])
+    old, new = _comparable(old), _comparable(to_cents(rec))
+    if old == new:
+        return None
+    return KeptEdit(section, kind, rec["id"], sorted(k for k in old.keys() | new.keys() if old.get(k) != new.get(k)))
+
+
 def prepare(data: dict, store: Store, source: str, base_dir: Path | None) -> ImportPlan:
     plan = ImportPlan(source=source, data=data, base_dir=base_dir)
     plan.errors = schema_errors(data)
@@ -136,14 +167,18 @@ def prepare(data: dict, store: Store, source: str, base_dir: Path | None) -> Imp
         if not records:
             continue
         existing = {r["id"]: r for r in store.all(kind)}
+        edited = store.edited_ids(kind)
         c = {"new": 0, "updated": 0, "unchanged": 0}
         for rec in records:
             old = existing.get(rec["id"])
-            if old is None:
+            if kept := _kept_edit(section, kind, rec, old, edited):
+                plan.kept.append(kept)
+            elif old is None:
                 c["new"] += 1
+            elif _comparable(old) == _comparable(to_cents(rec)):
+                c["unchanged"] += 1
             else:
-                old = {k: v for k, v in old.items() if k != "stored_file"}
-                c["unchanged" if old == to_cents(rec) else "updated"] += 1
+                c["updated"] += 1
         plan.counts[section] = c
 
     for doc in data.get("documents", []):
@@ -156,14 +191,23 @@ def prepare(data: dict, store: Store, source: str, base_dir: Path | None) -> Imp
     return plan
 
 
-def commit(plan: ImportPlan, store: Store, documents_dir: Path) -> dict:
+def commit(plan: ImportPlan, store: Store, documents_dir: Path, replace_edits: bool = False) -> dict:
     if not plan.ok:
         raise ValueError("Cannot import a file with errors")
     documents_dir.mkdir(parents=True, exist_ok=True)
     existing_docs = {d["id"]: d for d in store.all("document")}
+    # Re-check owner edits now: the owner may have edited something since the preview.
+    kept = set()
+    for section, kind in SECTIONS.items():
+        records = plan.data.get(section, [])
+        if records:
+            existing, edited = {r["id"]: r for r in store.all(kind)}, store.edited_ids(kind)
+            kept |= {(kind, r["id"]) for r in records if _kept_edit(section, kind, r, existing.get(r["id"]), edited)}
     items = []
     for section, kind in SECTIONS.items():
         for rec in plan.data.get(section, []):
+            if (kind, rec["id"]) in kept and not replace_edits:
+                continue
             rec = to_cents(rec)
             if kind == "document":
                 src = plan.base_dir / rec["file"] if plan.base_dir and "file" in rec else None
@@ -175,7 +219,11 @@ def commit(plan: ImportPlan, store: Store, documents_dir: Path) -> dict:
                     rec["stored_file"] = existing_docs[rec["id"]]["stored_file"]
             items.append((kind, rec))
     store.upsert_many(items)
+    if replace_edits:
+        store.clear_edited(sorted(kept))
     summary = {"counts": plan.counts, "warnings": len(plan.warnings)}
+    if kept:
+        summary["edits_replaced" if replace_edits else "edits_kept"] = len(kept)
     store.log_import(plan.source, summary)
     return summary
 

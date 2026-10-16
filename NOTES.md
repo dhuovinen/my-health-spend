@@ -5,7 +5,8 @@
 My Health Spend (MH$): a personal app that reconciles provider bills, insurer EOBs and payment
 records (HSA/FSA/card) per visit to find billing errors and overpayment. MVP is single-user, local
 only. Product docs live in `docs/`: `MVP_REQUIREMENTS.md`, `My Health Spend (MHS) Problem Statement & Plan.md`
-and `My Health Spend (MHS) Product Requirements.md` (full spec, about 98 requirements).
+and `My Health Spend (MHS) Product Requirements.md` (full spec, 100 requirements), plus `TEST_PLAN.md`.
+The built MVP is Release 0; Release 1 (server-side) is the PRD's P1.
 
 ## How to run
 
@@ -52,3 +53,7 @@ provider relationships. Ingest now 15 visits, 96 documents.
 limits, members, accounts, providers, provider matches), help stub. 22 tests passing. Real 2026 data imported.
 2026-10-09: Provider notes (dated contact log per provider, linked to a visit) on branch feat/provider-notes.
 2026-10-15: Full product requirements written; product docs moved into `docs/`.
+2026-10-15: Test plan written (326 cases). Owner decisions applied to PRD (Release 0/1 split, HSA first,
+server-side data, status order, money identities, tolerance, owner edits win). Re-import now keeps
+in-app edits unless replaced. Release 0 gaps closed: C6 balance age and second notice, HR-4 counts
+with links (32 tests passing). Records deleted in the app also stay deleted on re-import. Statements accept an optional `notice` field (schema still 0.1).

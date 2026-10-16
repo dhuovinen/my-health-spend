@@ -10,17 +10,25 @@
 <div class="card">
   <h2>What will change</h2>
   <table>
-    <tr><th>Section</th><th class="num">New</th><th class="num">Updated</th><th class="num">Unchanged</th></tr>
+    <tr><th>Section</th><th class="num">New</th><th class="num">Updated</th><th class="num">Unchanged</th>{% if plan.kept %}<th class="num">Your edits kept</th>{% endif %}</tr>
     {% for section, c in plan.counts.items() %}
-    <tr><td>{{ section|humanize }}</td><td class="num">{{ c.new }}</td><td class="num">{{ c.updated }}</td><td class="num">{{ c.unchanged }}</td></tr>
+    <tr><td>{{ section|humanize }}</td><td class="num">{{ c.new }}</td><td class="num">{{ c.updated }}</td><td class="num">{{ c.unchanged }}</td>{% if plan.kept %}<td class="num">{{ plan.kept_in(section) }}</td>{% endif %}</tr>
     {% endfor %}
   </table>
 </div>
 {% if plan.warnings %}
 <div class="card section"><h2>Warnings</h2><ul>{% for w in plan.warnings %}<li class="small">{{ w }}</li>{% endfor %}</ul></div>
 {% endif %}
+{% if plan.kept %}
+<div class="card section">
+  <h2>Your edits</h2>
+  <p class="small">You changed {{ 'this record' if plan.kept|length == 1 else 'these records' }} in the app, and the file has different values. Your version is kept unless you choose to replace it below.</p>
+  <ul>{% for k in plan.kept %}<li class="small">{{ k.section|humanize }} <code>{{ k.id }}</code>: {% if k.fields %}file differs in {{ k.fields|join(', ') }}{% else %}you deleted it in the app; the file would bring it back{% endif %}</li>{% endfor %}</ul>
+</div>
+{% endif %}
 <form method="post" action="/import/confirm" class="inline section">
   <input type="hidden" name="token" value="{{ token }}">
+  {% if plan.kept %}<label class="check-label"><input type="checkbox" name="replace_edits" value="1"> Replace my edits with the file's values</label>{% endif %}
   <button class="btn primary">Save import</button>
   <a class="btn" href="/import">Cancel</a>
 </form>

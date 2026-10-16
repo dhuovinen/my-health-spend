@@ -129,6 +129,16 @@ def test_prior_year_visit_on_a_current_statement_is_carried_in():
     assert g.visits[0].carry_in and g.visits[0].paid == 4000 and g.overpaid == 0
 
 
+def test_hsa_counts_include_carry_in_visits_like_the_totals():
+    line = {"visit_id": "v0", "patient_amount": 4000, "balance": 4000}
+    ds = base(visits=[visit("v0", "2025-12-15")],
+              documents=[{"id": "s1", "type": "provider_bill", "date": "2026-01-20", "provider_id": "a",
+                          "balance_due": 4000, "lines": [line]}])
+    r = build_report(ds, 2026, TODAY)
+    assert r.totals["unpaid"] == 4000 and r.hsa_counts["unpaid"] == 1
+    assert [v.id for v in r.ledger_visits] == ["v0"]
+
+
 def test_possible_duplicate_payments():
     ds = base(visits=[visit("v1", "2026-01-01")],
               documents=[eob("v1", 1853), pay("p1", "2026-01-15", 1853), pay("p2", "2026-01-18", 1853)])
@@ -163,3 +173,28 @@ def test_individual_and_family_limits():
     limits = build_report(ds, 2026, TODAY).limits
     assert [(l.label, l.used) for l in limits] == [
         ("Me in-network out-of-pocket max", 15000), ("Family in-network deductible", 15000)]
+
+
+def test_open_balance_is_aged_and_repeat_notices_counted():
+    def bill(bid, d, notice=None):
+        b = {"id": bid, "type": "provider_bill", "date": d, "provider_id": "a", "balance_due": 3000,
+             "lines": [{"visit_id": "v1", "patient_amount": 3000, "balance": 3000}]}
+        return {**b, "notice": notice} if notice else b
+    ds = base(visits=[visit("v1", "2026-06-01")],
+              documents=[eob("v1", 3000, d="2026-06-20"), bill("s1", "2026-07-01"), bill("s2", "2026-08-01", "Past due")])
+    v = build_report(ds, 2026, TODAY).visit("v1")
+    assert v.status == "balance_outstanding"
+    assert (v.balance_age, v.notices, v.notice_label) == (100, 2, "Past due")
+    c6 = next(c for c in v.checks if c.code == "C6")
+    assert "first billed 100 days ago" in c6.detail and "on 2 statements" in c6.detail and '"Past due"' in c6.detail
+
+    eob_only = build_report(base(visits=[visit("v1", "2026-06-01")], documents=[eob("v1", 3000, d="2026-06-20")]),
+                            2026, TODAY).visit("v1")
+    assert (eob_only.balance_age, eob_only.notices) == (111, 0)
+    assert "second notice" not in next(c for c in eob_only.checks if c.code == "C6").detail
+
+
+def test_hsa_counts_sit_behind_the_hsa_totals(loaded_store):
+    r = report(loaded_store)
+    assert r.hsa_counts == {"unpaid": 1, "gap": 0, "outside_hsa": 1, "unexplained": 0, "no_claim": 0}
+    assert r.visit("v-2026-07-20-imaging").balance_age == 55

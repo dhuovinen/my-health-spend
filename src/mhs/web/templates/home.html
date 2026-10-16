@@ -40,12 +40,18 @@
   </div>
   <div class="card">
     <h2>HSA</h2>
+    {% set hc = report.hsa_counts %}
+    {% set y = report.year %}
     <ul class="kv">
-      <li><span>Unpaid — pay from HSA</span><strong>{{ totals.unpaid|money }}</strong></li>
-      <li><span>Insurer says you owe, but not billed or paid</span><strong>{{ totals.gap|money }}</strong></li>
-      <li><span>Paid outside the HSA — reimbursement opportunity</span><strong>{{ totals.outside_hsa|money }}</strong></li>
-      <li><span>Settled by provider, no matching payment</span><strong>{{ totals.unexplained|money }}</strong></li>
-      <li><span><a href="/providers?year={{ report.year }}">HSA payments with no claim</a></span><strong>{{ totals.no_claim|money }}</strong></li>
+      {% for key, label, url, unit in [
+          ('unpaid', 'Unpaid — pay from HSA', '/visits?year=%s&hsa=unpaid' % y, 'visit'),
+          ('gap', 'Insurer says you owe, but not billed or paid', '/providers?year=%s&flag=gap' % y, 'provider'),
+          ('outside_hsa', 'Paid outside the HSA — reimbursement opportunity', '/visits?year=%s&hsa=outside_hsa' % y, 'visit'),
+          ('unexplained', 'Settled by provider, no matching payment', '/visits?year=%s&hsa=unexplained' % y, 'visit'),
+          ('no_claim', 'HSA payments with no claim', '/providers?year=%s&flag=no_claim' % y, 'payment')] %}
+      <li><span>{% if hc[key] %}<a href="{{ url }}">{{ label }}</a>{% else %}{{ label }}{% endif %}
+        <span class="muted small">· {{ hc[key] }} {{ unit }}{{ 's' if hc[key] != 1 }}</span></span><strong>{{ totals[key]|money }}</strong></li>
+      {% endfor %}
     </ul>
     <p class="muted small">Flags show possible HSA opportunities; they don't confirm an expense is HSA-eligible.</p>
   </div>

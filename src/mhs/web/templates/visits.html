@@ -9,6 +9,7 @@
   <label>Member<select name="member"><option value="">All</option>{% for m in members %}<option value="{{ m.id }}" {{ 'selected' if filters.member == m.id }}>{{ m.name }}</option>{% endfor %}</select></label>
   <label>Provider<select name="provider"><option value="">All</option>{% for g in report.groups if g.visits %}<option value="{{ g.id }}" {{ 'selected' if filters.provider == g.id }}>{{ g.name }}</option>{% endfor %}</select></label>
   <label>Category<select name="category"><option value="">All</option>{% for c in categories %}<option value="{{ c }}" {{ 'selected' if filters.category == c }}>{{ c|humanize }}</option>{% endfor %}</select></label>
+  <label>HSA<select name="hsa"><option value="">All</option>{% for k, (_, label) in hsa_filters.items() %}<option value="{{ k }}" {{ 'selected' if filters.hsa == k }}>{{ label }}</option>{% endfor %}</select></label>
   <label class="check-label"><input type="checkbox" name="flagged" value="1" {{ 'checked' if filters.flagged }}> Flagged only</label>
   <button class="btn">Filter</button>
   <a class="btn" href="/visits?year={{ report.year }}">Clear</a>

@@ -66,3 +66,26 @@ def test_provider_notes_import(loaded_store):
     bad = {"schema_version": "0.1", "provider_notes": [{"id": "n1", "provider_id": "prov-nobody", "date": "2026-10-09", "text": "x"}]}
     assert prepare(bad, loaded_store, "x", None).errors == [
         "provider_notes (n1): provider_id 'prov-nobody' does not match any provider"]
+
+
+def test_owner_edits_made_after_the_preview_are_still_kept(loaded_store, config, sample_data):
+    plan = prepare(sample_data, loaded_store, "x", None)
+    assert plan.kept == []
+    provider = loaded_store.get("provider", "prov-pcp")
+    loaded_store.upsert("provider", {**provider, "network_status": "out_of_network"}, edited=True)
+    summary = commit(plan, loaded_store, config.documents_dir)
+    assert loaded_store.get("provider", "prov-pcp")["network_status"] == "out_of_network"
+    assert summary["edits_kept"] == 1
+
+
+def test_records_deleted_in_the_app_stay_deleted(loaded_store, config):
+    data = {"schema_version": "0.1", "provider_notes": [
+        {"id": "n1", "provider_id": "prov-derm", "date": "2026-10-09", "text": "Called"}]}
+    commit(prepare(data, loaded_store, "x", None), loaded_store, config.documents_dir)
+    loaded_store.delete("provider_note", "n1", edited=True)
+    again = prepare(data, loaded_store, "x", None)
+    assert [(k.id, k.fields) for k in again.kept] == [("n1", [])]
+    commit(again, loaded_store, config.documents_dir)
+    assert loaded_store.get("provider_note", "n1") is None
+    commit(prepare(data, loaded_store, "x", None), loaded_store, config.documents_dir, replace_edits=True)
+    assert loaded_store.get("provider_note", "n1")["text"] == "Called"

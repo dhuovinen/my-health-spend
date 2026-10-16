@@ -18,7 +18,8 @@
   <h2>Findings</h2>
   <ul>
     {% if g.overpaid %}<li><strong>Overpaid {{ g.overpaid|money }}.</strong> You paid more than the insurer says you owe this provider. Ask for a refund or a credit.</li>{% endif %}
-    {% if g.unpaid %}<li><strong>Unpaid {{ g.unpaid|money }}.</strong> Still owed on the provider's latest statement or per the insurer. Pay from the HSA.</li>{% endif %}
+    {% if g.unpaid %}<li><strong>Unpaid {{ g.unpaid|money }}.</strong> Still owed on the provider's latest statement or per the insurer. Pay from the HSA.
+      <ul>{% for v in g.visits if v.remaining %}<li class="small"><a href="/visits/{{ v.id }}">{{ v.visit.date|nice_date }}</a>: {{ v.remaining|money }}{% if v.balance_age is not none %}, first billed {{ v.balance_age }} days ago{% endif %}{% if v.notices >= 2 %} <span class="chip bad">On {{ v.notices }} statements</span>{% endif %}{% if v.notice_label %} <span class="chip bad">{{ v.notice_label }}</span>{% endif %}</li>{% endfor %}</ul></li>{% endif %}
     {% if g.gap %}<li><strong>{{ g.gap|money }} the insurer says you owe, but the provider hasn't billed it and no payment covers it.</strong> Ask the provider whether it will be billed, and the insurer whether it is correct. If it was paid another way, submit an HSA reimbursement claim.</li>{% endif %}
     {% if g.no_claim_payments %}<li><strong>HSA payments of {{ g.no_claim_payments|money }} with no claim.</strong> Possibly another household member's visit, a purchase that never goes through insurance, or a missing claim.</li>{% endif %}
     {% if g.paid_outside_hsa %}<li><strong>{{ g.paid_outside_hsa|money }} paid outside the HSA.</strong> Submit an HSA reimbursement claim if eligible.</li>{% endif %}
