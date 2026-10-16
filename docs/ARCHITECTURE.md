@@ -1,6 +1,6 @@
 # Architecture
 
-Two architectures are described here: Release 0 as built, and the Release 1 target. Decisions behind it are in [DECISIONS.md](DECISIONS.md); the open questions at the end still need answers before the phases they block.
+Two architectures are described here: Release 0 as built, and the Release 1 target. Decisions behind it are in [DECISIONS.md](DECISIONS.md); the main choices are summarized at the end.
 
 ## Release 0 (built)
 
@@ -88,18 +88,35 @@ Keep the Release 0 layering and add two packages:
 
 The Release 0 JSON importer stays as an admin path for migrating the owner's data and for test fixtures.
 
-### Open architecture questions
-
-| Question | Options | Blocks |
-| --- | --- | --- |
-| Hosting | Managed platform (container + managed Postgres + object storage + KMS) vs a VPS. Must offer a key management service (ADR-025) and managed Postgres (ADR-027) | Phase 1.1 |
-| OCR and entity detection | Cloud OCR vs open-source OCR plus a named-entity model on the server. Either way it runs before content reaches the AI service (ADR-028) | Phase 1.3 |
-
 ### Settled choices
 
 | Choice | Decision |
 | --- | --- |
+| Hosting | Built and tested locally on Docker Compose; production on Google Cloud (ADR-030) |
 | Records database and job queue | Postgres, JSONB records, Postgres-backed queue (ADR-027) |
 | AI extraction | Claude API on scrubbed, tokenized content under a data-processing agreement (ADR-028) |
 | Keys and recovery | Per-household data keys in the host's key management service; recovery through MFA account recovery (ADR-025) |
 | Dates and identity | Real dates in the back-end tier; date shifting only for outside AI and analytics; originals and drafts only in the application tier (ADR-022) |
+| OCR and scrubbing | PDF text layer first, then the host's OCR in the same account; Presidio on the server finds identifiers; images blanked from OCR word boxes; Tesseract locally (ADR-029) |
+
+## Environments
+
+The same containers run in every environment. Only four adapters change, so the local stack runs offline (ADR-030).
+
+| Adapter | Local (Docker Compose) | Staging and production (Google Cloud) |
+| --- | --- | --- |
+| Records database and job queue | `postgres` container | Cloud SQL for PostgreSQL |
+| Object storage (originals, scrubbed images) | Local folder on a Docker volume | Cloud Storage, one bucket per environment |
+| Keys (ADR-025) | Key file on a Docker volume, same envelope-encryption code path | Cloud KMS, one key ring per environment, a data key per household |
+| OCR (ADR-029) | Tesseract in the worker image | Document AI Enterprise OCR |
+
+| Environment | Runs | Data | Purpose |
+| --- | --- | --- | --- |
+| Local | `docker compose up`: `app` (application tier), `worker` (back-end tier), `postgres`, `vault` (identity vault service), and in the test profile a `capture` proxy between tiers | Synthetic and sample data only; never the real `data/` folder | Daily development and the full automated suite |
+| Staging | Separate Google Cloud project: Cloud Run services and jobs, Cloud SQL, Cloud Storage, Cloud KMS, Document AI | Synthetic data and the redacted scenario library only | Integration with the real cloud services, OCR accuracy runs, restore drills |
+| Production | Separate Google Cloud project with the BAA accepted; customer-managed encryption keys; audit logging on | The household's real data | Release 1 from phase 1.6 |
+
+AI extraction (ADR-028) is the one outside service in every environment. Locally it is mocked by default, so tests stay offline and deterministic; a flag turns on real calls with synthetic documents.
+
+Only the application tier publishes a port. Locally that is a new port to register in `~/Projects/app-registry` before first run, because Release 0 keeps 3062.
+

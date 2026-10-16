@@ -257,7 +257,7 @@ Severity: **High** means the build or existing tests would have to change, or tw
 ### 2.4 Environments
 
 - Local: macOS, Python 3.12 via `uv`, SQLite, `uv run pytest`, app on 127.0.0.1:3062.
-- Release 1 (X-04): a server-side test environment with the application tier, back-end tier and identity vault, plus an intercepting proxy between tiers for PRV and PLT-04 cases. Details follow from the Release 1 architecture.
+- Release 1: a local Docker Compose stack (application tier, back-end worker, identity vault, Postgres, capture proxy) for every change, and a Google Cloud staging project for OCR accuracy, cloud integration, restore and performance runs. Details in [TESTING.md](TESTING.md#release-1-test-environment).
 
 ### 2.5 Entry criteria
 
