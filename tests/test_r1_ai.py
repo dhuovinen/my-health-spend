@@ -2,6 +2,7 @@
 tests/fixtures/ai are Messages API responses in the shape the API returns for the request the extractor makes."""
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,23 @@ TOKEN = "tok_aaaaaaaaaaaaaaaaaaaaaaaaaa"
 SCRUBBED_EOB = EOB.replace("Pat Example", TOKEN).replace("W123-456-789", "tok_bbbbbbbbbbbbbbbbbbbbbbbbbb")
 
 
+def in_request_calendar(recording: str, body: dict) -> str:
+    """Answer as the model would: in the calendar of the text it was sent. PRV-05 shifts the request's dates, so
+    the recording's ISO dates move by the gap between its earliest date and the request's first printed date."""
+    from datetime import date, timedelta
+
+    from mhs.ingest.values import DATE_IN_TEXT, parse_date
+
+    sent = body["messages"][0]["content"]
+    first = next((d for d in (parse_date(m) for m in DATE_IN_TEXT.findall(sent)) if d), None)
+    recorded = sorted(set(re.findall(r"\d{4}-\d{2}-\d{2}", recording)))
+    if not first or not recorded:
+        return recording
+    days = (date.fromisoformat(first) - date.fromisoformat(recorded[0])).days
+    return re.sub(r"\d{4}-\d{2}-\d{2}", lambda m: (date.fromisoformat(m.group(0)) + timedelta(days=days)).isoformat(),
+                  recording)
+
+
 class RecordedAi:
     """An Anthropic client whose transport answers from a recording and keeps every request it was sent."""
 
@@ -23,9 +41,9 @@ class RecordedAi:
         self.requests: list[dict] = []
 
         def answer(request):
-            self.requests.append({"url": str(request.url), "headers": dict(request.headers),
-                                  "body": json.loads(request.content)})
-            text = body if body is not None else (RECORDED / f"{recording}.json").read_text()
+            sent = json.loads(request.content)
+            self.requests.append({"url": str(request.url), "headers": dict(request.headers), "body": sent})
+            text = body if body is not None else in_request_calendar((RECORDED / f"{recording}.json").read_text(), sent)
             return httpx2.Response(status, text=text, headers={"content-type": "application/json"})
 
         config = AiConfig(api_key="test-key-not-real", base_url="http://ai.test")

@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current phase: 1.3, Ingestion and privacy pipeline, in progress.** Phases 1.1 and 1.2 and the local build of 1.3 (upload pipeline with Tesseract OCR, Presidio and Claude extraction) are merged into `main` and tagged `r1-uploads` on 2026-10-16; ADR-031 to ADR-034 accepted (034 with a condition: no AI extraction on real data until PRV-05 date shifting). Next in 1.3: PRV-05 date shifting, the extraction corpus run, the staging project with Document AI.
+**Current phase: 1.3, Ingestion and privacy pipeline, in progress.** Phases 1.1 and 1.2 and the local build of 1.3 (upload pipeline with Tesseract OCR, Presidio and Claude extraction) are merged into `main` and tagged `r1-uploads` on 2026-10-16; ADR-031 to ADR-034 accepted. PRV-05 date shifting for AI requests is built on `feat/r1-date-shifting` (2026-10-16), which meets ADR-034's condition. Next in 1.3: the extraction corpus run, the staging project with Document AI.
 
 Requirement IDs refer to the [Product Requirements](<My Health Spend (MHS) Product Requirements.md>). Test cases for each are in [TEST_PLAN.md](TEST_PLAN.md).
 
@@ -42,7 +42,7 @@ The 47 P2 requirements, grouped:
 | Disputes | DSP-01, DSP-02, DSP-04, DSP-05, DSP-07 |
 | Pre-visit strategy | PRE-01, PRE-02, PRE-04 to PRE-07 |
 | Experience | UX-07 dashboard, UX-08 export, UX-09 onboarding |
-| Privacy and compliance | PRV-05, PRV-09, PRV-10, CMP-01 to CMP-04, CMP-06 |
+| Privacy and compliance | PRV-05 for analytics (AI requests done in 1.3), PRV-09, PRV-10, CMP-01 to CMP-04, CMP-06 |
 | Platform and integrations | ING-09 payer FHIR API, PLT-05 performance, PLT-07 import layer, PLT-08 KPIs |
 
 ## Later (P3)

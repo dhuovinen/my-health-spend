@@ -107,7 +107,7 @@ The same file twice is refused. Add your household members and the year's plan i
 
 ### AI extraction (optional, off by default)
 
-Claude can read a household's documents instead of the layout rules (ADR-028, ADR-034). It only ever gets the scrubbed text, with identifiers replaced by tokens. Two switches, both needed:
+Claude can read a household's documents instead of the layout rules (ADR-028, ADR-034). It only ever gets the scrubbed text, with identifiers replaced by tokens and every date shifted by a random per-person offset (PRV-05); the worker shifts the dates in the answer back, so your records keep the real dates. Two switches, both needed:
 
 1. A worker with `MHS_EXTRACTOR=claude`, an API key (`MHS_ANTHROPIC_API_KEY` or `MHS_ANTHROPIC_API_KEY_FILE`) and a way out: the compose `backend` network has no route to the internet, so set `MHS_AI_PROXY` to an egress proxy that allows only the Anthropic API (or run that worker on a network that can reach it). The compose test profile has such a worker (`worker-ai`), pointed at the `capture` proxy, which answers with recorded responses.
 2. The household turned on:

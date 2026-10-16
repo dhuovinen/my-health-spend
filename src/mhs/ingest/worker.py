@@ -21,6 +21,7 @@ from typing import Callable
 from mhs.data.db import Database
 from mhs.data.queue import Job, JobQueue
 from mhs.data.records import HouseholdRecords
+from mhs.ingest.dates import offset_for, person_key, shift_text, unshift_extraction
 from mhs.ingest.extract import extract
 from mhs.stack import database_url
 
@@ -43,7 +44,7 @@ def handle_extract(job: Job, db: Database, ai=None) -> None:
     """payload: upload_id, text (scrubbed), how_read, pages, text_confidence (OCR), forced_type (when the member
     reclassified). An `extract_ai` job goes to `ai` when this worker has it; otherwise, or when the AI can't
     read the document, the layout rules read it and the review page says why."""
-    from mhs.ingest.ai import AiUnavailable
+    from mhs.ingest.ai import DATES, AiUnavailable
 
     p = job.payload
     extractor, model, note = "rules", None, None
@@ -55,13 +56,18 @@ def handle_extract(job: Job, db: Database, ai=None) -> None:
         if job.kind == EXTRACT_AI and ai is None:
             note = "AI reading isn't running on this server, so the layout rules read this document."
         elif job.kind == EXTRACT_AI:
+            # PRV-05: the AI reads the person's dates shifted by their offset; the answer is shifted back below.
+            days = offset_for(HouseholdRecords(db, job.household_id), person_key(p["text"]))
             try:
-                x = ai.extract(p["text"], forced_type=p.get("forced_type"))
+                x = ai.extract(shift_text(p["text"], days), forced_type=p.get("forced_type"))
                 extractor, model = "ai", ai.config.model
             except AiUnavailable as e:
                 log.warning("job %s: %s; using the layout rules", job.id, e)
                 note = f"{e}, so the layout rules read this document."
         result = (x or extract(p["text"], forced_type=p.get("forced_type"))).to_record()
+        if extractor == "ai":
+            unshift_extraction(result, days, tuple(DATES))
+            result["dates_shifted"] = True
         cap_confidence(result, p.get("text_confidence", 1.0))
         if note:
             result["warnings"].insert(0, note)
