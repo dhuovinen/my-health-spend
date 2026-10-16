@@ -6,13 +6,15 @@ import pytest
 
 from mhs.data.keys import DecryptError, LocalKeyFile, db_keyring
 from tests.conftest import admin_sql
+from tests.pdfs import make_pdf
 
 pytestmark = pytest.mark.postgres
 
 MARKER = b"SYNTHETIC-MARKER-7f3a9c Pat Example DOB 1970-01-01"
+PDF = make_pdf(MARKER.decode())
 
 
-def upload(household, client, name="Pat Example statement.pdf", data=b"%PDF-1.4 " + MARKER):
+def upload(household, client, name="Pat Example statement.pdf", data=PDF):
     r = client.post("/uploads", files={"file": (name, data, "application/pdf")},
                     data={"csrf_token": household.csrf(client)}, follow_redirects=False)
     assert r.status_code == 303, r.text
@@ -30,7 +32,7 @@ def test_tc_prv_06_2_original_is_unreadable_on_disk(household, pgdb):
     assert "Pat Example" not in rows[0][0]
     # The member gets the original back, byte for byte, with its recorded hash.
     data = c.get(f"/uploads/{doc_id}").content
-    assert data == b"%PDF-1.4 " + MARKER
+    assert data == PDF
     assert c.get(f"/api/uploads/{doc_id}").json()["sha256"] == hashlib.sha256(data).hexdigest()
     assert 'filename="Pat Example statement.pdf"' in c.get(f"/uploads/{doc_id}").headers["content-disposition"]
 

@@ -132,7 +132,9 @@ def make_templates(directories: list[Path], context: Callable[[Request], dict]) 
     return templates
 
 
-def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> None:
+def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Callable:
+    """Mount the pages. Returns preview_import(request, store, data, source, files, notes), which shows the import
+    preview for records built elsewhere (Release 1 uploads of HSA and claims exports) and confirms them the same way."""
     pending: dict[str, tuple[str, importer.ImportPlan]] = {}  # token -> (scope, plan)
 
     def report_for(store: Store, year: int | None) -> Report:
@@ -323,13 +325,18 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> None
                 raise ValueError("An ingest file is a JSON object.")
         except (OSError, ValueError) as exc:
             return import_page_for(request, store, status_code=400, error=str(exc), path=path_text)
+        return preview_import(request, store, data, source, files)
+
+    def preview_import(request: Request, store: Store, data: dict, source: str, files, notes=(),
+                       status_code: int = 200) -> HTMLResponse:
         plan = importer.prepare(data, store, source, files)
+        plan.warnings.extend(notes)
         scope = host.scope(request)
         for token in [t for t, (s, _) in pending.items() if s == scope]:
             del pending[token]
         token = secrets.token_urlsafe(16)
         pending[token] = (scope, plan)
-        return render(request, "import_preview.html", plan=plan, token=token)
+        return render(request, "import_preview.html", status_code=status_code, plan=plan, token=token)
 
     @app.post("/import/confirm")
     async def import_confirm(request: Request):
@@ -501,3 +508,5 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> None
     def help_page(request: Request):
         host.store(request)
         return render(request, "help.html")
+
+    return preview_import

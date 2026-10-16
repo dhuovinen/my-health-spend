@@ -18,7 +18,7 @@ from mhs.data.household_store import HouseholdStore
 from mhs.data.keys import LocalKeyFile, db_keyring
 from mhs.data.objects import LocalObjectStore
 from mhs.stack import load_app_config
-from mhs.web.household.app import EncryptedFiles
+from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.auth import AccountError, Accounts
 
 

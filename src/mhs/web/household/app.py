@@ -6,14 +6,12 @@ exist (PRV-11). Files are sealed with the household's data key before they reach
 The Release 0 pages (web/pages.py) are mounted over the household's store (ADR-032).
 """
 
-import hashlib
 import re
 import secrets
-from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -29,14 +27,13 @@ from mhs.stack import AppConfig, load_app_config
 from mhs.vault.client import VaultClient
 from mhs.web.household import security
 from mhs.web.household.auth import Accounts, Session
+from mhs.web.household.files import EncryptedFiles
+from mhs.web.household.intake import Intake, add_intake
 from mhs.web.pages import WEB, add_pages, make_templates
 
 HERE = Path(__file__).parent
 COOKIE = "mhs_session"
-MAX_UPLOAD = 20 * 1024 * 1024
-UPLOAD_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/heic", "image/webp"}
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
-ORIGINAL = "original"  # uploaded photos and PDFs awaiting extraction (phase 1.3); not ingest documents
 
 
 class SignInRequired(Exception):
@@ -44,34 +41,8 @@ class SignInRequired(Exception):
         self.mfa_pending = mfa_pending
 
 
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
-
-
 def _safe_filename(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9._ -]", "_", name)[:200] or "file"
-
-
-class EncryptedFiles:
-    """Attached files from an import, sealed with the household's data key and hashed (ING-10)."""
-
-    def __init__(self, objects: ObjectStore, keyring: Keyring, household_id: str):
-        self.objects, self.keyring, self.household_id = objects, keyring, household_id
-
-    def key(self, doc_id: str) -> str:
-        return f"households/{self.household_id}/documents/{doc_id}"
-
-    def save(self, doc_id: str, name: str, data: bytes) -> dict:
-        self.objects.put(self.key(doc_id), self.keyring.encrypt(self.household_id, data, f"document:{doc_id}"))
-        return {"stored_file": self.key(doc_id), "file_sha256": hashlib.sha256(data).hexdigest()}
-
-    def read(self, doc: dict) -> bytes:
-        if not ID_PATTERN.match(doc["id"]) or doc.get("stored_file") != self.key(doc["id"]):
-            raise HTTPException(404)
-        data = self.keyring.decrypt(self.household_id, self.objects.get(self.key(doc["id"])), f"document:{doc['id']}")
-        if doc.get("file_sha256") and hashlib.sha256(data).hexdigest() != doc["file_sha256"]:
-            raise HTTPException(500)
-        return data
 
 
 class HouseholdHost:
@@ -198,16 +169,6 @@ def create_app(
     def page(request: Request, name: str, status: int = 200, **ctx) -> HTMLResponse:
         return templates.TemplateResponse(request, name, ctx, status_code=status)
 
-    def original_view(session: Session, rec: dict) -> dict:
-        name = keyring.decrypt(session.household_id, bytes.fromhex(rec["filename_sealed"]), f"filename:{rec['id']}")
-        return {k: rec[k] for k in ("id", "content_type", "size", "sha256", "uploaded_at")} | {"filename": name.decode()}
-
-    def get_original(session: Session, upload_id: str) -> dict:
-        rec = HouseholdRecords(db, session.household_id).get(ORIGINAL, upload_id) if ID_PATTERN.match(upload_id) else None
-        if rec is None:
-            raise HTTPException(404)
-        return rec
-
     # --- public ---
 
     @app.get("/health")
@@ -261,67 +222,6 @@ def create_app(
         response.delete_cookie(COOKIE, path="/")
         return response
 
-    # --- uploaded originals (extraction arrives in phase 1.3) ---
-
-    @app.get("/uploads", response_class=HTMLResponse)
-    def uploads(request: Request, uploaded: str | None = None):
-        session = member(request)
-        originals = [original_view(session, r) for r in HouseholdRecords(db, session.household_id).all(ORIGINAL)]
-        return page(request, "uploads.html", household=accounts.household_name(session.household_id),
-                    originals=originals, uploaded=uploaded)
-
-    @app.post("/uploads")
-    async def upload(request: Request, file: UploadFile = File(...), csrf_token: str = Form("")):
-        session = member(request)
-        check_csrf(session, csrf_token)
-        content_type = (file.content_type or "").split(";")[0].strip().lower()
-        if content_type not in UPLOAD_TYPES:
-            raise HTTPException(415)
-        data = await file.read(MAX_UPLOAD + 1)
-        if len(data) > MAX_UPLOAD:
-            raise HTTPException(413)
-        if not data:
-            raise HTTPException(400)
-        hid = session.household_id
-        upload_id = "upl_" + secrets.token_hex(12)
-        object_key = f"households/{hid}/originals/{upload_id}"
-        objects.put(object_key, keyring.encrypt(hid, data, f"original:{upload_id}"))
-        filename = Path(file.filename or "upload").name[:200]
-        HouseholdRecords(db, hid).put(ORIGINAL, {
-            "id": upload_id,
-            "content_type": content_type,
-            "size": len(data),
-            "sha256": hashlib.sha256(data).hexdigest(),  # ING-10: originals are hashed and never modified
-            "object_key": object_key,
-            "filename_sealed": keyring.encrypt(hid, filename.encode(), f"filename:{upload_id}").hex(),
-            "uploaded_at": _now(),
-            "uploaded_by": session.member_id,
-        })
-        return RedirectResponse(f"/uploads?uploaded={upload_id}", status_code=303)
-
-    @app.get("/uploads/{upload_id}")
-    def download(request: Request, upload_id: str):
-        session = member(request)
-        rec = get_original(session, upload_id)
-        data = keyring.decrypt(session.household_id, objects.get(rec["object_key"]), f"original:{upload_id}")
-        if hashlib.sha256(data).hexdigest() != rec["sha256"]:
-            raise HTTPException(500)
-        filename = _safe_filename(original_view(session, rec)["filename"])
-        return Response(data, media_type=rec["content_type"],
-                        headers={"Content-Disposition": f'attachment; filename="{filename}"'})
-
-    # --- JSON API (same session; POSTs carry the X-CSRF-Token header) ---
-
-    @app.get("/api/uploads")
-    def api_uploads(request: Request):
-        session = member(request)
-        return [original_view(session, r) for r in HouseholdRecords(db, session.household_id).all(ORIGINAL)]
-
-    @app.get("/api/uploads/{upload_id}")
-    def api_upload(request: Request, upload_id: str):
-        session = member(request)
-        return original_view(session, get_original(session, upload_id))
-
     @app.get("/api/visits")
     def api_visits(request: Request):
         session = member(request)
@@ -356,7 +256,9 @@ def create_app(
 
     # --- the Release 0 pages, for the signed-in household ---
 
-    add_pages(app, templates, HouseholdHost(app.state, db, keyring, objects))
+    preview_import = add_pages(app, templates, HouseholdHost(app.state, db, keyring, objects))
+    add_intake(app, templates, Intake(db, keyring, objects, vault, queue, member, check_csrf, accounts.household_name,
+                                      preview_import))
     return app
 
 

@@ -31,7 +31,7 @@
       <label>Coverage start<input name="coverage_start" type="date" value="{{ p.coverage_start or '' }}"></label>
       <label>Coverage end<input name="coverage_end" type="date" value="{{ p.coverage_end or '' }}"></label>
       <label>Coinsurance %<input name="coinsurance_pct" type="number" step="0.1" min="0" max="100" class="w-6"
-        value="{{ (p.coinsurance_rate * 100)|round(1) if p.coinsurance_rate is not none else '' }}"></label>
+        value="{{ (p.coinsurance_rate * 100)|round(1) if p.coinsurance_rate is defined and p.coinsurance_rate is not none else '' }}"></label>
       <label>Copays (one per line, "specialist: 60")<textarea name="copays" rows="2">{% for k, v in (p.copays or {}).items() %}{{ k }}: {{ '%.2f'|format(v / 100) }}
 {% endfor %}</textarea></label>
       <div><div class="muted small">Members covered</div>

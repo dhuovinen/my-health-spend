@@ -40,6 +40,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 030 | Build and test locally on Docker Compose; production on Google Cloud | 2026-10-16 | Accepted |
 | 031 | Foundation build: roles and row-level security per household, envelope encryption per service, TOTP sign-in, passphrase-sealed vault backup | 2026-10-16 | Accepted |
 | 032 | Release 0 pages shared by both apps; Release 1 imports by upload only, files encrypted, edits and history per household | 2026-10-16 | Proposed |
+| 033 | Upload pipeline: exports parsed in the app tier; documents read and scrubbed in the app tier, extracted by the worker, confirmed by the member | 2026-10-16 | Proposed |
 
 ## Records
 
@@ -175,3 +176,14 @@ Implementation choices for phase 1.2. Proposed by the build session on 2026-10-1
 - **Uploaded originals are their own kind.** Phase 1.1 uploads (photos and PDFs awaiting extraction in phase 1.3) are stored as `original` records at `/uploads`, apart from the ingest `document` records the engine reconciles.
 
 **Consequences.** Release 0 gains the same template changes (no visible difference). The import preview is held in the app process between preview and confirm, keyed by household, which is fine for one app instance and must move to the database before Cloud Run runs more than one.
+
+### ADR-033 · Upload pipeline, first build (Proposed)
+How uploads become reconciled data in phase 1.3, inside ADR-012, 028 and 029. Proposed by the build session on 2026-10-16.
+
+**Decision.**
+- **Two paths by what is uploaded.** Structured exports (the HSA administrator's CSV, XLS or XLSX, ING-08; the insurer's claims CSV) are parsed in the application tier into ingest records and go through the existing import preview and confirm step. Documents (PDFs and photos of provider statements, itemized bills and EOBs) go through extraction and member review.
+- **Read and scrub in the application tier, extract in the worker.** The application tier reads a PDF's text layer (ADR-029) and replaces identifiers with vault tokens (PRV-01, PRV-03, PRV-04) before anything is queued. The worker, which holds no key and has no route out, classifies the scrubbed text into the eight ING-02 types and extracts header fields and lines with a confidence per field. The member sees the fields re-identified, corrects them, and confirms; only then do records enter reconciliation (ING-05). Every correction is kept with the extracted value, so what the machine concluded stays visible (PLT-04).
+- **First implementations behind the interfaces.** Extraction uses layout rules: the statement layout Release 0's converter reads, plus label-based rules for EOBs and statements in general. The scrubber uses the household's known names, labelled identifiers (patient, member ID, account number, date of birth) and patterns (SSN, phone, email, street address). Photos are stored and reviewed by hand until OCR is added. Presidio (ADR-029), Tesseract and Document AI OCR (ADR-029) and Claude extraction (ADR-028) plug in behind the same scrubber, OCR and extractor interfaces later; this keeps the stack offline and the tests deterministic.
+- **Originals stay linked and unchanged.** A confirmed document carries the original's id and a copy sealed under the document id; its SHA-256 equals the upload's (ING-10). An exact duplicate upload (same SHA-256 in the household) is refused (ING-07); HSA transactions get ids derived from their content, so overlapping exports don't duplicate them.
+
+**Consequences.** Until OCR and AI extraction arrive, documents in layouts the rules don't know come back mostly empty for the member to fill in, and photos always do. Near-duplicate statements (ING-07 TC-3/4) and the extraction corpus accuracy run (PLT-02) are not covered yet.

@@ -82,7 +82,7 @@ Keep the Release 0 layering and add two packages:
 | --- | --- |
 | `core/` | Reconciliation, matching and identities (pure) |
 | `data/` | Repositories for the records database and owner-edit protection |
-| `ingest/` (new) | Back-end tier pipeline: OCR, scrub, classify, extract, dedupe |
+| `ingest/` (new) | The upload pipeline (ADR-033): reading values (`values.py`), HSA and claims exports (`hsa.py`, `claims.py`), text from PDFs and photos (`text.py`, OCR interface `ocr.py`) and identifier scrubbing (`scrub.py`), all run in the application tier; classification and field extraction (`extract.py`) and the queue worker (`worker.py`), run in the back-end tier. Routes and review pages in `web/household/intake.py` |
 | `vault/` (new) | Identity vault service, client, encrypted backup and restore; tokenize, normalize (PRV-03), re-identify |
 | `web/` | The Release 0 pages (`web/pages.py`, `web/templates/`), mounted by both the Release 0 app (`web/app.py`) and the Release 1 application tier (`web/household/`: sign-in, sessions, uploads, `mhs-admin`), each through a `PagesHost` (ADR-032) |
 

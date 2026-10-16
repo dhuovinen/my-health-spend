@@ -45,3 +45,8 @@ vault backup and restore, CSP, CI workflow. 95 tests pass on the stack. ADR-031 
 (web/pages.py), household Postgres store with owner edits and import log, upload imports with encrypted
 attachments, mhs-admin import, CSP-clean templates. Appendix A green against both apps; 126 tests on the stack.
 ADR-032 proposed. Owner's real data not loaded (local stack is synthetic only).
+2026-10-16: Phase 1.3 upload pipeline (first build) on feat/r1-upload-pipeline: upload provider statements,
+EOBs (PDF or photo), HSA exports (CSV/XLS/XLSX) and insurer claims CSVs; identifiers scrubbed to vault tokens
+in the app tier; worker classifies and extracts with confidences; member reviews, corrects and confirms.
+13 user scenarios automated; 166 tests on the stack. ADR-033 proposed. Presidio, OCR, AI extraction and
+staging still to come.

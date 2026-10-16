@@ -18,15 +18,16 @@ docker compose --profile test run --rm tests
 uv run --with pytest-cov pytest --cov=mhs
 ```
 
-## Current state (2026-10-16, phase 1.2)
+## Current state (2026-10-16, phase 1.3 in progress)
 
 | Measure | Value |
 | --- | --- |
-| Automated tests | 126 on the compose stack: the 32 Release 0 tests (Appendix A), 16 of which run a second time against Release 1 (`[release1]`, `[postgres]` ids); 75 Release 1 tests (`tests/test_r1_*.py`); 3 stack tests (`tests/stack/`) |
+| Automated tests | 166 on the compose stack: 55 from the Release 0 suite (the 32 Appendix A tests plus one Settings regression, 22 of them run a second time against Release 1 with `[release1]` or `[postgres]` ids); 108 Release 1 tests (`tests/test_r1_*.py`, including 19 upload scenarios in `test_r1_scenarios.py` and 19 rule tests in `test_r1_extract.py`); 3 stack tests (`tests/stack/`) |
 | Coverage, `core/` | 96% (target ≥ 80%) |
 | Coverage, `data/` | 89 to 100% per module |
 | Coverage, `web/pages.py` (shared pages), `web/household/app.py`, `auth.py` | 85%, 95%, 98% |
-| Coverage, total | 92% |
+| Coverage, `ingest/` (upload pipeline), `web/household/intake.py` | 71 to 100% per module, 92% |
+| Coverage, total | 90% |
 
 **Appendix A on the server (phase 1.2 exit).** `tests/test_web.py` runs each Release 0 web test against both apps through the `web` fixture: Release 0 over SQLite, and the Release 1 application tier as a signed-in member, importing by upload, with CSRF tokens on every post. `tests/test_importer.py` runs each store-backed importer test against the SQLite store and a household's Postgres store (`store` fixture). The core tests (`test_reconcile.py`) are shared code. `tests/test_r1_pages.py` adds household isolation on every ported page, encrypted import attachments and `mhs-admin import`.
 
@@ -44,6 +45,26 @@ Release 1 test cases covered in phase 1.1:
 | TC-PLT-06-2 CI on every change | `.github/workflows/ci.yml` (runs once the repo is on GitHub) |
 
 Not yet: TC-PRV-06-1 (TLS; staging), TC-PRV-07-3 (self-service MFA recovery; `mhs-admin reset-mfa` meanwhile), TC-PRV-08-2 (no analytics events exist).
+
+## User scenarios (phase 1.3)
+
+Each scenario is automated in `tests/test_r1_scenarios.py` (with the worker run in-process) and the first two also run on the compose stack through the real worker (`tests/stack/test_stack.py`). To try one by hand: `docker compose up --build`, create a household and member (SETUP.md), sign in at http://127.0.0.1:3063 with the authenticator code, add a member and a 2026 plan in Settings, then use the Uploads page. Use synthetic documents only (`tests/pdfs.py` makes them).
+
+| # | Scenario | Steps | Expected | Requirements / test cases | Test |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Sign in with MFA | Email and password, then the 6-digit code | No data before the code; home after it | PRV-11 (TC-1, TC-3) | `test_r1_auth.py`, stack |
+| 2 | Upload a provider statement | Upload a statement PDF ("Let the app decide") | Status Reading, then Review; fields with confidences, low ones marked "check"; nothing on Visits yet; Confirm creates the visit and the bill; the original opens from the visit's document | ING-01 TC-1, ING-02, ING-03, ING-05 TC-1/2, ING-10 TC-1 | `test_statement_upload_review_and_confirm` |
+| 3 | Upload the EOB for that visit | Upload an EOB PDF; correct "You owe" from 45.00 to 54.00; confirm; edit back | Classified EOB ("THIS IS NOT A BILL"); provider, plan and visit preselected; correction kept with the extracted value; visit updates at once | ING-02 TC-3, ING-04, ING-05 TC-3/4, PLT-04 TC-2 | `test_eob_upload_corrected_and_matched_to_the_visit`, stack |
+| 4 | Upload an HSA export | Upload the administrator's CSV, XLS or XLSX; check the preview; confirm | Card payments become HSA payments to the provider; contributions, interest and fees become account transactions; the same file again is refused as a duplicate; an overlapping export adds no duplicates | ING-08 TC-1/2/5, ING-07 TC-1/5 | `test_hsa_export_upload`, `test_hsa_export_formats_agree` |
+| 5 | A bad HSA export | Upload a CSV without the amount column; one with a balance gap | Refused naming the missing column, nothing saved; the gap is warned about by date | ING-08 TC-3/4 | `test_hsa_export_problems` |
+| 6 | Upload the insurer's claims export | Upload the claims CSV | One EOB per claim on a visit, with the member and the year's plan | ING-08 (spirit), MAT-03 | `test_claims_export_upload` |
+| 7 | Refused files | Upload .docx, .zip, an empty file, a damaged PDF, a password-protected PDF, a file over 20 MB | Each refused with a plain reason; nothing saved | ING-01 TC-5 | `test_unreadable_uploads_are_refused`, `test_password_protected_and_oversized_pdfs_are_refused` |
+| 8 | A photo of an EOB | Upload a PNG marked "EOB" | Stored; the review form is empty with "No text could be read"; the member types the fields and confirms | ING-01 TC-2 (partial), ING-05 | `test_photo_is_entered_by_hand` |
+| 9 | Wrong type | Upload a letter; change its type to provider statement | First "Other"; after the change, read again as a statement | ING-02 TC-4 | `test_reclassify_reads_again` |
+| 10 | Multi-page PDF | Upload a 2-page EOB | One upload, both pages read | ING-01 TC-3 (PDF part) | `test_multi_page_pdf_is_one_document` |
+| 11 | Lines that don't add up | Upload an EOB whose lines total $40 less than the header | Warning before confirmation | ING-04 TC-3 | `test_lines_that_dont_add_up_are_flagged` |
+| 12 | Identifiers stay in the application tier | Upload a statement and an EOB that name the patient, member ID, account number and phone | The queued text and the worker's records hold tokens only; one token for "Example, Pat A." and "Pat Example"; the member sees the real values | PRV-01 TC-1/2, PRV-03 TC-1, PRV-04 TC-2 | `test_identifiers_never_reach_the_worker`, `test_r1_extract.py` |
+| 13 | Another household | A second household asks for the first one's upload, review, confirm or reclassify | Not found every time | PRV-11 TC-2 | `test_another_household_cannot_see_or_confirm_an_upload` |
 
 ## Levels
 
