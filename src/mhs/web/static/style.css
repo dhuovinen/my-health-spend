@@ -151,3 +151,10 @@ details summary { cursor: pointer; }
   .tiles { grid-template-columns: 1fr; }
   .tile .value { font-size: 1.35rem; }
 }
+.note { padding: .75rem 0; border-bottom: 1px solid var(--border); }
+.note:first-child { padding-top: 0; }
+.note.dim { opacity: .7; }
+.note-head { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-bottom: .3rem; }
+.note-text { white-space: pre-wrap; }
+label.grow { flex: 1 1 100%; }
+label.grow textarea { width: 100%; }

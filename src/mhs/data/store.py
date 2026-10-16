@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-KINDS = ("plan", "account", "member", "provider", "provider_relationship", "visit", "document")
+KINDS = ("plan", "account", "member", "provider", "provider_relationship", "provider_note", "visit", "document")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS records (
@@ -26,6 +26,12 @@ CREATE TABLE IF NOT EXISTS imports (
     imported_at TEXT NOT NULL,
     source TEXT NOT NULL,
     summary TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS owner_edits (
+    kind TEXT NOT NULL,
+    id TEXT NOT NULL,
+    edited_at TEXT NOT NULL,
+    PRIMARY KEY (kind, id)
 );
 """
 
@@ -69,12 +75,35 @@ class Store:
                 [(kind, rec["id"], json.dumps(rec), now) for kind, rec in items],
             )
 
-    def upsert(self, kind: str, record: dict) -> None:
+    def upsert(self, kind: str, record: dict, edited: bool = False) -> None:
+        """Save one record; edited=True marks it as changed by the owner in the app."""
         self.upsert_many([(kind, record)])
+        if edited:
+            self._mark_edited(kind, record["id"])
 
-    def delete(self, kind: str, record_id: str) -> None:
+    def delete(self, kind: str, record_id: str, edited: bool = False) -> None:
+        """Delete one record; edited=True keeps a mark so an import does not bring it back."""
         with self._conn() as c:
             c.execute("DELETE FROM records WHERE kind = ? AND id = ?", (kind, record_id))
+            if not edited:
+                c.execute("DELETE FROM owner_edits WHERE kind = ? AND id = ?", (kind, record_id))
+        if edited:
+            self._mark_edited(kind, record_id)
+
+    # Records the owner changed or deleted in the app. Imports leave them alone unless the owner says otherwise.
+
+    def _mark_edited(self, kind: str, record_id: str) -> None:
+        with self._conn() as c:
+            c.execute("INSERT OR REPLACE INTO owner_edits (kind, id, edited_at) VALUES (?, ?, ?)",
+                      (kind, record_id, datetime.now().isoformat(timespec="seconds")))
+
+    def edited_ids(self, kind: str) -> set[str]:
+        with self._conn() as c:
+            return {r[0] for r in c.execute("SELECT id FROM owner_edits WHERE kind = ?", (kind,))}
+
+    def clear_edited(self, items: list[tuple[str, str]]) -> None:
+        with self._conn() as c:
+            c.executemany("DELETE FROM owner_edits WHERE kind = ? AND id = ?", items)
 
     def log_import(self, source: str, summary: dict) -> None:
         with self._conn() as c:

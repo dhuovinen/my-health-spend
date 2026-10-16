@@ -45,6 +45,12 @@
         "$ref": "#/$defs/provider_relationship"
       }
     },
+    "provider_notes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/provider_note"
+      }
+    },
     "visits": {
       "type": "array",
       "items": {
@@ -403,6 +409,10 @@
         },
         "due_date": {
           "$ref": "#/$defs/date"
+        },
+        "notice": {
+          "type": "string",
+          "description": "Notice wording printed on the statement, if any, e.g. \"Second notice\", \"Past due\", \"Final notice\"."
         },
         "balance_due": {
           "$ref": "#/$defs/money"
@@ -935,6 +945,57 @@
         },
         "notes": {
           "$ref": "#/$defs/notes"
+        }
+      }
+    },
+    "provider_note": {
+      "type": "object",
+      "description": "A dated note about a provider: an email or call, what was said, what to follow up. Kept separately from imported documents so re-imports don't change it.",
+      "required": [
+        "id",
+        "provider_id",
+        "date",
+        "text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "provider_id": {
+          "$ref": "#/$defs/id"
+        },
+        "visit_id": {
+          "$ref": "#/$defs/id",
+          "description": "The visit the note is about, if any."
+        },
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "channel": {
+          "enum": [
+            "email",
+            "phone",
+            "portal",
+            "in_person",
+            "letter",
+            "other"
+          ]
+        },
+        "direction": {
+          "enum": [
+            "sent",
+            "received",
+            "note"
+          ],
+          "description": "sent: you contacted them; received: they contacted you; note: your own note."
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
         }
       }
     }

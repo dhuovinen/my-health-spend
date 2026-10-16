@@ -28,6 +28,14 @@ NETWORK_STATUSES = ["in_network", "out_of_network", "not_applicable", "unknown"]
 RELATIONSHIPS = ["self", "spouse", "child", "other"]
 LIMIT_TYPES = ["deductible", "out_of_pocket_max", "annual_maximum"]
 LIMIT_NETWORKS = ["in_network", "out_of_network", "combined"]
+NOTE_CHANNELS = ["email", "phone", "portal", "in_person", "letter", "other"]
+NOTE_DIRECTIONS = ["sent", "received", "note"]
+# Visit-list filters behind the home page's HSA totals: query value -> (VisitResult attribute, label)
+HSA_FILTERS = {
+    "unpaid": ("remaining", "Unpaid — pay from HSA"),
+    "outside_hsa": ("outside_hsa", "Paid outside the HSA"),
+    "unexplained": ("unexplained", "Settled by provider, no matching payment"),
+}
 
 
 class FormError(ValueError):
@@ -44,7 +52,10 @@ def money_text(value: int | None) -> str:
 def nice_date(value: str | None) -> str:
     if not value:
         return ""
-    return datetime.strptime(value, "%Y-%m-%d").strftime("%b %-d, %Y")
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").strftime("%b %-d, %Y")
+    except ValueError:
+        return value
 
 
 def humanize(value: str | None) -> str:
@@ -86,11 +97,37 @@ def create_app(config: Config | None = None) -> FastAPI:
     def render(request: Request, name: str, status_code: int = 200, **ctx) -> HTMLResponse:
         return templates.TemplateResponse(request, name, ctx, status_code=status_code)
 
+    def notes_for(provider_ids) -> list[dict]:
+        ids = set(provider_ids)
+        notes = [n for n in store.all("provider_note") if n["provider_id"] in ids]
+        return sorted(notes, key=lambda n: (n["date"], n["id"]), reverse=True)
+
+    def safe_next(url: str | None, fallback: str = "/providers") -> str:
+        return url if url and url.startswith("/") and not url.startswith("//") else fallback
+
+    def note_from_form(form, note: dict) -> dict:
+        text = (form.get("text") or "").replace("\r\n", "\n").strip()
+        if not text:
+            raise HTTPException(400, "A note needs some text")
+        note.update(provider_id=form.get("provider_id") or note.get("provider_id"),
+                    date=form.get("date") or date.today().isoformat(), text=text)
+        for key in ("visit_id", "channel", "direction"):
+            if form.get(key):
+                note[key] = form.get(key)
+            else:
+                note.pop(key, None)
+        errors = importer.record_errors("provider_note", note)
+        if errors or not store.get("provider", note["provider_id"]):
+            raise HTTPException(400, "; ".join(errors) or "Unknown provider")
+        if note.get("visit_id") and not store.get("visit", note["visit_id"]):
+            raise HTTPException(400, "Unknown visit")
+        return note
+
     def save_settings(kind: str, definition: str, record: dict) -> None:
         errors = importer.record_errors(definition, to_dollars(record))
         if errors:
             raise FormError("; ".join(errors))
-        store.upsert(kind, record)
+        store.upsert(kind, record, edited=True)
         export_settings(store, config.settings_file)
 
     @app.exception_handler(FormError)
@@ -114,9 +151,11 @@ def create_app(config: Config | None = None) -> FastAPI:
 
     @app.get("/visits", response_class=HTMLResponse)
     def visits(request: Request, year: int | None = None, status: str = "", member: str = "",
-               provider: str = "", category: str = "", flagged: str = ""):
+               provider: str = "", category: str = "", flagged: str = "", hsa: str = ""):
         report = report_for(year)
         rows = report.visits
+        if hsa in HSA_FILTERS:  # matches the home page's HSA totals, so carry-in visits are included
+            rows = [v for v in report.ledger_visits if getattr(v, HSA_FILTERS[hsa][0])]
         if status:
             rows = [v for v in rows if v.status == status]
         if flagged:
@@ -130,7 +169,8 @@ def create_app(config: Config | None = None) -> FastAPI:
         members = store.all("member")
         return render(request, "visits.html", report=report, rows=rows, members=members, categories=CATEGORIES,
                       filters={"status": status, "member": member, "provider": provider,
-                               "category": category, "flagged": flagged})
+                               "category": category, "flagged": flagged, "hsa": hsa if hsa in HSA_FILTERS else ""},
+                      hsa_filters=HSA_FILTERS)
 
     @app.get("/visits/{visit_id}", response_class=HTMLResponse)
     def visit_detail(request: Request, visit_id: str):
@@ -139,13 +179,20 @@ def create_app(config: Config | None = None) -> FastAPI:
             raise HTTPException(404, "Visit not found")
         report = report_for(int(visit["date"][:4]))
         vr = report.visit(visit_id)
-        return render(request, "visit.html", report=report, v=vr, group=report.group(vr.group_id),
+        group = report.group(vr.group_id)
+        return render(request, "visit.html", report=report, v=vr, group=group,
+                      notes=notes_for(p["id"] for p in group.providers),
                       plan=store.get("plan", visit.get("plan_id", "")),
                       accounts={a["id"]: a for a in store.all("account")})
 
     @app.get("/providers", response_class=HTMLResponse)
-    def providers(request: Request, year: int | None = None):
-        return render(request, "providers.html", report=report_for(year))
+    def providers(request: Request, year: int | None = None, flag: str = ""):
+        counts = {}
+        for n in store.all("provider_note"):
+            counts[n["provider_id"]] = counts.get(n["provider_id"], 0) + 1
+        report = report_for(year)
+        groups = [g for g in report.groups if flag in g.flags] if flag else report.groups
+        return render(request, "providers.html", report=report, groups=groups, flag=flag, note_counts=counts)
 
     @app.get("/providers/{group_id}", response_class=HTMLResponse)
     def ledger(request: Request, group_id: str, year: int | None = None):
@@ -153,7 +200,31 @@ def create_app(config: Config | None = None) -> FastAPI:
         group = report.group(group_id)
         if not group:
             raise HTTPException(404, f"No activity for this provider in {report.year}")
-        return render(request, "ledger.html", report=report, g=group)
+        return render(request, "ledger.html", report=report, g=group,
+                      notes=notes_for(p["id"] for p in group.providers), today=date.today().isoformat(),
+                      channels=NOTE_CHANNELS, directions=NOTE_DIRECTIONS)
+
+    @app.post("/notes")
+    async def add_note(request: Request):
+        form = await request.form()
+        note = note_from_form(form, {"id": f"note-{date.today().isoformat()}-{secrets.token_hex(3)}"})
+        store.upsert("provider_note", note, edited=True)
+        return RedirectResponse(safe_next(form.get("next")) + "#notes", status_code=303)
+
+    @app.post("/notes/{note_id}")
+    async def edit_note(request: Request, note_id: str):
+        form = await request.form()
+        note = store.get("provider_note", note_id)
+        if not note:
+            raise HTTPException(404, "Note not found")
+        store.upsert("provider_note", note_from_form(form, note), edited=True)
+        return RedirectResponse(safe_next(form.get("next")) + "#notes", status_code=303)
+
+    @app.post("/notes/{note_id}/delete")
+    async def delete_note(request: Request, note_id: str):
+        form = await request.form()
+        store.delete("provider_note", note_id, edited=True)
+        return RedirectResponse(safe_next(form.get("next")) + "#notes", status_code=303)
 
     @app.get("/files/{doc_id}")
     def document_file(doc_id: str):
@@ -206,7 +277,7 @@ def create_app(config: Config | None = None) -> FastAPI:
         plan = pending.pop(form.get("token", ""), None)
         if plan is None or not plan.ok:
             return RedirectResponse("/import", status_code=303)
-        importer.commit(plan, store, config.documents_dir)
+        importer.commit(plan, store, config.documents_dir, replace_edits=form.get("replace_edits") == "1")
         if any(s in plan.data for s in ("plans", "accounts", "members", "providers", "provider_relationships")):
             export_settings(store, config.settings_file)
         return RedirectResponse("/import?done=1", status_code=303)

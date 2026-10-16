@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,12 +13,13 @@ def client(config):
     return TestClient(create_app(config))
 
 
-def import_sample(client):
+def import_sample(client, **confirm):
     preview = client.post("/import", data={"path": str(SAMPLE)})
     assert preview.status_code == 200 and "What will change" in preview.text
     token = preview.text.split('name="token" value="')[1].split('"')[0]
-    done = client.post("/import/confirm", data={"token": token}, follow_redirects=False)
+    done = client.post("/import/confirm", data={"token": token, **confirm}, follow_redirects=False)
     assert done.status_code == 303
+    return preview
 
 
 def test_empty_home_has_hero_help_and_settings(client):
@@ -69,3 +71,70 @@ def test_settings_edits_are_saved_and_written_to_settings_json(client, config):
     bad = client.post("/settings/plans/plan-2026/limits", data={"type": "deductible", "network": "in_network",
                                                                 "level": "family", "amount": "lots"})
     assert bad.status_code == 400 and "not an amount" in bad.text
+
+
+def test_provider_notes_can_be_added_edited_and_deleted(client, store):
+    import_sample(client)
+    ledger = "/providers/prov-derm?year=2026"
+    r = client.post("/notes", data={"provider_id": "prov-derm", "date": "2026-10-09", "channel": "email",
+                                    "direction": "sent", "visit_id": "v-2026-09-28-derm",
+                                    "text": "Good day,\nAsked for the itemized bill.", "next": ledger},
+                    follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == ledger + "#notes"
+    [note] = store.all("provider_note")
+    assert note["channel"] == "email" and note["visit_id"] == "v-2026-09-28-derm"
+
+    page = client.get(ledger).text
+    assert "Asked for the itemized bill." in page and "I sent" in page
+    assert "Asked for the itemized bill." in client.get("/visits/v-2026-09-28-derm").text
+    assert '#notes">1</a>' in client.get("/providers").text
+
+    client.post(f"/notes/{note['id']}", data={"provider_id": "prov-derm", "date": "2026-10-10",
+                                              "text": "Called instead.", "next": ledger})
+    edited = store.get("provider_note", note["id"])
+    assert edited["text"] == "Called instead." and "channel" not in edited and "visit_id" not in edited
+
+    assert client.post("/notes", data={"provider_id": "prov-derm", "text": "  "}).status_code == 400
+    assert client.post("/notes", data={"provider_id": "nobody", "text": "x"}).status_code == 400
+    r = client.post("/notes", data={"provider_id": "prov-derm", "text": "x", "next": "https://evil.example"},
+                    follow_redirects=False)
+    assert r.headers["location"].startswith("/providers")
+
+    client.post(f"/notes/{note['id']}/delete", data={"next": ledger})
+    assert store.get("provider_note", note["id"]) is None
+
+
+def test_reimport_does_not_touch_notes(client, store):
+    import_sample(client)
+    client.post("/notes", data={"provider_id": "prov-pcp", "text": "Keep me"})
+    import_sample(client)
+    assert [n["text"] for n in store.all("provider_note")] == ["Keep me"]
+
+
+def test_reimport_keeps_settings_edits_unless_replaced(client, store, config):
+    import_sample(client)
+    client.post("/settings/providers/prov-pcp", data={"name": "Example Family Medicine", "kind": "physician_practice",
+                                                      "network_status": "out_of_network"})
+    preview = import_sample(client)
+    assert "Your edits" in preview.text and "network_status" in preview.text
+    assert store.get("provider", "prov-pcp")["network_status"] == "out_of_network"
+    exported = json.loads(config.settings_file.read_text())["providers"]
+    assert next(p for p in exported if p["id"] == "prov-pcp")["network_status"] == "out_of_network"
+    assert "1 of your edits kept" in client.get("/import").text
+
+    import_sample(client, replace_edits="1")
+    assert store.get("provider", "prov-pcp")["network_status"] == "in_network"
+    assert store.edited_ids("provider") == set()
+    assert "Your edits" not in import_sample(client).text
+
+
+def test_home_hsa_counts_link_to_filtered_lists(client):
+    import_sample(client)
+    home = client.get("/").text
+    assert 'href="/visits?year=2026&amp;hsa=unpaid"' in home and "1 visit<" in home
+    unpaid = client.get("/visits?year=2026&hsa=unpaid").text
+    assert "1 of 6" in unpaid and "Example Imaging" in unpaid
+    assert "1 of 6" in client.get("/visits?year=2026&hsa=outside_hsa").text
+    assert "Showing providers flagged" in client.get("/providers?year=2026&flag=unpaid").text
+    ledger = client.get("/providers/prov-imaging?year=2026").text
+    assert re.search(r"first billed \d+ days ago", ledger)  # the app ages balances from the real date

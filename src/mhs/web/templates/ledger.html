@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, year_select %}
+{% from "_macros.html" import badge, year_select, note_fields, note_meta %}
 {% block title %}{{ g.name }} ledger{% endblock %}
 {% block content %}
 <p class="small"><a href="/providers?year={{ report.year }}">← Providers</a></p>
@@ -18,7 +18,8 @@
   <h2>Findings</h2>
   <ul>
     {% if g.overpaid %}<li><strong>Overpaid {{ g.overpaid|money }}.</strong> You paid more than the insurer says you owe this provider. Ask for a refund or a credit.</li>{% endif %}
-    {% if g.unpaid %}<li><strong>Unpaid {{ g.unpaid|money }}.</strong> Still owed on the provider's latest statement or per the insurer. Pay from the HSA.</li>{% endif %}
+    {% if g.unpaid %}<li><strong>Unpaid {{ g.unpaid|money }}.</strong> Still owed on the provider's latest statement or per the insurer. Pay from the HSA.
+      <ul>{% for v in g.visits if v.remaining %}<li class="small"><a href="/visits/{{ v.id }}">{{ v.visit.date|nice_date }}</a>: {{ v.remaining|money }}{% if v.balance_age is not none %}, first billed {{ v.balance_age }} days ago{% endif %}{% if v.notices >= 2 %} <span class="chip bad">On {{ v.notices }} statements</span>{% endif %}{% if v.notice_label %} <span class="chip bad">{{ v.notice_label }}</span>{% endif %}</li>{% endfor %}</ul></li>{% endif %}
     {% if g.gap %}<li><strong>{{ g.gap|money }} the insurer says you owe, but the provider hasn't billed it and no payment covers it.</strong> Ask the provider whether it will be billed, and the insurer whether it is correct. If it was paid another way, submit an HSA reimbursement claim.</li>{% endif %}
     {% if g.no_claim_payments %}<li><strong>HSA payments of {{ g.no_claim_payments|money }} with no claim.</strong> Possibly another household member's visit, a purchase that never goes through insurance, or a missing claim.</li>{% endif %}
     {% if g.paid_outside_hsa %}<li><strong>{{ g.paid_outside_hsa|money }} paid outside the HSA.</strong> Submit an HSA reimbursement claim if eligible.</li>{% endif %}
@@ -27,6 +28,40 @@
   </ul>
 </div>
 {% endif %}
+
+{% set here = request.url.path ~ '?year=' ~ report.year %}
+{% set providers_by_id = {} %}{% for p in g.providers %}{% set _ = providers_by_id.update({p.id: p.name}) %}{% endfor %}
+<section id="notes" class="section">
+  <h2>Notes {% if notes %}<span class="muted small">({{ notes|length }})</span>{% endif %}</h2>
+  <div class="card">
+    {% for n in notes %}
+    <div class="note">
+      <div class="note-head">{{ note_meta(n, providers_by_id, g.providers|length > 1) }}</div>
+      <div class="note-text">{{ n.text }}</div>
+      <details class="small">
+        <summary>Edit</summary>
+        <form method="post" action="/notes/{{ n.id }}" class="inline section">
+          <input type="hidden" name="next" value="{{ here }}">
+          {{ note_fields(g, n, today, channels, directions) }}
+          <button class="btn primary">Save note</button>
+        </form>
+        <form method="post" action="/notes/{{ n.id }}/delete" class="section" onsubmit="return confirm('Delete this note?')">
+          <input type="hidden" name="next" value="{{ here }}">
+          <button class="btn small danger">Delete note</button>
+        </form>
+      </details>
+    </div>
+    {% endfor %}
+    <details {{ 'open' if not notes }} class="{{ 'section' if notes }}">
+      <summary><strong>Add a note</strong></summary>
+      <form method="post" action="/notes" class="inline section">
+        <input type="hidden" name="next" value="{{ here }}">
+        {{ note_fields(g, {}, today, channels, directions) }}
+        <button class="btn primary">Add note</button>
+      </form>
+    </details>
+  </div>
+</section>
 
 <h2 class="section">Ledger {{ report.year }}</h2>
 <p class="muted small">Charges are what you owe per the insurer's EOB (or the statement when there is no EOB). Statements are shown for reference and do not change the balance.</p>

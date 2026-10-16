@@ -2,6 +2,8 @@
 
 > Derived from `My Health Spend (MHS) Problem Statement & Plan.md` (2026-10-09).
 > Status: **agreed with owner 2026-10-09**, pending sample data. Deferred items live in `BACKLOG.md`.
+> **This is Release 0** (decision 2026-10-15). Release 1 and later are specified in
+> `My Health Spend (MHS) Product Requirements.md`; tests for both are in `TEST_PLAN.md`.
 
 ## 1. MVP scope
 
@@ -46,7 +48,7 @@ Answers "how am I doing, and what needs my attention?"
 | HR-1 | Headline with app name and a one-line value statement (e.g. "See where your health dollars leak"). |
 | HR-2 | Summary tiles for the selected plan year: **Total billed**, **You paid**, **Insurer paid**, **$ at stake** (sum of open discrepancies). |
 | HR-3 | Visit count by status (Discrepancy, Balance outstanding, Missing documents, Waiting, Matched); each links to the filtered visit list. |
-| HR-4 | Count and dollar total of **HSA gaps** (C5: unpaid, or paid outside the HSA) and **HSA payments without a claim** (C7), linking to them. |
+| HR-4 | Count and dollar total of **HSA gaps** (C5: unpaid, or paid outside the HSA) and **HSA payments without a claim** (C7), linking to them (visit list filtered by HSA gap, or provider list filtered by flag). |
 | HR-5 | Primary action: **Import data**. Secondary: **Review flagged visits**. |
 | HR-6 | Empty state: explains the three documents to gather and links to Import. |
 | HR-7 | Plan-year selector (defaults to the current year). |
@@ -79,6 +81,7 @@ provider's charges.
 | PL-1 | Chronological table for one provider: each visit's charge (EOB patient responsibility, or the bill amount when no EOB), each payment and refund, and a running balance. |
 | PL-2 | Three balances side by side: **what I should owe** (from EOBs), **what the provider says I owe** (latest bill), **what I've paid**. Differences are highlighted. |
 | PL-3 | Reachable from visit detail and from a provider list. |
+| PL-4 | **Provider notes**: a dated log per provider (e.g. an email sent to the provider's billing office or a call with the insurer), with how it happened (email, phone, portal, in person, letter), direction (I sent, they sent, my note) and optionally the visit it concerns. Add, edit and delete on the provider page; shown read-only on visit detail; note count on the provider list. Notes live only in the app and are never changed by an import. |
 
 A chart of charges, payments and balance over time is in the backlog.
 
@@ -89,7 +92,7 @@ A chart of charges, payments and balance over time is in the backlog.
 | IM-1 | Choose a JSON ingest file (section 4). |
 | IM-2 | Validate against the schema and cross-references; show errors by record id with a plain message. Nothing is saved if there are errors. |
 | IM-3 | Preview: counts of new and updated records per section, and warnings (e.g. attached file not found). |
-| IM-4 | Confirm to save. Re-importing the same ids updates those records; this is how data is corrected in the MVP. |
+| IM-4 | Confirm to save. Re-importing the same ids updates those records; this is how data is corrected in the MVP. Records changed in the app (Settings, provider notes) keep the owner's version when the file differs: the preview lists them with the differing fields, and they are replaced only if the owner ticks "Replace my edits with the file's values". |
 | IM-5 | Attached files are copied into the app's local document folder. |
 
 ### 3.6 Settings (gear)
@@ -107,8 +110,8 @@ A chart of charges, payments and balance over time is in the backlog.
 
 ## 4. Ingestion format
 
-- **Schema:** [`schema/mhs-ingest.schema.json`](schema/mhs-ingest.schema.json) (JSON Schema 2020-12), version `0.1`.
-- **Example:** [`samples/example-ingest.json`](samples/example-ingest.json): made-up data covering every status.
+- **Schema:** [`schema/mhs-ingest.schema.json`](../schema/mhs-ingest.schema.json) (JSON Schema 2020-12), version `0.1`.
+- **Example:** [`samples/example-ingest.json`](../samples/example-ingest.json): made-up data covering every status.
 - **Sections** (all optional): `plans`, `accounts`, `providers`, `visits`, `documents`.
 - **Document types:** `provider_bill`, `eob`, `payment`, `receipt`, `account_reimbursement`,
   `account_transaction` (HSA contributions, interest, fees, opening balance).
@@ -135,7 +138,7 @@ A chart of charges, payments and balance over time is in the backlog.
 | C3 | Network status agrees | Bill, EOB and provider record agree. The rate used is the **agreed rate on the EOB** (`allowed`); no outside negotiated-rate lookup. |
 | C4 | Paid matches responsibility | Per provider group (providers joined by a suspected or confirmed relationship): payments − refunds vs what I should owe (EOB patient responsibility), and vs what the provider billed me. Flags overpayment, underpayment and probable duplicates (same provider, same amount, within 14 days). |
 | C5 | HSA gap | Owner rule: all health spend is paid from the HSA, and there are no other payments. Patient responsibility not matched by HSA payments is flagged: **Unpaid — pay from HSA** if the provider still shows it owed; **Paid outside the HSA — submit an HSA reimbursement claim** if the provider shows it paid. A payment from any non-HSA account gets the same reimbursement flag. Eligibility is not confirmed. |
-| C6 | Balance outstanding | Provider bill shows a balance > 0 not covered by later payments; shows the age in days and whether the statement is a second notice. |
+| C6 | Balance outstanding | Provider bill shows a balance > 0 not covered by later payments; shows the age in days and whether the statement is a second notice. Age counts from the first statement that listed the balance (else the EOB date). Second notice: the visit is on two or more statements with a balance, or the statement's optional `notice` field carries the printed wording (e.g. "Past due"). |
 | C7 | HSA payment without a claim | An HSA payment to a provider with no claim, statement or receipt to match. Likely another household member's claim not yet imported, a purchase that never goes through insurance, or a missing claim. |
 | C8 | Unconfirmed provider match | A ledger that joins providers through a **suspected** relationship carries this flag until the owner confirms or rejects it. |
 
@@ -162,6 +165,7 @@ Earlier-year visits still listed on a statement in the selected year are carried
 | Member | name, relationship (self, spouse, child, other), aliases |
 | Account | name, type |
 | Provider | name, kind, network status, aliases, members served |
+| ProviderNote | provider, date, channel, direction, visit (optional), text |
 | ProviderRelationship | two providers, relationship (same individual, same organization, affiliated), status (suspected, confirmed, rejected), evidence |
 | Visit | date, member, provider, plan, category, description, notes |
 | ProviderBill | provider, date, balance due, last payment received, lines (one per visit: billed, insurance paid, adjustment, agreed rate if shown, patient amount, patient paid, balance, service items) |
@@ -219,7 +223,10 @@ Trigger: the app moves from a single personal application to one used by others.
 | D9 | Claims and visits link to household members; providers can be assigned to members. | 2026-10-09 |
 | D10 | Likely-same providers are tracked as explicit relationships (suspected → confirmed / rejected), reconciled together and flagged until confirmed. | 2026-10-09 |
 | D11 | No payments outside the HSA are expected; any charge not matched to an HSA payment is a gap to flag. | 2026-10-09 |
+| D13 | Provider notes are a separate record kind, not part of the provider record or settings.json, so imports and the converter never overwrite them. | 2026-10-09 |
 | D12 | Plan limits are a list (type × network × level × member), not fixed individual/family fields; each plan records its coverage order. | 2026-10-09 |
+| D14 | This MVP is Release 0. The Product Requirements doc's P1 is Release 1, which moves data server-side. | 2026-10-15 |
+| D15 | Owner edits win: an import never silently overwrites a record changed in the app (IM-4). | 2026-10-15 |
 
 ## 10. Waiting on
 

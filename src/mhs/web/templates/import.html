@@ -33,7 +33,7 @@
     <tr><th>When</th><th>Source</th><th>Records</th></tr>
     {% for h in history %}
     <tr><td>{{ h.imported_at.replace('T', ' ') }}</td><td class="small">{{ h.source }}</td>
-      <td class="small">{% for section, c in h.summary.counts.items() %}{{ section|humanize }}: {{ c.new }} new, {{ c.updated }} updated{% if not loop.last %}; {% endif %}{% endfor %}</td></tr>
+      <td class="small">{% for section, c in h.summary.counts.items() %}{{ section|humanize }}: {{ c.new }} new, {{ c.updated }} updated{% if not loop.last %}; {% endif %}{% endfor %}{% if h.summary.edits_kept %}; {{ h.summary.edits_kept }} of your edits kept{% endif %}{% if h.summary.edits_replaced %}; {{ h.summary.edits_replaced }} of your edits replaced{% endif %}</td></tr>
     {% endfor %}
   </table>
   {% else %}<p class="muted">Nothing imported yet.</p>{% endif %}

@@ -1,7 +1,7 @@
 """Reconciliation engine: checks, visit status, provider ledgers, HSA gaps and plan-limit progress.
 
 Pure functions over plain record dicts (money in integer cents). No database or web imports.
-Rules are documented in MVP_REQUIREMENTS.md section 5.
+Rules are documented in docs/MVP_REQUIREMENTS.md section 5.
 """
 
 from collections import defaultdict
@@ -81,7 +81,11 @@ class VisitResult:
     missing: list[str] = field(default_factory=list)
     status: str = "matched"
     hsa_flags: list[str] = field(default_factory=list)
+    outside_hsa: int = 0  # paid from accounts other than the HSA, not reimbursed
     at_stake: int = 0
+    balance_age: int | None = None  # days since the member was first asked to pay an open balance
+    notices: int = 0  # statements that list this visit with a balance owed
+    notice_label: str = ""  # notice wording printed on the latest such statement, e.g. "Past due"
 
     @property
     def id(self) -> str:
@@ -209,6 +213,26 @@ class Report:
             "outside_hsa": sum(g.paid_outside_hsa for g in self.groups),
             "unexplained": sum(v.unexplained for g in self.groups for v in g.visits),
             "no_claim": sum(g.no_claim_payments for g in self.groups),
+        }
+
+    @property
+    def ledger_visits(self) -> list[VisitResult]:
+        """Every visit on a provider ledger this year, carry-ins included, newest first.
+
+        The HSA totals come from the ledgers, so their counts and filtered lists use these visits too."""
+        return sorted((v for g in self.groups for v in g.visits), key=lambda v: v.visit["date"], reverse=True)
+
+    @property
+    def hsa_counts(self) -> dict[str, int]:
+        """How many visits (or provider groups, or payments) sit behind each HSA total."""
+        visits = self.ledger_visits
+        return {
+            "unpaid": sum(1 for v in visits if v.remaining),
+            "gap": sum(1 for g in self.groups if g.gap),
+            "outside_hsa": sum(1 for v in visits if v.outside_hsa),
+            "unexplained": sum(1 for v in visits if v.unexplained),
+            "no_claim": sum(1 for g in self.groups if g.no_claim_payments
+                            for p in g.payments if p.get("kind") != "refund"),
         }
 
     @property
@@ -430,8 +454,16 @@ def _check_visit(vr: VisitResult, is_hsa, today: date) -> None:
         checks.append(Check("C4", "na", "No payments applied"))
 
     if vr.remaining:
+        _age_balance(vr, today)
         basis = f"per statement of {latest[0]['date']}" if latest else "per insurer"
-        checks.append(Check("C6", "fail", f"{_fmt(vr.remaining)} unpaid {basis}", vr.remaining))
+        detail = f"{_fmt(vr.remaining)} unpaid {basis}"
+        if vr.balance_age is not None:
+            detail += f"; first billed {vr.balance_age} days ago"
+        if vr.notices >= 2:
+            detail += f"; second notice or later (on {vr.notices} statements)"
+        if vr.notice_label:
+            detail += f"; statement says \"{vr.notice_label}\""
+        checks.append(Check("C6", "fail", detail, vr.remaining))
     elif vr.settled and vr.unexplained:
         checks.append(Check("C6", "pass", "Provider's later statement no longer lists this visit"))
     else:
@@ -459,14 +491,28 @@ def _check_visit(vr: VisitResult, is_hsa, today: date) -> None:
 
     if vr.remaining:
         vr.hsa_flags.append(f"Unpaid {_fmt(vr.remaining)} — pay from HSA")
-    outside = sum(a.amount for a in vr.allocations if not is_hsa(a.payment))
-    if outside:
-        vr.hsa_flags.append(f"{_fmt(outside)} paid outside the HSA — submit an HSA reimbursement claim")
+    vr.outside_hsa = sum(a.amount for a in vr.allocations if not is_hsa(a.payment))
+    if vr.outside_hsa:
+        vr.hsa_flags.append(f"{_fmt(vr.outside_hsa)} paid outside the HSA — submit an HSA reimbursement claim")
     if vr.unexplained:
         vr.hsa_flags.append(f"Provider shows {_fmt(vr.unexplained)} settled, but no matching payment found — paid outside the HSA?")
 
     stake = max((c.amount for c in checks if c.result == "fail" and c.code in ("C1", "C2")), default=0)
     vr.at_stake = stake + vr.overpaid
+
+
+def _age_balance(vr: VisitResult, today: date) -> None:
+    """Age an open balance from the first statement that asked for it, else from the EOB."""
+    owed = [(bill, line) for bill, line in vr.bill_lines if line.get("balance", line["patient_amount"]) > 0]
+    if owed:
+        first = min(bill["date"] for bill, _ in owed)
+        vr.notices = len({bill["id"] for bill, _ in owed})
+        vr.notice_label = owed[0][0].get("notice", "")  # bill_lines are newest first
+    elif vr.eob:
+        first = vr.eob["date"]
+    else:
+        return
+    vr.balance_age = max((today - date.fromisoformat(first)).days, 0)
 
 
 def _summarize_group(g: ProviderGroup, is_hsa, ys: str) -> None:
