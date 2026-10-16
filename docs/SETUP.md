@@ -96,6 +96,16 @@ docker compose exec -it app mhs-admin add-member --household <household-id> --em
 
 `add-member` asks for a password (12 characters or more) and prints an authenticator secret and `otpauth://` URI, once. Add it to an authenticator app, then sign in at http://127.0.0.1:3063 with email, password and the 6-digit code. Five wrong tries lock the account for 15 minutes; sessions end after 15 idle minutes or 12 hours. Lost authenticator: `docker compose exec app mhs-admin reset-mfa --email you@example.com` issues a new secret and ends the member's sessions.
 
+### Load data
+
+Upload an ingest file on the Import page, with the statement and EOB files it refers to (matched by file name, stored encrypted). Or, as an admin, import a file that is inside the app container:
+
+```bash
+docker compose exec app mhs-admin import --household <household-id> /srv/mhs/samples/example-ingest.json
+```
+
+Without `--yes` it only previews (counts, warnings, member edits it would keep); add `--yes` to save, and `--replace-edits` to let the file overwrite edits made in the app. For a file on your machine, copy its folder in first with `docker compose cp <folder> app:/tmp/import`. The local stack is for synthetic data only (ARCHITECTURE.md "Environments"). Settings has a "Download settings.json" link for `tools/build_ingest.py`.
+
 ### Back up and restore the vault (PRV-07)
 
 ```bash

@@ -26,7 +26,7 @@
   <ul>{% for k in plan.kept %}<li class="small">{{ k.section|humanize }} <code>{{ k.id }}</code>: {% if k.fields %}file differs in {{ k.fields|join(', ') }}{% else %}you deleted it in the app; the file would bring it back{% endif %}</li>{% endfor %}</ul>
 </div>
 {% endif %}
-<form method="post" action="/import/confirm" class="inline section">
+<form method="post" action="/import/confirm" class="inline section">{{ csrf_input() }}
   <input type="hidden" name="token" value="{{ token }}">
   {% if plan.kept %}<label class="check-label"><input type="checkbox" name="replace_edits" value="1"> Replace my edits with the file's values</label>{% endif %}
   <button class="btn primary">Save import</button>

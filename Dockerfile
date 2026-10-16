@@ -8,6 +8,7 @@ COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY src ./src
 COPY schema ./schema
+COPY samples ./samples
 RUN uv sync --frozen --no-dev \
     && useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin mhs \
     && mkdir -p /srv/objects /backups && chown mhs:mhs /srv/objects /backups
@@ -18,6 +19,5 @@ FROM runtime AS test
 USER root
 RUN uv sync --frozen
 COPY tests ./tests
-COPY samples ./samples
 USER 10001
 CMD ["pytest", "-q"]

@@ -41,3 +41,7 @@ Next: phase 1.1 Foundation on branch work off main.
 2026-10-16: Phase 1.1 Foundation built on feat/r1-foundation: Docker Compose stack (app on 3063, worker, vault,
 postgres, capture), adapters, MFA sign-in, household isolation with row-level security, encrypted originals and vault,
 vault backup and restore, CSP, CI workflow. 95 tests pass on the stack. ADR-031 accepted by the owner the same day.
+2026-10-16: Phase 1.2 Port Release 0 built on feat/r1-port-release-0: Release 0 pages shared by both apps
+(web/pages.py), household Postgres store with owner edits and import log, upload imports with encrypted
+attachments, mhs-admin import, CSP-clean templates. Appendix A green against both apps; 126 tests on the stack.
+ADR-032 proposed. Owner's real data not loaded (local stack is synthetic only).

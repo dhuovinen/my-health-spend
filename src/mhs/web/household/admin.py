@@ -1,16 +1,24 @@
-"""`mhs-admin`: create households and members, reset a member's MFA. Run inside the app container:
+"""`mhs-admin`: create households and members, reset a member's MFA, import an ingest file. Run inside the app
+container:
 
     docker compose exec app mhs-admin create-household "Example household"
     docker compose exec -it app mhs-admin add-member --household <id> --email a@example.com --name "A Member"
+    docker compose exec app mhs-admin import --household <id> /srv/mhs/samples/example-ingest.json --yes
 """
 
 import argparse
 import getpass
+import json
 import sys
+from pathlib import Path
 
+from mhs.data import importer
 from mhs.data.db import Database
+from mhs.data.household_store import HouseholdStore
 from mhs.data.keys import LocalKeyFile, db_keyring
+from mhs.data.objects import LocalObjectStore
 from mhs.stack import load_app_config
+from mhs.web.household.app import EncryptedFiles
 from mhs.web.household.auth import AccountError, Accounts
 
 
@@ -18,6 +26,36 @@ def accounts_from_env() -> tuple[Database, Accounts]:
     config = load_app_config()
     db = Database(config.database_url, max_size=2)
     return db, Accounts(db, db_keyring(db, LocalKeyFile(config.key_file), "app.household_keys"))
+
+
+def import_file(accounts: Accounts, household_id: str, path: Path, commit: bool, replace_edits: bool) -> None:
+    """Preview an ingest file for a household and, with commit, save it (the Release 0 migration path)."""
+    if accounts.household_name(household_id) is None:
+        raise AccountError("No such household.")
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError) as e:
+        raise AccountError(f"Can't read {path}: {e}") from None
+    store = HouseholdStore(accounts.db, household_id)
+    plan = importer.prepare(data, store, path.name, path.parent)
+    for e in plan.errors:
+        print(f"error: {e}")
+    if not plan.ok:
+        raise AccountError("Nothing was saved: fix the errors and import again.")
+    for w in plan.warnings:
+        print(f"warning: {w}")
+    for section, c in plan.counts.items():
+        print(f"{section}: {c['new']} new, {c['updated']} updated, {c['unchanged']} unchanged")
+    for k in plan.kept:
+        what = "deleted in the app" if not k.fields else "changed in the app: " + ", ".join(k.fields)
+        print(f"member edit {'replaced' if replace_edits else 'kept'}: {k.section} {k.id} ({what})")
+    if not commit:
+        print("Preview only: run again with --yes to save.")
+        return
+    config = load_app_config()
+    files = EncryptedFiles(LocalObjectStore(config.objects_dir), accounts.keyring, household_id)
+    summary = importer.commit(plan, store, files, replace_edits=replace_edits)
+    print(f"saved: {json.dumps(summary)}")
 
 
 def read_password(from_stdin: bool) -> str:
@@ -47,6 +85,11 @@ def main(argv: list[str] | None = None) -> None:
     m.add_argument("--password-stdin", action="store_true", help="read the password from the first line of stdin")
     r = sub.add_parser("reset-mfa", help="issue a new authenticator secret and end the member's sessions")
     r.add_argument("--email", required=True)
+    i = sub.add_parser("import", help="import an ingest file (and the files beside it) into a household")
+    i.add_argument("--household", required=True)
+    i.add_argument("path", type=Path)
+    i.add_argument("--yes", action="store_true", help="save; without it, only preview")
+    i.add_argument("--replace-edits", action="store_true", help="let the file overwrite edits made in the app")
     args = parser.parse_args(argv)
 
     db, accounts = accounts_from_env()
@@ -60,6 +103,8 @@ def main(argv: list[str] | None = None) -> None:
             show_totp(accounts, member.email, totp_secret)
         elif args.command == "reset-mfa":
             show_totp(accounts, args.email, accounts.reset_mfa(args.email))
+        elif args.command == "import":
+            import_file(accounts, args.household, args.path, args.yes, args.replace_edits)
     except AccountError as e:
         sys.exit(str(e))
     finally:

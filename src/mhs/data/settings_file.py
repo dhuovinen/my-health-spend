@@ -21,14 +21,9 @@ SETTINGS_SECTIONS = {
 }
 
 
-def export_settings(store: Store, path: Path) -> None:
-    previous_source = {}
-    if path.is_file():
-        shutil.copyfile(path, path.with_suffix(".json.bak"))
-        try:
-            previous_source = json.loads(path.read_text()).get("source", {})
-        except json.JSONDecodeError:
-            pass
+def settings_document(store: Store, previous_source: dict | None = None) -> dict:
+    """The settings file's contents: plans, accounts, members, providers and relationships, in ingest dollars."""
+    previous_source = previous_source or {}
     out = {
         "schema_version": "0.1",
         "source": {
@@ -39,4 +34,15 @@ def export_settings(store: Store, path: Path) -> None:
     }
     for section, kind in SETTINGS_SECTIONS.items():
         out[section] = [to_dollars(r) for r in store.all(kind)]
-    path.write_text(json.dumps(out, indent=2) + "\n")
+    return out
+
+
+def export_settings(store: Store, path: Path) -> None:
+    previous_source = {}
+    if path.is_file():
+        shutil.copyfile(path, path.with_suffix(".json.bak"))
+        try:
+            previous_source = json.loads(path.read_text()).get("source", {})
+        except json.JSONDecodeError:
+            pass
+    path.write_text(json.dumps(settings_document(store, previous_source), indent=2) + "\n")

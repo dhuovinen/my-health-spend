@@ -158,3 +158,19 @@ details summary { cursor: pointer; }
 .note-text { white-space: pre-wrap; }
 label.grow { flex: 1 1 100%; }
 label.grow textarea { width: 100%; }
+
+/* utilities that replace inline styles, so pages work under the Content Security Policy */
+.bad-ink { color: var(--bad); }
+.warn-ink { color: var(--warn); }
+.flush { margin: 0; }
+.grow-wide { flex: 1 1 320px; }
+.w-6 { width: 6rem; }
+.w-8 { width: 8rem; }
+.w-16 { width: 16rem; }
+/* Release 1 sign-in and uploads */
+.auth { max-width: 420px; margin: 2rem auto; }
+.auth h1 { font-size: 1.4rem; }
+form.stack { display: flex; flex-direction: column; gap: .8rem; margin-top: 1rem; }
+form.stack .btn { align-self: flex-start; }
+.topbar .icons form { margin: 0; }
+.uploads form.inline { margin-bottom: 1rem; }

@@ -1,4 +1,5 @@
 import json
+import uuid
 from pathlib import Path
 
 import pytest
@@ -20,9 +21,18 @@ def config(tmp_path: Path) -> Config:
     return Config(data_dir=tmp_path / "data")
 
 
-@pytest.fixture
-def store(config: Config) -> Store:
-    return Store(config.db_path)
+@pytest.fixture(params=["sqlite", pytest.param("postgres", marks=pytest.mark.postgres)])
+def store(request, config: Config):
+    """Release 0's SQLite store, and a household's Postgres store with the same interface (ADR-032)."""
+    if request.param == "sqlite":
+        return Store(config.db_path)
+    from mhs.data.household_store import HouseholdStore
+
+    db = request.getfixturevalue("app_db")
+    hid = str(uuid.uuid4())
+    with db.tx() as c:
+        c.execute("INSERT INTO app.households (id, name) VALUES (%s, 'Importer test')", (hid,))
+    return HouseholdStore(db, hid)
 
 
 @pytest.fixture
@@ -36,7 +46,6 @@ def loaded_store(store: Store, config: Config, sample_data: dict) -> Store:
 # --- Release 1 fixtures (Postgres, keys, vault, application tier) ---------------------------
 
 import secrets  # noqa: E402
-import uuid  # noqa: E402
 from dataclasses import dataclass  # noqa: E402
 
 import psycopg  # noqa: E402

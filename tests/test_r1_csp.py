@@ -37,7 +37,7 @@ def test_tc_prv_08_3_header_on_every_response(household):
     responses = [
         anon.get("/health"), anon.get("/signin"), anon.get("/static/style.css"), anon.get("/no-such-page"),
         anon.get("/api/visits"), anon.get("/", follow_redirects=False),
-        member.get("/"), member.get("/api/visits"), member.get("/api/documents/doc_missing"),
+        member.get("/"), member.get("/api/visits"), member.get("/api/uploads/upl_missing"),
     ]
     for r in responses:
         assert r.headers["content-security-policy"] == security.CSP, r.url
@@ -50,17 +50,21 @@ def test_tc_prv_08_3_header_on_every_response(household):
 
 def test_tc_prv_08_1_pages_reference_no_third_party_resources():
     """No external URLs, no inline scripts and no inline styles in the application tier's pages and assets."""
-    files = list((HOUSEHOLD / "templates").glob("*.html")) + [STATIC / "style.css", STATIC / "household.css"]
+    files = (list((HOUSEHOLD / "templates").glob("*.html")) + list((HOUSEHOLD.parent / "templates").glob("*.html"))
+             + [STATIC / "style.css", STATIC / "app.js"])
     for path in files:
         text = path.read_text()
         assert not re.search(r"https?://", text), path
         assert not re.search(r"<script(?![^>]*\bsrc=\"/static/)", text), path  # only own script files, if any
         assert not re.search(r"\sstyle=", text), path
-        assert "@import" not in text, path
+        assert not re.search(r"\son[a-z]+=", text), path  # no inline event handlers
+        assert "@import" not in text and "eval(" not in text, path
 
 
 def test_served_pages_load_only_same_origin_assets(household):
     who = household.enrol()
-    html = household.sign_in(who).get("/").text + household.client().get("/signin").text
+    member = household.sign_in(who)
+    html = "".join(member.get(p).text for p in ("/", "/visits", "/providers", "/import", "/settings", "/help", "/uploads"))
+    html += household.client().get("/signin").text
     for url in re.findall(r'(?:src|href)="([^"]+)"', html):
-        assert url.startswith("/") and not url.startswith("//"), url
+        assert url.startswith(("/", "#", "?")) and not url.startswith("//"), url

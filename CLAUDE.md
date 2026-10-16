@@ -2,7 +2,7 @@
 
 Reconciles provider bills, insurer EOBs and HSA payments per visit to find billing errors and overpayment. **Durable tier** (docs/DECISIONS.md ADR-020): read `docs/VISION.md`, `docs/ARCHITECTURE.md` and `docs/ROADMAP.md` before structural work, and record irreversible choices as an ADR in `docs/DECISIONS.md` first.
 
-**Current phase:** Release 1, phase 1.1 (Foundation) built on branch `feat/r1-foundation`: the Docker Compose stack, the four adapters, MFA sign-in with household isolation, encryption at rest, vault backup and restore, CSP, CI. Its build choices are ADR-031 (accepted). Next is phase 1.2, porting Release 0 to the server. Release 0, the local MVP, is built and tagged `release-0`. Production target is Google Cloud (ADR-030). See `docs/ROADMAP.md`.
+**Current phase:** Release 1, phase 1.2 (Port Release 0) built on branch `feat/r1-port-release-0`: the Release 0 pages now run on the server app for a signed-in household (shared `web/pages.py`), with imports by upload, encrypted attachments and `mhs-admin import`. ADR-032 (its choices) awaits the owner's acceptance. Phase 1.1 (Foundation, ADR-031) is merged into `main` and tagged `r1-foundation`. Next is phase 1.3, ingestion and the privacy pipeline. Release 0, the local MVP, is built and tagged `release-0`. Production target is Google Cloud (ADR-030). See `docs/ROADMAP.md`.
 
 ## How to run
 
@@ -28,7 +28,13 @@ docker compose exec app mhs-admin create-household "Household name"
 docker compose exec -it app mhs-admin add-member --household <household-id> --email you@example.com --name "Your name"
 ```
 
-The second command prints an authenticator secret and URI once; sign in with email, password and the 6-digit code. Full suite against the stack (unit, integration and stack tests, through the `capture` proxy):
+The second command prints an authenticator secret and URI once; sign in with email, password and the 6-digit code. Load the made-up sample into a household (or upload an ingest file on the Import page):
+
+```bash
+docker compose exec app mhs-admin import --household <household-id> /srv/mhs/samples/example-ingest.json --yes
+```
+
+ Full suite against the stack (unit, integration and stack tests, through the `capture` proxy):
 
 ```bash
 docker compose --profile test run --rm tests
@@ -61,6 +67,6 @@ First-time setup and the converter's warnings are in `docs/SETUP.md`.
 - `src/mhs/core/` is pure functions: no database or web imports, and never changed to suit the UI.
 - Edits made in the app (Settings, provider notes, deletes) are marked in the `owner_edits` table and survive re-import unless the owner ticks "Replace my edits" (ADR-011). Save through `Store.upsert(..., edited=True)` / `Store.delete(..., edited=True)` from any new in-app write path.
 - Settings edits are also written to `data/settings.json`, which the converter reads, so in-app changes flow into the next ingest file.
-- Release 1 code: adapters in `data/` (db, records, queue, objects, keys, migrate), worker and OCR stub in `ingest/`, vault service in `vault/`, application tier in `web/household/`, stack settings in `stack.py`. Each tier uses its own Postgres role; household tables have row-level security, so always go through `HouseholdRecords` / `db.tx(household_id)`. Add schema changes as a new numbered file in `src/mhs/data/migrations/`.
+- Release 1 code: adapters in `data/` (db, records, household_store, queue, objects, keys, migrate), worker and OCR stub in `ingest/`, vault service in `vault/`, application tier in `web/household/`, stack settings in `stack.py`. The Release 0 pages live once in `web/pages.py` and are mounted by both apps through a `PagesHost`; change a page there, never per app. Templates must stay CSP-clean: no inline `style=`, `<script>` or `on*=` handlers (use `style.css` classes and `static/app.js`), and every post form starts with `{{ csrf_input() }}`. Each tier uses its own Postgres role; household tables have row-level security, so always go through `HouseholdRecords` / `db.tx(household_id)`. Add schema changes as a new numbered file in `src/mhs/data/migrations/`.
 - If `docker pull` or a build hangs on `docker-credential-desktop`, run it with a config that has no credential store: `DOCKER_CONFIG=<dir with {} config.json and a cli-plugins symlink to ~/.docker/cli-plugins>`.
 - Unit tests pin "today" (`TODAY = date(2026, 10, 9)` in `tests/test_reconcile.py`); web tests run on the real date, so don't assert exact day counts there.

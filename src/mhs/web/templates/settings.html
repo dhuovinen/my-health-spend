@@ -2,14 +2,14 @@
 {% block title %}Settings{% endblock %}
 {% macro options(values, selected, blank=None) %}{% if blank is not none %}<option value="">{{ blank }}</option>{% endif %}{% for o in values %}<option value="{{ o }}" {{ 'selected' if o == selected }}>{{ o|humanize }}</option>{% endfor %}{% endmacro %}
 {% block content %}
-<div class="page-head"><h1>Settings</h1><span class="muted small">Changes are saved to the database and written to data/settings.json</span></div>
+<div class="page-head"><h1>Settings</h1><span class="muted small">{% if path_import %}Changes are saved to the database and written to data/settings.json{% else %}Changes are saved for your household. <a href="/settings/export">Download settings.json</a> for the converter{% endif %}</span></div>
 {% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
 {% if saved %}<div class="alert good">Saved.</div>{% endif %}
 
 <div class="callout">
   {% if primary %}
   <div class="muted small">Primary insurer</div>
-  <h2 style="margin:0">{{ primary.insurer }}</h2>
+  <h2 class="flush">{{ primary.insurer }}</h2>
   <div class="small">{{ primary.plan_name }} · plan year {{ primary.plan_year }}{% if primary.member_ids %} · covers {% for mid in primary.member_ids %}{{ member_names.get(mid, mid) }}{{ ', ' if not loop.last }}{% endfor %}{% endif %}</div>
   {% else %}
   <strong>No primary insurer set.</strong> Set "Coverage order" to Primary on a plan below.
@@ -23,14 +23,14 @@
   {% for p in plans %}
   <div class="card section">
     <h3>{{ p.insurer }} · {{ p.plan_name }} {{ p.plan_year }}{% if p.coverage_order %} <span class="badge s-matched">{{ p.coverage_order|humanize }}</span>{% endif %}</h3>
-    <form method="post" action="/settings/plans/{{ p.id }}" class="inline">
+    <form method="post" action="/settings/plans/{{ p.id }}" class="inline">{{ csrf_input() }}
       <label>Insurer<input name="insurer" value="{{ p.insurer }}" required></label>
       <label>Plan name<input name="plan_name" value="{{ p.plan_name }}"></label>
-      <label>Plan year<input name="plan_year" type="number" value="{{ p.plan_year }}" style="width:6rem"></label>
+      <label>Plan year<input name="plan_year" type="number" value="{{ p.plan_year }}" class="w-6"></label>
       <label>Coverage order<select name="coverage_order">{{ options(['primary', 'secondary', 'tertiary'], p.coverage_order, '—') }}</select></label>
       <label>Coverage start<input name="coverage_start" type="date" value="{{ p.coverage_start or '' }}"></label>
       <label>Coverage end<input name="coverage_end" type="date" value="{{ p.coverage_end or '' }}"></label>
-      <label>Coinsurance %<input name="coinsurance_pct" type="number" step="0.1" min="0" max="100" style="width:6rem"
+      <label>Coinsurance %<input name="coinsurance_pct" type="number" step="0.1" min="0" max="100" class="w-6"
         value="{{ (p.coinsurance_rate * 100)|round(1) if p.coinsurance_rate is not none else '' }}"></label>
       <label>Copays (one per line, "specialist: 60")<textarea name="copays" rows="2">{% for k, v in (p.copays or {}).items() %}{{ k }}: {{ '%.2f'|format(v / 100) }}
 {% endfor %}</textarea></label>
@@ -49,24 +49,24 @@
       <tr><td>{{ l.type|humanize }}</td><td>{{ l.network|humanize }}</td><td>{{ l.level|humanize }}</td>
         <td>{{ member_names.get(l.member_id, 'Each member' if l.level == 'individual' else '—') }}</td>
         <td class="num">{{ l.amount|money }}</td>
-        <td class="num"><form method="post" action="/settings/plans/{{ p.id }}/limits/{{ loop.index0 }}/delete"><button class="btn small danger">Remove</button></form></td></tr>
+        <td class="num"><form method="post" action="/settings/plans/{{ p.id }}/limits/{{ loop.index0 }}/delete">{{ csrf_input() }}<button class="btn small danger">Remove</button></form></td></tr>
       {% endfor %}
     </table>
     {% else %}<p class="muted small">No limits yet.</p>{% endif %}
-    <form method="post" action="/settings/plans/{{ p.id }}/limits" class="inline section">
+    <form method="post" action="/settings/plans/{{ p.id }}/limits" class="inline section">{{ csrf_input() }}
       <label>Type<select name="type">{{ options(opts.limit_types, 'deductible') }}</select></label>
       <label>Network<select name="network">{{ options(opts.limit_networks, 'in_network') }}</select></label>
       <label>Level<select name="level">{{ options(['individual', 'family'], 'individual') }}</select></label>
       <label>Member (individual only)<select name="member_id"><option value="">Each member</option>{% for m in members %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}</select></label>
-      <label>Amount<input name="amount" inputmode="decimal" placeholder="4500.00" required style="width:8rem"></label>
+      <label>Amount<input name="amount" inputmode="decimal" placeholder="4500.00" required class="w-8"></label>
       <button class="btn">Add limit</button>
     </form>
   </div>
   {% endfor %}
   <details class="card section">
     <summary><strong>Add a plan</strong></summary>
-    <form method="post" action="/settings/plans" class="inline section">
-      <label>Plan year<input name="plan_year" type="number" required style="width:6rem"></label>
+    <form method="post" action="/settings/plans" class="inline section">{{ csrf_input() }}
+      <label>Plan year<input name="plan_year" type="number" required class="w-6"></label>
       <label>Insurer<input name="insurer" required></label>
       <label>Plan name<input name="plan_name" placeholder="Medical" required></label>
       <button class="btn primary">Add plan</button>
@@ -78,7 +78,7 @@
   <h2>Household members</h2>
   <div class="card">
     {% for m in members %}
-    <form method="post" action="/settings/members" class="inline settings-row">
+    <form method="post" action="/settings/members" class="inline settings-row">{{ csrf_input() }}
       <input type="hidden" name="id" value="{{ m.id }}">
       <label>Name<input name="name" value="{{ m.name }}" required></label>
       <label>Relationship<select name="relationship">{{ options(opts.relationships, m.relationship) }}</select></label>
@@ -86,7 +86,7 @@
       <button class="btn">Save</button>
     </form>
     {% endfor %}
-    <form method="post" action="/settings/members" class="inline settings-row">
+    <form method="post" action="/settings/members" class="inline settings-row">{{ csrf_input() }}
       <label>Name<input name="name" required placeholder="New member"></label>
       <label>Relationship<select name="relationship">{{ options(opts.relationships, 'child') }}</select></label>
       <label>Names in source files (one per line)<textarea name="aliases" rows="2"></textarea></label>
@@ -99,14 +99,14 @@
   <h2>Payment accounts</h2>
   <div class="card">
     {% for a in accounts %}
-    <form method="post" action="/settings/accounts" class="inline settings-row">
+    <form method="post" action="/settings/accounts" class="inline settings-row">{{ csrf_input() }}
       <input type="hidden" name="id" value="{{ a.id }}">
       <label>Name<input name="name" value="{{ a.name }}" required></label>
       <label>Type<select name="type">{{ options(opts.account_types, a.type) }}</select></label>
       <button class="btn">Save</button>
     </form>
     {% endfor %}
-    <form method="post" action="/settings/accounts" class="inline settings-row">
+    <form method="post" action="/settings/accounts" class="inline settings-row">{{ csrf_input() }}
       <label>Name<input name="name" required placeholder="e.g. FSA 2026"></label>
       <label>Type<select name="type">{{ options(opts.account_types, 'credit_card') }}</select></label>
       <button class="btn primary">Add account</button>
@@ -119,7 +119,7 @@
   <p class="muted small">"Names in source files" maps the insurer's provider name and the HSA card merchant name to this provider. Assigning members lets HSA payments with no claim be attributed.</p>
   <div class="card">
     {% for p in providers %}
-    <form method="post" action="/settings/providers/{{ p.id }}" class="inline settings-row">
+    <form method="post" action="/settings/providers/{{ p.id }}" class="inline settings-row">{{ csrf_input() }}
       <label>Name<input name="name" value="{{ p.name }}" required></label>
       <label>Kind<select name="kind">{{ options(opts.provider_kinds, p.kind) }}</select></label>
       <label>Network<select name="network_status">{{ options(opts.network_statuses, p.network_status or 'unknown') }}</select></label>
@@ -138,13 +138,13 @@
   <p class="muted small">Provider records that may be the same individual or organization. Suspected and confirmed matches are reconciled together; suspected ones are flagged until you decide.</p>
   <div class="card">
     {% for r in relationships %}
-    <form method="post" action="/settings/relationships/{{ r.id }}" class="inline settings-row">
-      <div style="flex:1 1 320px">
+    <form method="post" action="/settings/relationships/{{ r.id }}" class="inline settings-row">{{ csrf_input() }}
+      <div class="grow-wide">
         <strong>{{ provider_names.get(r.provider_id, r.provider_id) }}</strong> ↔ <strong>{{ provider_names.get(r.related_provider_id, r.related_provider_id) }}</strong>
         <div class="small">{{ r.relationship|humanize }}{% if r.evidence %} · {{ r.evidence }}{% endif %}</div>
       </div>
       <label>Status<select name="status">{{ options(['suspected', 'confirmed', 'rejected'], r.status) }}</select></label>
-      <label>Notes<input name="notes" value="{{ r.notes or '' }}" style="width:16rem"></label>
+      <label>Notes<input name="notes" value="{{ r.notes or '' }}" class="w-16"></label>
       <button class="btn">Save</button>
     </form>
     {% else %}<p class="muted">No provider matches.</p>{% endfor %}

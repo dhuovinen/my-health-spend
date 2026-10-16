@@ -11,7 +11,18 @@ from tests.conftest import admin_sql, csrf_from
 
 pytestmark = pytest.mark.postgres
 
-DATA_ROUTES = ["/", "/api/documents", "/api/visits", "/api/session", "/documents/doc_x", "/api/visits/v1"]
+DATA_ROUTES = [
+    "/", "/visits", "/visits/v1", "/providers", "/providers/p1", "/import", "/settings", "/settings/export", "/help",
+    "/files/d1", "/uploads", "/uploads/upl_x", "/api/uploads", "/api/visits", "/api/session", "/api/visits/v1",
+]
+# Every post route of the Release 0 pages, as (path, form data).
+PAGE_POSTS = [
+    ("/notes", {"provider_id": "prov-pcp", "text": "x"}), ("/notes/n1", {"text": "x"}), ("/notes/n1/delete", {}),
+    ("/import", {}), ("/import/confirm", {"token": "t"}), ("/settings/plans", {"plan_name": "X"}),
+    ("/settings/plans/p1", {}), ("/settings/plans/p1/limits", {}), ("/settings/plans/p1/limits/0/delete", {}),
+    ("/settings/members", {"name": "X"}), ("/settings/accounts", {"name": "X"}), ("/settings/providers/p1", {}),
+    ("/settings/relationships/r1", {}),
+]
 
 
 def test_tc_prv_11_1_password_alone_reaches_no_data(household):
@@ -27,6 +38,9 @@ def test_tc_prv_11_1_password_alone_reaches_no_data(household):
         else:
             assert r.status_code == 303 and r.headers["location"] == "/signin/mfa", path
     assert c.post("/api/jobs/ping").status_code == 401
+    for path, data in PAGE_POSTS:
+        r = c.post(path, data=data, follow_redirects=False)
+        assert r.status_code == 303 and r.headers["location"] == "/signin/mfa", path
     # Wrong code: still nothing.
     r = c.post("/signin/mfa", data={"code": "000000", "csrf_token": csrf_from(c.get("/signin/mfa").text)})
     assert r.status_code == 401
@@ -36,7 +50,8 @@ def test_tc_prv_11_1_password_alone_reaches_no_data(household):
                follow_redirects=False)
     assert r.status_code == 303
     assert c.get("/api/visits").json() == []
-    assert "Household" in c.get("/").text
+    assert "No visits yet" in c.get("/").text
+    assert "Household" in c.get("/uploads").text
 
 
 def test_no_session_redirects_to_sign_in(household):
@@ -131,11 +146,19 @@ def test_session_cookie_flags(household):
     assert "httponly" in cookie and "samesite=strict" in cookie and "path=/" in cookie
 
 
+def test_csrf_token_required_on_every_page_post(household):
+    who = household.enrol()
+    c = household.sign_in(who)
+    for path, data in PAGE_POSTS:
+        assert c.post(path, data=data).status_code == 403, path
+        assert c.post(path, data={**data, "csrf_token": "wrong"}).status_code == 403, path
+
+
 def test_csrf_token_required_on_posts(household):
     who = household.enrol()
     c = household.sign_in(who)
     files = {"file": ("a.pdf", b"%PDF-1.4 test", "application/pdf")}
-    assert c.post("/documents", files=files, data={"csrf_token": "wrong"}).status_code == 403
+    assert c.post("/uploads", files=files, data={"csrf_token": "wrong"}).status_code == 403
     assert c.post("/api/jobs/ping").status_code == 403
     assert c.post("/api/jobs/ping", headers={"x-csrf-token": household.csrf(c)}).status_code == 200
     assert c.post("/signout", data={"csrf_token": "wrong"}).status_code == 403
