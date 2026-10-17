@@ -12,7 +12,7 @@ Items deferred from the MVP. Newest decisions are in `docs/MVP_REQUIREMENTS.md` 
 | B-6 | In-app forms to add and edit visits and documents | Review | MVP corrects data by re-importing JSON. |
 | B-7 | Pre-visit strategy (use case 2): self-pay vs insurance, account choice, expected cost | Plan phase 5 | Depends on open question: does self-pay count toward the deductible? |
 | B-8 | Service-line (CPT) reconciliation | Review | Lines are captured on EOBs but not checked. |
-| B-9 | Help/documentation content | Owner | MVP has a stub page. |
+| B-9 | Help/documentation content | Owner | Done 2026-10-17 (branch feat/r1-help): statuses, checks, uploads, recovery, import, Settings, your data. |
 | B-10 | Settings: data export, backup, delete all; configurable "waiting" threshold; FSA rules | Owner / review | Stub sections in MVP. |
 | B-11 | Provider network status that changes by plan year | Review | MVP keeps one status per provider. |
 | B-12 | Bill and EOB revision history (corrected EOBs, reissued bills) | Review | MVP keeps the latest; notes capture history. |

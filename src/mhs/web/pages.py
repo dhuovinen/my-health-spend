@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 from jinja2 import pass_context
 from markupsafe import Markup, escape
 
-from mhs.core.reconcile import STATUS_LABELS, STATUS_ORDER, Report, available_years, build_report
+from mhs.core.reconcile import CHECK_NAMES, STATUS_LABELS, STATUS_ORDER, Report, available_years, build_report
 from mhs.data import importer
 from mhs.data.importer import DocumentFiles, FileSource, UploadedSource
 from mhs.data.money import cents, to_dollars
@@ -43,6 +43,26 @@ HSA_FILTERS = {
     "unpaid": ("remaining", "Unpaid — pay from HSA"),
     "outside_hsa": ("outside_hsa", "Paid outside the HSA"),
     "unexplained": ("unexplained", "Settled by provider, no matching payment"),
+}
+
+
+# Plain-language help for the statuses and checks (UX-05); the Help page lists whatever the engine defines, so a
+# status or check without a sentence here still shows with its name.
+STATUS_HELP = {
+    "discrepancy": "A check failed: the bill, the EOB and the payments disagree. The visit's page shows the numbers.",
+    "balance_outstanding": "The provider shows money still owed, and nothing explains it yet.",
+    "missing_documents": "A document you'd expect isn't here, such as the EOB a month after the visit.",
+    "waiting": "Recent: the EOB or the statement may simply not have arrived yet.",
+    "matched": "Everything that's here agrees.",
+}
+CHECK_HELP = {
+    "C1": "The EOB's own numbers add up: billed = plan paid + discounts + what you owe, and what you owe = deductible "
+          "+ copay + coinsurance + not covered.",
+    "C2": "What the provider's latest statement asks you for equals what the EOB says you owe, and the provider billed "
+          "the insurer what it billed you.",
+    "C3": "The bill, the EOB and your provider list agree on whether the provider is in network.",
+    "C4": "What you paid the provider matches what you owe: no overpayment, underpayment or payment made twice.",
+    "C6": "A balance the provider shows as owed, how long it has been owed, and whether it's a second notice.",
 }
 
 
@@ -529,6 +549,6 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
     @app.get("/help", response_class=HTMLResponse)
     def help_page(request: Request):
         host.store(request)
-        return render(request, "help.html")
+        return render(request, "help.html", CHECK_NAMES=CHECK_NAMES, CHECK_HELP=CHECK_HELP, STATUS_HELP=STATUS_HELP)
 
     return preview_import
