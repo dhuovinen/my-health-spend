@@ -71,3 +71,6 @@ household, members' addresses only, attachments and statement bodies become uplo
 (target 60 s), feat/r1-perf-run.
 2026-10-17: Access log (PRV-10) on feat/r1-access-log (ADR-040 proposed): member views and changes per household, readable on
 "Your data", append-only for the app.
+2026-10-17: Owner accepted ADR-035 to ADR-040. Phase 1.4 (feat/r1-reconciliation) and the integration chain (Google Cloud
+adapters, recovery, export/delete, 1.3 leftovers, Help, email forwarding, performance run, access log) merged into main, tagged
+r1-reconciliation. Next: phase 1.5 web experience.
