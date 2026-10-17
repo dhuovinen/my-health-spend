@@ -6,6 +6,7 @@ exist (PRV-11). Files are sealed with the household's data key before they reach
 The Release 0 pages (web/pages.py) are mounted over the household's store (ADR-032).
 """
 
+import json
 import re
 import secrets
 from pathlib import Path
@@ -20,8 +21,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from mhs.data.db import Database
 from mhs.data.household_store import HouseholdStore
-from mhs.data.keys import Keyring, LocalKeyFile, db_keyring
-from mhs.data.objects import LocalObjectStore, ObjectStore
+from mhs.data.keys import Keyring, db_keyring, keys_from_env
+from mhs.data.objects import ObjectStore, object_store_from_env
 from mhs.data.queue import JobQueue
 from mhs.data.records import HouseholdRecords
 from mhs.ingest.ocr import get_engine
@@ -38,6 +39,7 @@ from mhs.web.pages import WEB, add_pages, make_templates
 HERE = Path(__file__).parent
 COOKIE = "mhs_session"
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+PREVIEW_MINUTES = 60  # an import preview must be confirmed within an hour
 LINK_PATTERN = re.compile(r"^[A-Za-z0-9_-]{20,100}$")
 
 
@@ -79,8 +81,27 @@ class HouseholdHost:
     def document_files(self, request: Request) -> EncryptedFiles:
         return EncryptedFiles(self.objects, self.keyring, self.session(request).household_id)
 
-    def scope(self, request: Request) -> str:
-        return self.session(request).household_id
+    def save_preview(self, request: Request, preview: dict) -> str:
+        """Sealed in the database (ADR-036), so any app instance can confirm it; replaces the household's last one."""
+        hid = self.session(request).household_id
+        token = secrets.token_urlsafe(16)
+        sealed = self.keyring.encrypt(hid, json.dumps(preview).encode(), f"preview:{token}")
+        with self.db.tx(hid) as c:
+            c.execute("DELETE FROM app.import_previews WHERE household_id = %s", (hid,))
+            c.execute("INSERT INTO app.import_previews (household_id, token, sealed) VALUES (%s, %s, %s)",
+                      (hid, token, sealed))
+        return token
+
+    def load_preview(self, request: Request, token: str) -> dict | None:
+        hid = self.session(request).household_id
+        with self.db.tx(hid) as c:
+            row = c.execute(
+                "DELETE FROM app.import_previews WHERE household_id = %s AND token = %s "
+                "RETURNING sealed, created_at > now() - interval '%s minutes' AS fresh",
+                (hid, token, PREVIEW_MINUTES)).fetchone()
+        if row is None or not row["fresh"]:
+            return None
+        return json.loads(self.keyring.decrypt(hid, bytes(row["sealed"]), f"preview:{token}"))
 
     def default_import_path(self) -> str:
         return ""
@@ -98,8 +119,8 @@ def create_app(
     vault: VaultClient | None = None,
 ) -> FastAPI:
     db = db or Database(config.database_url)
-    keyring = keyring or db_keyring(db, LocalKeyFile(config.key_file), "app.household_keys")
-    objects = objects or LocalObjectStore(config.objects_dir)
+    keyring = keyring or db_keyring(db, keys_from_env(config.key_file), "app.household_keys")
+    objects = objects or object_store_from_env(config.objects_dir)
     vault = vault or VaultClient(config.vault_url, config.vault_token)
     accounts = Accounts(db, keyring, config.session_idle_minutes, config.session_max_hours)
     queue = JobQueue(db)

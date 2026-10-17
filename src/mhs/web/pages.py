@@ -5,6 +5,7 @@ the Release 1 application tier (web/household/app.py) hosts them behind MFA sign
 household's Postgres store. A PagesHost supplies everything that differs between the two.
 """
 
+import base64
 import json
 import re
 import secrets
@@ -74,13 +75,36 @@ class PagesHost(Protocol):
         """Where attached files go on import."""
         ...
 
-    def scope(self, request: Request) -> str:
-        """Key that keeps one household's import preview away from another's."""
+    def save_preview(self, request: Request, preview: dict) -> str:
+        """Keep an import preview (JSON-safe dict) until it is confirmed; returns its token. One per household."""
+        ...
+
+    def load_preview(self, request: Request, token: str) -> dict | None:
+        """Take back this household's preview for the token (it can be used once), or None."""
         ...
 
     def default_import_path(self) -> str: ...
 
     def resolve_import_path(self, text: str) -> Path: ...
+
+
+def files_to_json(files) -> dict | None:
+    """Where an import's attached files come from, in a form a preview can be stored as."""
+    if files is None:
+        return None
+    if isinstance(files, Path):
+        return {"folder": str(files)}
+    if isinstance(files, UploadedSource):
+        return {"uploaded": {n: base64.b64encode(d).decode() for n, d in files.files.items()}}
+    raise TypeError(type(files))
+
+
+def files_from_json(spec: dict | None):
+    if spec is None:
+        return None
+    if "folder" in spec:
+        return Path(spec["folder"])
+    return UploadedSource({n: base64.b64decode(d) for n, d in spec["uploaded"].items()})
 
 
 def money_text(value: int | None) -> str:
@@ -135,7 +159,6 @@ def make_templates(directories: list[Path], context: Callable[[Request], dict]) 
 def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Callable:
     """Mount the pages. Returns preview_import(request, store, data, source, files, notes), which shows the import
     preview for records built elsewhere (Release 1 uploads of HSA and claims exports) and confirms them the same way."""
-    pending: dict[str, tuple[str, importer.ImportPlan]] = {}  # token -> (scope, plan)
 
     def report_for(store: Store, year: int | None) -> Report:
         ds = load_dataset(store)
@@ -331,20 +354,19 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                        status_code: int = 200) -> HTMLResponse:
         plan = importer.prepare(data, store, source, files)
         plan.warnings.extend(notes)
-        scope = host.scope(request)
-        for token in [t for t, (s, _) in pending.items() if s == scope]:
-            del pending[token]
-        token = secrets.token_urlsafe(16)
-        pending[token] = (scope, plan)
+        token = host.save_preview(request, {"source": source, "data": data, "files": files_to_json(files)})
         return render(request, "import_preview.html", status_code=status_code, plan=plan, token=token)
 
     @app.post("/import/confirm")
     async def import_confirm(request: Request):
         store, form = await posted(request)
-        scope, plan = pending.get(form.get("token", ""), (None, None))
-        if plan is None or scope != host.scope(request) or not plan.ok:
+        preview = host.load_preview(request, form.get("token") or "")
+        if preview is None:
             return RedirectResponse("/import", status_code=303)
-        del pending[form.get("token")]
+        # The plan is made again from what was checked; commit re-checks member edits made since the preview.
+        plan = importer.prepare(preview["data"], store, preview["source"], files_from_json(preview["files"]))
+        if not plan.ok:
+            return RedirectResponse("/import", status_code=303)
         importer.commit(plan, store, host.document_files(request), replace_edits=form.get("replace_edits") == "1")
         if any(s in plan.data for s in ("plans", "accounts", "members", "providers", "provider_relationships")):
             host.settings_saved(store)

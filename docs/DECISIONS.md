@@ -42,6 +42,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 032 | Release 0 pages shared by both apps; Release 1 imports by upload only, files encrypted, edits and history per household | 2026-10-16 | Accepted |
 | 033 | Upload pipeline: exports parsed in the app tier; documents read and scrubbed in the app tier, extracted by the worker, confirmed by the member | 2026-10-16 | Accepted |
 | 034 | Ingestion engines: Tesseract OCR and Presidio in the app tier; Claude extraction per household, off by default, through a worker that only it routes out of | 2026-10-16 | Accepted with a condition |
+| 036 | Google Cloud adapters over REST (Cloud Storage, Cloud KMS, Document AI), chosen by environment variables; import previews sealed in the database | 2026-10-16 | Proposed |
 
 ## Records
 
@@ -201,3 +202,15 @@ Implementation choices for the rest of phase 1.3, inside ADR-028, ADR-029 and AD
 **Consequences.** The image grows from about 460 MB to 1.15 GB (Tesseract, spaCy with its model, numpy, the Anthropic SDK); `UV_NO_CACHE` keeps uv's download cache out of the layers. OCR runs in the upload request, about a quarter of a second per page; long scans make the upload slow until OCR moves to a background task in the app tier. PRV-05 date shifting for AI payloads (ADR-022, P2) is not built: AI requests carry real service dates. A production deployment needs an egress path for the AI worker (a proxy or a NAT rule for the Anthropic API only) and the API key as a secret. The extraction corpus run (PLT-02) has not measured either extractor yet.
 
 **Condition met (2026-10-16).** PRV-05 date shifting is built for AI requests: the worker shifts every date in the scrubbed text by a random per-person offset (30 to 365 days either way, kept in the household's records, never sent) just before the call, and shifts the dates in the answer back, so stored records keep real dates (TC-PRV-05-1, TC-PRV-05-2). Real household data still waits for the production project and the data-processing agreement (ADR-028).
+
+### ADR-036 · Google Cloud adapters, built before the account (Proposed)
+How the four adapters (ARCHITECTURE.md "Environments", ADR-030) reach Google Cloud, built and tested locally so staging becomes configuration. Proposed by the build session on 2026-10-16.
+
+**Decision.**
+- **REST over httpx, not the client libraries.** Cloud Storage (JSON API), Cloud KMS (`encrypt`/`decrypt`) and Document AI (`process`) are called over HTTPS with httpx, which the app already uses; `google-auth` supplies the access token (the Cloud Run service account through the metadata server). The gRPC client libraries would add several hundred megabytes to an image that is already 1.15 GB, for three calls each.
+- **Chosen by environment variables, local by default.** `MHS_OBJECT_STORE=gcs` with `MHS_GCS_BUCKET`; `MHS_KEYS=kms` with `MHS_KMS_KEY` (one key per service and environment: the app's and the vault's, as the two key files are now); `MHS_OCR_ENGINE=documentai` with `MHS_DOCAI_PROCESSOR`. The envelope encryption, per-household data keys and object layout don't change; KMS takes the place of the key file only.
+- **Tested without an account.** Cloud Storage against the fake GCS server in the compose test profile; KMS and Document AI against fakes that answer in the APIs' request and response shapes. HEIC photos are converted to JPEG before Document AI, which doesn't take HEIC.
+- **Import previews in the database.** The preview between "Check" and "Confirm" (ADR-032 kept it in the app's memory) is stored per household with row-level security, sealed with the household's data key because it can hold attached statements, and expires after an hour. The plan is computed again at confirm, as the importer already re-checks member edits there. More than one app instance can then serve a household. Release 0 keeps its in-memory preview.
+
+**Consequences.** The adapters have only met emulators and fakes; the first staging run (phase 1.3) is where they meet the real services, and any differences in error handling show up there. Nothing here needs the account, so the owner's first steps (project, billing, the BAA, the KMS key ring) are listed in DEPLOYMENT.md.
+

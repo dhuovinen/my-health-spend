@@ -13,7 +13,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from mhs.data.db import Database
-from mhs.data.keys import LocalKeyFile, db_keyring
+from mhs.data.keys import db_keyring, keys_from_env
 from mhs.stack import VAULT_PORT, database_url, secret
 from mhs.vault.store import KIND_PATTERN, VaultStore
 
@@ -68,7 +68,7 @@ def create_app(store: VaultStore, service_token: str) -> FastAPI:
 
 def store_from_env() -> tuple[Database, VaultStore]:
     db = Database(database_url(), max_size=5)
-    keys = LocalKeyFile(os.environ.get("MHS_KEY_FILE", "/run/secrets/mhs/kek"))
+    keys = keys_from_env("/run/secrets/mhs/kek")
     return db, VaultStore(db, db_keyring(db, keys, "vault.household_keys"))
 
 

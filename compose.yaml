@@ -166,6 +166,13 @@ services:
       migrate: { condition: service_completed_successfully }
       capture: { condition: service_started }
 
+  fake-gcs:
+    profiles: [test]
+    # Stands in for Cloud Storage so the GCS object store (ADR-036) is tested without a Google account.
+    image: fsouza/fake-gcs-server:1.50.2
+    command: ["-scheme", "http", "-port", "4443", "-backend", "memory", "-public-host", "fake-gcs:4443"]
+    networks: [frontend]
+
   tests:
     profiles: [test]
     image: mhs:test
@@ -179,6 +186,7 @@ services:
       MHS_TEST_DB_ADMIN_PASSWORD_FILE: /run/secrets/mhs-migrate/admin_password
       # Stack tests: the running app, reached through the capture proxy.
       MHS_STACK_URL: http://app:3063
+      MHS_TEST_GCS_ENDPOINT: http://fake-gcs:4443
       MHS_STACK_PROXY: http://capture:8080
       MHS_STACK_CAPTURE_LOG: /captures/flows.jsonl
       MHS_STACK_OBJECTS_DIR: /srv/objects
@@ -197,6 +205,7 @@ services:
       worker: { condition: service_started }
       worker-ai: { condition: service_started }
       capture: { condition: service_started }
+      fake-gcs: { condition: service_started }
 
 networks:
   frontend: {}

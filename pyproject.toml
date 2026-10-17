@@ -25,6 +25,7 @@ dependencies = [
     "en-core-web-md",
     "anthropic>=1.15.0",
     "segno>=1.6.6",
+    "google-auth>=2.30",
 ]
 
 [project.scripts]

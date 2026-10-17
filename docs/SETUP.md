@@ -162,6 +162,8 @@ This runs the whole suite in the `tests` container: unit and integration tests o
 | --- | --- | --- |
 | `MHS_DATABASE_URL` | app, worker, vault | Full Postgres URL; otherwise built from `MHS_DB_HOST`, `MHS_DB_NAME`, `MHS_DB_USER` and `MHS_DB_PASSWORD(_FILE)` |
 | `MHS_KEY_FILE` | app, vault | The service's key-encryption key file |
+| `MHS_KEYS` | app, vault | `file` (default) or `kms` with `MHS_KMS_KEY` (Google Cloud, DEPLOYMENT.md) |
+| `MHS_OBJECT_STORE` | app | `local` (default, `MHS_OBJECTS_DIR`) or `gcs` with `MHS_GCS_BUCKET` |
 | `MHS_VAULT_URL`, `MHS_VAULT_TOKEN(_FILE)` | app, vault | Where the vault is, and the shared service token |
 | `MHS_OBJECTS_DIR` | app | Folder for encrypted originals |
 | `MHS_HOST`, `MHS_APP_PORT` | app | Bind address (0.0.0.0 inside the container) and port (3063) |
@@ -169,7 +171,7 @@ This runs the whole suite in the `tests` container: unit and integration tests o
 | `MHS_COOKIE_SECURE` | app | `1` once served over TLS (staging, production) |
 | `MHS_SESSION_IDLE_MINUTES`, `MHS_SESSION_MAX_HOURS` | app | Session timeouts (15, 12) |
 | `MHS_WORKER_POLL_SECONDS` | worker | Queue poll interval (1) |
-| `MHS_OCR_ENGINE` | app | `tesseract` (compose) or `stub` (default: photos are typed by hand) |
+| `MHS_OCR_ENGINE` | app | `tesseract` (compose), `documentai` (Google Cloud, with `MHS_DOCAI_PROCESSOR`) or `stub` (default: photos are typed by hand) |
 | `MHS_SCRUBBER` | app | `presidio` (compose) or `rules` (default) |
 | `MHS_EXTRACTOR` | worker | `rules` (default) or `claude`, which lets the worker take AI extraction jobs |
 | `MHS_ANTHROPIC_API_KEY(_FILE)` | worker | Anthropic API key, when `MHS_EXTRACTOR=claude` |
