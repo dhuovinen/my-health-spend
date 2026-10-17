@@ -74,6 +74,20 @@ Each scenario is automated in `tests/test_r1_scenarios.py` (with the worker run 
 
 **Scrubbing is deterministic (scenario 19).** Presidio reads each document's original text once, and its finds are placed in the rules' output wherever the rules left them whole. It used to run a second time on text that already held random vault tokens, so the same statement scrubbed differently from upload to upload: a bare letterhead above a tokenized address read as a person in about one upload in four (43 of 150 in `mhs:test`), and extraction took the table header as the provider. Names and places Presidio finds that hold a practice word (Orthopedics, Radiology, Clinic, Imaging, Pharmacy, Labs and the rest of `ORG_WORDS` in `ingest/scrub.py`), with any capitalized words after them on the line, are kept, because spaCy reads "Bennett Radiology" as a person even in the original text. The recall seed set is unchanged at 189 of 190 identifiers (99.5%).
 
+## Extraction accuracy (PLT-02, TC-ING-02-1, TC-ING-03-1)
+
+Two synthetic corpora with ground truth, made by `tools/make_corpus.py` (seeded): `tests/corpus/` (56 documents) is the development set the layout rules were fixed against; `tests/corpus-holdout/` (50 documents, other layouts and wording) was written once and is never used to tune them, so its result is the honest figure. Both cover all eight ING-02 types with at least 5 documents each. `tools/extraction_accuracy.py <corpus> [--extractor claude]` runs each document the way an upload goes (text layer, scrubbing, classification, extraction), compares it with the ground truth before any confirmation, and prints the report. `tests/test_r1_corpus.py` keeps the development set at the targets and the held-out set from getting worse.
+
+Layout rules, 2026-10-16:
+
+| Measure | Development (56) | Held-out (50) | Target |
+| --- | --- | --- | --- |
+| Classification | 100% | 80% (40 of 50) | 95% |
+| Amounts correct before confirmation | 100% | 61.5% (40 of 65) | 95% |
+| All header fields | 100% | 43.8% (70 of 160) | |
+
+On the held-out set, both statement layouts ("Invoice", "Billing Statement") were read as "other", and labels without a colon or in a two-column layout ("Claim   123", "Statement Dt  10/01/2026") weren't read. The rules only know the wording they were written for, so they won't reach PLT-02 on documents they haven't seen; Claude extraction (ADR-028, ADR-034) is the way to the target. Its run (`--extractor claude`, with an API key) hasn't been made yet. Before tuning anything on these results, generate a fresh held-out set; tuning on this one would make its figure meaningless. OCR accuracy (TC-PLT-02-1) is measured with Document AI in staging.
+
 ## Levels
 
 | Level | Where | Covers |

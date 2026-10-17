@@ -1,0 +1,9 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Casey Brooks",
+    "provider": "Riverbend Orthopedics",
+    "statement_date": "2026-09-25",
+    "balance_due": 12000
+  }
+}

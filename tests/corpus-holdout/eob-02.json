@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Morgan Lee",
+    "provider": "Lakeside Family Medicine",
+    "claim_number": "3702504574",
+    "service_start": "2026-05-06",
+    "billed": 197500,
+    "adjustment": 47300,
+    "allowed": 150200,
+    "insurer_paid": 147200,
+    "patient_responsibility": 3000
+  }
+}

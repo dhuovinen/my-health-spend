@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Avery Chen",
+    "provider": "Cedar Valley Labs",
+    "claim_number": "8923754349",
+    "service_start": "2026-08-18",
+    "billed": 120100,
+    "adjustment": 25400,
+    "allowed": 94700,
+    "insurer_paid": 92200,
+    "patient_responsibility": 2500
+  }
+}

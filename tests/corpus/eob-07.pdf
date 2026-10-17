@@ -1,0 +1,44 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 478 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+40 760 Td
+(Example Health) Tj T*
+(Explanation of Benefits - This is not a bill) Tj T*
+(Member: Avery Chen   ID #: W143265888) Tj T*
+(Claim #: K13422389     Processed 10/13/2026) Tj T*
+(Provided by: Maple Street Pediatrics) Tj T*
+(Date of Service   Service   Billed   Discount   Allowed   Plan Paid   You Owe) Tj T*
+(09/04/2026 71046 Chest x-ray $1,995.50 $502.50 $1,493.00 $1,448.00 $45.00) Tj T*
+(Totals $1,995.50 $502.50 $1,493.00 $1,448.00 $45.00) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000000714 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+840
+%%EOF

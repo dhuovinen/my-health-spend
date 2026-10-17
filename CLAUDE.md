@@ -2,7 +2,7 @@
 
 Reconciles provider bills, insurer EOBs and HSA payments per visit to find billing errors and overpayment. **Durable tier** (docs/DECISIONS.md ADR-020): read `docs/VISION.md`, `docs/ARCHITECTURE.md` and `docs/ROADMAP.md` before structural work, and record irreversible choices as an ADR in `docs/DECISIONS.md` first.
 
-**Current phase:** Release 1, phase 1.3 (Ingestion and privacy pipeline) in progress. On `main` (tag `r1-uploads`): phases 1.1 and 1.2 and the local build of 1.3. Members upload provider statements, EOBs (PDF or photo), HSA exports and insurer claims exports; Tesseract OCR and Presidio run in the app tier, the worker extracts fields (layout rules, or Claude per household), the member reviews and confirms. ADR-031 to ADR-034 are accepted; 034's condition (date shifting before AI) is met on branch `feat/r1-date-shifting`: the worker sends the AI each person's dates shifted by a random offset and shifts the answer back (PRV-05). Still to come in 1.3: Document AI and the staging project, the extraction corpus. Release 0, the local MVP, is built and tagged `release-0`. Production target is Google Cloud (ADR-030). See `docs/ROADMAP.md`.
+**Current phase:** Release 1, phase 1.3 (Ingestion and privacy pipeline) in progress. On `main` (tag `r1-uploads`): phases 1.1 and 1.2 and the local build of 1.3. Members upload provider statements, EOBs (PDF or photo), HSA exports and insurer claims exports; Tesseract OCR and Presidio run in the app tier, the worker extracts fields (layout rules, or Claude per household), the member reviews and confirms. ADR-031 to ADR-034 are accepted; 034's condition (date shifting before AI) is met on branch `feat/r1-date-shifting`: the worker sends the AI each person's dates shifted by a random offset and shifts the answer back (PRV-05). Still to come in 1.3: Document AI and the staging project, and reaching the 95% accuracy targets on the held-out corpus (the layout rules score 80% classification and 61.5% amounts; Claude extraction is the plan, not yet measured). Release 0, the local MVP, is built and tagged `release-0`. Production target is Google Cloud (ADR-030). See `docs/ROADMAP.md`.
 
 ## How to run
 
@@ -53,6 +53,12 @@ docker compose exec app mhs-admin ai-extraction --household <household-id> on
 ```
 
  The user scenarios and how to try each by hand are in `docs/TESTING.md` ("User scenarios"). Vault backup and restore (passphrase prompted, or `MHS_BACKUP_PASSPHRASE`) are in `docs/SETUP.md`. Wipe the local stack, data included: `docker compose --profile test down -v`.
+
+Extraction accuracy on the synthetic corpus (development set `tests/corpus`, held-out set `tests/corpus-holdout`; regenerate with `uv run python tools/make_corpus.py`; add `--extractor claude` with an API key to measure Claude):
+
+```bash
+uv run python tools/extraction_accuracy.py tests/corpus-holdout
+```
 
 Tests and coverage (the Release 1 tests start a throwaway Postgres container, so Docker must be running; they skip without it):
 

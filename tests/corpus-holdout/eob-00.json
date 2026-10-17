@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Sam Ortiz",
+    "provider": "Summit Eye Associates",
+    "claim_number": "7943182927",
+    "service_start": "2026-01-19",
+    "billed": 170250,
+    "adjustment": 89650,
+    "allowed": 80600,
+    "insurer_paid": 74600,
+    "patient_responsibility": 6000
+  }
+}
