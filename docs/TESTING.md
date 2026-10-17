@@ -22,7 +22,7 @@ uv run --with pytest-cov pytest --cov=mhs
 
 | Measure | Value |
 | --- | --- |
-| Automated tests | TO_FILL |
+| Automated tests | 361 on the compose stack (none skipped); `uv run pytest` 345 with 16 skipped (stack tests and the ones that need the tesseract binary), 2026-10-17 on `main` after phase 1.4 and the integration chain merged. They include the 55 Release 0 tests (22 run a second time against Release 1), phase 1.4's core and page tests (`test_r1_reconcile.py`, `test_r1_reconcile_pages.py`), the other Release 1 tests in `tests/test_r1_*.py` (uploads, scrubbing, OCR, Claude extraction, dates, demo, corpus, cloud adapters, recovery, export and delete, the 1.3 leftovers, email, access log) and the stack tests in `tests/stack/` (including SMTP delivery and the performance check) |
 | Coverage, `core/` | 92 to 99% per module: `reconcile.py` 97%, `lines.py` 94%, `matching.py` 99%, `edits.py` 92% (target ≥ 80%) |
 | Coverage, `data/` | 89 to 100% per module |
 | Coverage, `web/pages.py` (shared pages), `web/household/app.py`, `auth.py` | 92%, 95%, 98% |
