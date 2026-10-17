@@ -94,6 +94,7 @@ def name_pattern(name: str) -> re.Pattern | None:
 class Scrubbed:
     text: str
     tokens: dict[str, str] = field(default_factory=dict)  # token -> kind
+    found: list[tuple[str, str]] = field(default_factory=list)  # (kind, text as printed) of every replacement
 
 
 class Scrubber:
@@ -120,6 +121,7 @@ class Scrubber:
     def _token(self, out: Scrubbed, kind: str, value: str) -> str:
         token = self.tokenize(kind, normalize(kind, value))
         out.tokens[token] = kind
+        out.found.append((kind, value))
         return token
 
     def scrub(self, text: str) -> Scrubbed:

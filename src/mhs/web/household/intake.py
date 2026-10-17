@@ -7,6 +7,8 @@ reconciliation (ING-05), and every correction is kept beside what was extracted 
 """
 
 import hashlib
+import io
+import logging
 import re
 import secrets
 from dataclasses import dataclass, field
@@ -17,6 +19,7 @@ from typing import Callable
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from starlette.background import BackgroundTask
 
 from mhs.data import importer
 from mhs.data.db import Database
@@ -28,15 +31,17 @@ from mhs.data.objects import ObjectStore
 from mhs.data.queue import JobQueue
 from mhs.ingest import claims, hsa
 from mhs.ingest.extract import EXTRACTED, REVIEW_THRESHOLD, TYPES
-from mhs.ingest.ocr import OcrEngine, StubOcr
+from mhs.ingest.ocr import OcrEngine, StubOcr, page_images
+from mhs.ingest.redact import blank_pages, identifier_words
 from mhs.ingest.resolve import Members, Providers, plan_for, slug
-from mhs.ingest.scrub import Scrubber
+from mhs.ingest.scrub import Scrubber, normalize
 from mhs.ingest.text import IMAGES, PDF, Unreadable, check_image, content_type, read_pdf, read_text
 from mhs.ingest.values import dollars, parse_amount, parse_date
 from mhs.vault.client import VaultClient
 from mhs.web.household.auth import Session
 from mhs.web.household.files import EncryptedFiles
 
+log = logging.getLogger("mhs.intake")
 ORIGINAL = "original"  # uploaded files; not ingest documents
 EXTRACTION = "extraction"  # what the worker read from an original, awaiting or past review
 MAX_UPLOAD = 20 * 1024 * 1024
@@ -154,14 +159,43 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
         })
         return upload_id
 
-    def scrub_and_queue(session: Session, upload_id: str, ctype: str, data: bytes, forced_type: str | None) -> None:
+    def read_in_background(hid: str, upload_id: str, ctype: str, data: bytes, forced_type: str | None) -> None:
+        """Runs after the upload's response, so a long scan doesn't hold the member's browser. If reading fails,
+        the upload says so and offers to read it again, instead of staying at "Reading…"."""
+        try:
+            scrub_and_queue(hid, upload_id, ctype, data, forced_type)
+        except Exception as e:  # noqa: BLE001 - any failure is reported on the upload
+            log.warning("upload %s couldn't be read: %s", upload_id, type(e).__name__)
+            HouseholdStore(it.db, hid).put(EXTRACTION, {
+                "id": upload_id, "status": "failed", "doc_type": "other", "type_confidence": 0.0, "fields": {},
+                "lines": [], "how_read": "", "pages": 0, "extracted_at": _now(), "extractor": "none",
+                "warnings": ["This file couldn't be read. Choose its type and read it again."]})
+
+    def store_blanked(hid: str, upload_id: str, ctype: str, data: bytes, words, found) -> None:
+        """Page images with every identifier word painted over, sealed like the original (TC-PRV-04-1)."""
+        pages, _ = blank_pages(page_images(data, ctype), list(words), identifier_words(found))
+        keys = []
+        for n, page in enumerate(pages, start=1):
+            buf = io.BytesIO()
+            page.save(buf, "PNG")
+            key = f"households/{hid}/scrubbed/{upload_id}-p{n}"
+            it.objects.put(key, it.keyring.encrypt(hid, buf.getvalue(), f"scrubbed:{upload_id}:{n}"))
+            keys.append(key)
+        store = HouseholdStore(it.db, hid)
+        rec = store.get(ORIGINAL, upload_id)
+        if rec is not None:
+            rec["scrubbed_keys"] = keys
+            store.put(ORIGINAL, rec)
+
+    def scrub_and_queue(hid: str, upload_id: str, ctype: str, data: bytes, forced_type: str | None) -> None:
         """Read the text here, swap identifiers for vault tokens, and hand only that to the worker (PRV-01)."""
-        hid = session.household_id
         doc = read_text(ctype, data, it.ocr)
         store = HouseholdStore(it.db, hid)
         names = [n for m in store.all("member") for n in [m["name"], *m.get("aliases", [])]]
         keep = [p["name"] for p in store.all("provider")] + [p.get("insurer", "") for p in store.all("plan")]
         scrubbed = it.scrubber(lambda kind, value: it.vault.tokenize(hid, kind, value), names, keep).scrub(doc.text)
+        if doc.words:  # a photo or scan: keep a copy with the identifiers blanked out (PRV-04)
+            store_blanked(hid, upload_id, ctype, data, doc.words, scrubbed.found)
         kind = "extract_ai" if it.ai_extraction(hid) else "extract"
         it.queue.enqueue(hid, kind, {"upload_id": upload_id, "text": scrubbed.text, "pages": doc.pages,
                                           "how_read": doc.how, "text_confidence": doc.confidence,
@@ -211,8 +245,8 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
         except Unreadable as e:
             return uploads_page(request, session, 400, error=f"{filename}: {e}")
         upload_id = store_original(session, filename, ctype, data, kind)
-        scrub_and_queue(session, upload_id, ctype, data, kind if kind in TYPES else None)
-        return RedirectResponse(f"/uploads?uploaded={upload_id}", status_code=303)
+        return RedirectResponse(f"/uploads?uploaded={upload_id}", status_code=303, background=BackgroundTask(
+            read_in_background, session.household_id, upload_id, ctype, data, kind if kind in TYPES else None))
 
     def export_upload(request: Request, session: Session, filename: str, ctype: str, data: bytes, kind: str):
         store = HouseholdStore(it.db, session.household_id)
@@ -240,6 +274,24 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
         name = re.sub(r"[^A-Za-z0-9._ -]", "_", original_name(session.household_id, rec))
         return Response(data, media_type=rec["content_type"],
                         headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @app.get("/uploads/{upload_id}/preview")
+    def preview(request: Request, upload_id: str):
+        """A picture of the upload for the review page (TC-ING-01-2): photos upright, iPhone HEIC as JPEG, a PDF's
+        first page. The original stays unchanged; this is made on the fly and not stored."""
+        session = it.member(request)
+        rec = get_original(session, upload_id)
+        if rec["content_type"] not in IMAGES and rec["content_type"] != PDF:
+            raise HTTPException(404)
+        data = original_bytes(session.household_id, rec)
+        try:
+            image = page_images(data, rec["content_type"])[0]
+        except Exception:  # noqa: BLE001 - a file that can't be pictured just has no preview
+            raise HTTPException(404) from None
+        image.thumbnail((1400, 1400))
+        buf = io.BytesIO()
+        image.convert("RGB").save(buf, "JPEG", quality=85)
+        return Response(buf.getvalue(), media_type="image/jpeg", headers={"Content-Disposition": "inline"})
 
     @app.get("/api/uploads")
     def api_uploads(request: Request):
@@ -294,6 +346,7 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
             "plan_id": plan_for(store.all("plan"), int(when[:4])) if re.match(r"\d{4}", when) else "",
             "visits": sorted(visits, key=lambda v: v["date"], reverse=True),
             "visit_id": next((v["id"] for v in visits if v["date"] == when and provider_id), ""),
+            "copy": earlier_copy(store, ext) if ext.get("status") != "confirmed" else None,
         }
 
     @app.get("/uploads/{upload_id}/review", response_class=HTMLResponse)
@@ -320,8 +373,26 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
             if ext.get("status") == "confirmed":
                 raise HTTPException(400, "This document is already confirmed")
             store.delete(EXTRACTION, upload_id)
-        scrub_and_queue(session, upload_id, rec["content_type"], original_bytes(session.household_id, rec), doc_type)
-        return RedirectResponse(f"/uploads?reading={upload_id}", status_code=303)
+        return RedirectResponse(f"/uploads?reading={upload_id}", status_code=303, background=BackgroundTask(
+            read_in_background, session.household_id, upload_id, rec["content_type"],
+            original_bytes(session.household_id, rec), doc_type))
+
+    @app.post("/uploads/{upload_id}/file")
+    async def file_as_copy(request: Request, upload_id: str):
+        """The member decides an upload is a copy of a document they have (ING-07): kept, nothing added."""
+        session = it.member(request)
+        form = await request.form()
+        it.check_csrf(session, form.get("csrf_token"))
+        get_original(session, upload_id)
+        store = HouseholdStore(it.db, session.household_id)
+        ext = store.get(EXTRACTION, upload_id)
+        if ext is None or ext.get("status") == "confirmed":
+            raise HTTPException(404)
+        match = earlier_copy(store, ext)
+        ext.update(status="filed", copy_of=match["document_id"] if match else None, confirmed_at=_now(),
+                   confirmed_by=session.member_id)
+        store.put(EXTRACTION, ext)
+        return RedirectResponse("/uploads", status_code=303)
 
     @app.post("/uploads/{upload_id}/confirm")
     async def confirm(request: Request, upload_id: str):
@@ -528,3 +599,63 @@ def build_records(store: HouseholdStore, form, ext: dict, rec: dict, upload_id: 
     if not data["visits"]:
         del data["visits"]
     return data, created, doc["id"], visit_ids
+
+
+def _money_text(cents) -> str:
+    return f"${cents / 100:,.2f}" if isinstance(cents, int) else "?"
+
+
+def earlier_copy(store: HouseholdStore, ext: dict) -> dict | None:
+    """The document this upload repeats or replaces, if any (ING-07: TC-2 to TC-4), with a sentence for the member.
+
+    kind "duplicate": the same document again (a second photo of a paper EOB, the same statement twice).
+    kind "resent": a re-sent statement: same visits, charges and balance under a new date; not counted twice.
+    kind "version": the same claim or visits with changed amounts: confirming adds the newer one (MAT-08)."""
+    f = {k: (v or {}).get("value") for k, v in ext.get("fields", {}).items()}
+    docs = store.all("document")
+    pid = Providers(store.all("provider")).find(str(f.get("provider") or ""))
+    visits = {v["id"]: v for v in store.all("visit")}
+    if ext.get("doc_type") == "eob":
+        keys = ("billed", "allowed", "insurer_paid", "patient_responsibility")
+        claim = normalize("member_id", str(f.get("claim_number") or ""))
+        same = [d for d in docs if d.get("type") == "eob" and claim
+                and normalize("member_id", str(d.get("claim_number", ""))) == claim]
+        if not same and pid:  # no readable claim number: same provider, service date and billed amount
+            same = [d for d in docs if d.get("type") == "eob" and d.get("provider_id") == pid
+                    and visits.get(d.get("visit_id"), {}).get("date") == f.get("service_start")
+                    and f.get("billed") is not None and d.get("billed") == f.get("billed")]
+        for d in same:
+            label = d.get("claim_number") or d["id"]
+            if all(f.get(k) is None or d.get(k) == f.get(k) for k in keys):
+                return {"kind": "duplicate", "document_id": d["id"],
+                        "message": f"This looks like a copy of an EOB you already have (claim {label}): the same claim "
+                                   "and amounts. Keep it with your uploads instead of adding it again?"}
+            changed = ", ".join(f"{LABELS[k].lower()} {_money_text(d.get(k))} → {_money_text(f.get(k))}"
+                                for k in keys if f.get(k) is not None and d.get(k) != f.get(k))
+            return {"kind": "version", "document_id": d["id"],
+                    "message": f"A corrected EOB for claim {label}: {changed}. Confirming replaces the one you have."}
+        return None
+    if ext.get("doc_type") not in ("provider_statement", "itemized_bill") or not pid:
+        return None
+    new_lines = sorted((l["service_date"], l.get("charge")) for l in ext.get("lines", []) if l.get("service_date"))
+    due, when = f.get("balance_due"), f.get("statement_date")
+    bills = sorted((d for d in docs if d.get("type") == "provider_bill" and d.get("provider_id") == pid),
+                   key=lambda d: d["date"], reverse=True)
+    for d in bills:
+        old_lines = sorted((visits.get(l["visit_id"], {}).get("date"), l.get("billed_charge")) for l in d.get("lines", [])
+                           if l.get("billed_charge") is not None)
+        same_visits = bool(new_lines) and {x for x, _ in new_lines} == {x for x, _ in old_lines}
+        if same_visits and new_lines == old_lines and d.get("balance_due") == due:
+            if d["date"] == when:
+                return {"kind": "duplicate", "document_id": d["id"],
+                        "message": f"This is the statement of {d['date']} you already have. Keep it with your uploads "
+                                   "instead of adding it again?"}
+            return {"kind": "resent", "document_id": d["id"],
+                    "message": f"A re-sent copy of the statement of {d['date']}: the same visits, charges and balance "
+                               f"({_money_text(due)}), dated {when}. Its amounts aren't counted twice."}
+        if same_visits and d.get("balance_due") != due:
+            return {"kind": "version", "document_id": d["id"],
+                    "message": f"A newer statement for the visits on the statement of {d['date']}: the balance changed "
+                               f"from {_money_text(d.get('balance_due'))} to {_money_text(due)}."}
+    return None
+

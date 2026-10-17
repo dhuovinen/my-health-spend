@@ -187,3 +187,4 @@ form.stack .btn { align-self: flex-start; }
 .uploads form.inline { margin-bottom: 1rem; }
 .review label.low input, .review label.low select { border-color: var(--warn); background: var(--warn-soft); }
 .review .grid.two { gap: .8rem 1.2rem; }
+.doc-preview img { display: block; max-width: 100%; height: auto; margin-top: .6rem; border: 1px solid var(--border); border-radius: 6px; }

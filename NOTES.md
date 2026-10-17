@@ -57,3 +57,5 @@ back on the answer); meets ADR-034's condition. 209 tests on the stack.
 2026-10-16: Extraction corpus and accuracy run on feat/r1-extraction-corpus: 56 development and 50 held-out synthetic
 documents with ground truth. Layout rules: 100% on development, 80% classification / 61.5% amounts on held-out
 (targets 95%). PLT-02 needs Claude extraction; its run needs an API key.
+2026-10-17: Phase 1.3 local leftovers on feat/r1-ingest-leftovers: copies and versions on review (ING-07), identifiers
+blanked on photos (TC-PRV-04-1), uploads read in the background, previews (HEIC as JPEG). 238 tests on the stack.
