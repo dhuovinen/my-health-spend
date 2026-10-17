@@ -7,6 +7,7 @@ import itertools
 
 import pytest
 
+from mhs.ingest.extract import extract
 from mhs.ingest.scrub import PresidioScrubber, Scrubber
 from mhs.vault.store import new_token
 
@@ -103,3 +104,38 @@ def test_one_token_for_a_stranger_however_spelled():
     out = s.scrub("Dear Maria Gonzalez,\nwe wrote to Gonzalez, Maria on 03/14/2026 about $20.00.").text
     assert "Maria" not in out and "Gonzalez" not in out and "03/14/2026" in out and "$20.00" in out
     assert [k for k in tokens if k[0] == "name"] == [("name", "maria gonzalez")]
+
+
+LETTERHEAD_STATEMENT = """Riverbend Orthopedics
+455 River Road, Springfield
+Statement date: 09/10/2026
+Account number: 880142
+Patient: Sample, Jordan
+Phone: (555) 014-2290
+Date        Code   Description                      Charges   Insurance   Adjustments   Payments   Balance
+08/14/2026 99214 Office visit, established patient $260.00 $0.00 $0.00 $0.00 $260.00
+Amount due: $260.00
+"""
+
+
+def test_a_bare_letterhead_survives_every_upload():
+    """Presidio reads the original text, not text holding random tokens: with the address token right under it,
+    the letterhead used to read as a person in about one upload in four, and the visit lost its provider. Thirty
+    uploads would all have kept it about once in 13,000 runs."""
+    pytest.importorskip("presidio_analyzer")
+    for _ in range(30):
+        s = PresidioScrubber(lambda kind, value: new_token(), [], keep=["Example Health"])
+        out = s.scrub(LETTERHEAD_STATEMENT).text
+        assert out.startswith("Riverbend Orthopedics\ntok_"), out
+        assert extract(out).fields["provider"].value == "Riverbend Orthopedics"
+        for value in ("455 River Road", "Springfield", "880142", "Sample", "Jordan", "014-2290"):
+            assert value not in out, value
+
+
+@pytest.mark.parametrize("letterhead", ["Kessler Orthopedics", "Bennett Radiology", "Greene Physical Therapy"])
+def test_a_practice_named_after_a_person_is_kept(letterhead):
+    """spaCy reads these as people even in the original text; a word like Radiology makes them a practice."""
+    pytest.importorskip("presidio_analyzer")
+    s = PresidioScrubber(lambda kind, value: new_token(), [])
+    out = s.scrub(f"{letterhead}\nPO Box 1234\nRiverton, OR 97001\nDear Maria Gonzalez,\nAmount due: $40.00").text
+    assert out.startswith(letterhead + "\n") and "Riverton" not in out and "Gonzalez" not in out

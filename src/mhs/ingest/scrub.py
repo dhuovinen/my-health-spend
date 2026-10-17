@@ -7,10 +7,13 @@ Identifiers are normalized first (PRV-03), so "SMITH, PAT" and "Pat Smith" get o
   date of birth) and patterns (SSN, phone, email, street address).
 - `presidio` (ADR-029): the same rules first, then Microsoft Presidio's entity detection (spaCy names and places,
   phone, email, SSN, card and bank numbers) for what the rules missed, such as a stranger's name in a letter.
-  The household's own providers and insurers are left in place, because extraction needs them.
+  Presidio reads the original text once, so the same document always scrubs the same way. The household's own
+  providers and insurers, and names with a word like Clinic or Imaging in them, are left in place, because
+  extraction needs them.
 """
 
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -120,7 +123,10 @@ class Scrubber:
         return token
 
     def scrub(self, text: str) -> Scrubbed:
-        out = Scrubbed(text)
+        return self._rules(text)[0]
+
+    def _rules(self, text: str) -> tuple[Scrubbed, "_Edited"]:
+        out, edited = Scrubbed(text), _Edited(text)
         names = list(self.known_names)
 
         def labelled(m: re.Match) -> str:
@@ -139,18 +145,61 @@ class Scrubber:
             return m.group(0).replace(value, self._token(out, kind, value), 1)
 
         found: list[tuple[str, str]] = []  # labelled identifiers other than names
-        out.text = LABEL_LINE.sub(labelled, out.text)
-        names += [m.group("name") for m in CUE_NAME.finditer(out.text) if not self._kept(m.group("name"))]
+        edited.sub(LABEL_LINE, labelled)
+        names += [m.group("name") for m in CUE_NAME.finditer(edited.text) if not self._kept(m.group("name"))]
         for kind, value in found:  # the same identifier repeated elsewhere in the text, unlabelled
             if len(value) >= 4:
-                out.text = re.sub(rf"(?<![\w-]){re.escape(value)}(?![\w-])",
-                                  lambda m, k=kind, v=value: self._token(out, k, v), out.text)
+                edited.sub(re.compile(rf"(?<![\w-]){re.escape(value)}(?![\w-])"),
+                           lambda m, k=kind, v=value: self._token(out, k, v))
         for name in sorted(set(names), key=len, reverse=True):
             if (pattern := name_pattern(name)) is not None:
-                out.text = pattern.sub(lambda m: self._token(out, "name", m.group(0)), out.text)
+                edited.sub(pattern, lambda m: self._token(out, "name", m.group(0)))
         for kind, pattern in PATTERNS:
-            out.text = pattern.sub(lambda m, k=kind: self._token(out, k, m.group(0)), out.text)
-        return out
+            edited.sub(pattern, lambda m, k=kind: self._token(out, k, m.group(0)))
+        out.text = edited.text
+        return out, edited
+
+
+class _Edited:
+    """Text being scrubbed, and where each of its characters was in the original (None inside a token), so a span
+    found on the original text can still be placed after the rules have replaced other parts of it."""
+
+    def __init__(self, text: str):
+        self.text = text
+        self.origin: list[int | None] = list(range(len(text)))
+
+    def sub(self, pattern: re.Pattern, repl: Callable[[re.Match], str]) -> None:
+        """pattern.sub(repl, text), keeping track of the original offsets of what's left."""
+        text, origin, pos = [], [], 0
+        for m in pattern.finditer(self.text):
+            old, new = m.group(0), repl(m)
+            if new == old:
+                continue
+            head = len(os.path.commonprefix([old, new]))  # a label kept in front of its value stays original
+            tail = len(os.path.commonprefix([old[head:][::-1], new[head:][::-1]]))
+            text += [self.text[pos:m.start()], new]
+            origin += (self.origin[pos:m.start() + head] + [None] * (len(new) - head - tail)
+                       + self.origin[m.end() - tail:m.end()])
+            pos = m.end()
+        text.append(self.text[pos:])
+        origin += self.origin[pos:]
+        self.text, self.origin = "".join(text), origin
+
+    def _at(self, start: int, end: int) -> int | None:
+        """Where original[start:end] is in the text now, if none of it has been replaced."""
+        try:
+            at = self.origin.index(start)
+        except ValueError:
+            return None
+        return at if self.origin[at:at + end - start] == list(range(start, end)) else None
+
+    def intact(self, start: int, end: int) -> bool:
+        return self._at(start, end) is not None
+
+    def replace(self, start: int, end: int, new: str) -> None:
+        at = self._at(start, end)
+        self.text = self.text[:at] + new + self.text[at + end - start:]
+        self.origin[at:at + end - start] = [None] * len(new)
 
 
 # --- Presidio (ADR-029) ------------------------------------------------------------------------
@@ -163,6 +212,13 @@ ENTITIES = {  # Presidio entity -> vault kind. Dates stay (ADR-022); driver's li
 }
 MIN_SCORE = {"PHONE_NUMBER": 0.4, "US_BANK_NUMBER": 0.4}
 DEFAULT_MIN_SCORE = 0.5
+# Words that make a name a practice, lab or facility rather than a person or a place. spaCy reads a practice named
+# after its founder ("Kessler Orthopedics", "Bennett Radiology") as a person.
+ORG_WORDS = re.compile(
+    r"\b(?:associates|care|cardiology|center|centre|chiropractic|clinics?|dental|dentistry|dermatology|diagnostics|"
+    r"group|health|healthcare|hospitals?|imaging|labs?|laborator(?:y|ies)|medical|medicine|oncology|optometry|"
+    r"orthopa?edics|partners|pathology|pediatrics|pharmacy|physicians|podiatry|practice|radiology|rehab(?:ilitation)?|"
+    r"surgery|surgical|therapy|urology|inc|llc|pllc)\b", re.I)
 
 
 @lru_cache(maxsize=1)
@@ -208,20 +264,33 @@ class PresidioScrubber(Scrubber):
             value = text[start:end]
             if len(value) < 2 or "tok_" in value:
                 continue
-            if r.entity_type in ("PERSON", "LOCATION") and self._kept(value):
+            if r.entity_type in ("PERSON", "LOCATION") and (self._kept(value) or _organisation(text, start, end)):
                 continue
             spans.append((start, end, ENTITIES[r.entity_type], value))
         return _non_overlapping(spans)
 
     def scrub(self, text: str) -> Scrubbed:
+        # Presidio reads the original text, once. Run on text that already holds random tokens, spaCy's answer
+        # changed from upload to upload: a bare letterhead above a tokenized address read as a person about one
+        # time in four, and the visit lost its provider.
+        spans = self._spans(text)
         # People Presidio finds join the known names first, so the rules catch every spelling of them
         # ("Maria Gonzalez", "GONZALEZ, MARIA") under one token (PRV-03).
-        people = [v for _, _, kind, v in self._spans(text) if kind == "name" and len(v.split()) > 1]
+        people = [v for _, _, kind, v in spans if kind == "name" and len(v.split()) > 1]
         rules = Scrubber(self.tokenize, self.known_names + people, self.keep)
-        out = rules.scrub(text)
-        for start, end, kind, value in sorted(self._spans(out.text), reverse=True):  # what the rules missed
-            out.text = out.text[:start] + self._token(out, kind, value) + out.text[end:]
+        out, edited = rules._rules(text)
+        for start, end, kind, value in spans:  # what the rules missed, where they left it whole
+            if edited.intact(start, end):
+                edited.replace(start, end, self._token(out, kind, value))
+        out.text = edited.text
         return out
+
+
+def _organisation(text: str, start: int, end: int) -> bool:
+    """The name, with any capitalized words right after it on the line ("Greene Physical" + "Therapy"), is a
+    practice, lab or facility. Extraction needs those, and they aren't the household's identifiers."""
+    after = re.match(r"(?: [A-Z][\w&'’.-]*)*", text[end:]).group(0)
+    return ORG_WORDS.search(text[start:end] + after) is not None
 
 
 def _non_overlapping(spans: list[tuple]) -> list[tuple]:
