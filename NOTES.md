@@ -59,3 +59,5 @@ documents with ground truth. Layout rules: 100% on development, 80% classificati
 (targets 95%). PLT-02 needs Claude extraction; its run needs an API key.
 2026-10-16: Google Cloud adapters over REST (Cloud Storage, KMS, Document AI) tested against fake GCS and API-shaped
 fakes; import previews sealed in the database; DEPLOYMENT.md (feat/r1-cloud-adapters, ADR-036 proposed). 240 tests on the stack.
+2026-10-16: Self-service account recovery with single-use recovery codes (TC-PRV-07-3) on feat/r1-account-recovery
+(ADR-037 proposed).

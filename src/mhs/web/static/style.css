@@ -187,3 +187,5 @@ form.stack .btn { align-self: flex-start; }
 .uploads form.inline { margin-bottom: 1rem; }
 .review label.low input, .review label.low select { border-color: var(--warn); background: var(--warn-soft); }
 .review .grid.two { gap: .8rem 1.2rem; }
+.recovery-codes ul.codes { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: .4rem; }
+.recovery-codes code { font-size: 1rem; letter-spacing: .05em; }

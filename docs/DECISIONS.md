@@ -43,6 +43,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 033 | Upload pipeline: exports parsed in the app tier; documents read and scrubbed in the app tier, extracted by the worker, confirmed by the member | 2026-10-16 | Accepted |
 | 034 | Ingestion engines: Tesseract OCR and Presidio in the app tier; Claude extraction per household, off by default, through a worker that only it routes out of | 2026-10-16 | Accepted with a condition |
 | 036 | Google Cloud adapters over REST (Cloud Storage, Cloud KMS, Document AI), chosen by environment variables; import previews sealed in the database | 2026-10-16 | Proposed |
+| 037 | Self-service account recovery with single-use recovery codes, shown once at enrolment | 2026-10-16 | Proposed |
 
 ## Records
 
@@ -213,4 +214,13 @@ How the four adapters (ARCHITECTURE.md "Environments", ADR-030) reach Google Clo
 - **Import previews in the database.** The preview between "Check" and "Confirm" (ADR-032 kept it in the app's memory) is stored per household with row-level security, sealed with the household's data key because it can hold attached statements, and expires after an hour. The plan is computed again at confirm, as the importer already re-checks member edits there. More than one app instance can then serve a household. Release 0 keeps its in-memory preview.
 
 **Consequences.** The adapters have only met emulators and fakes; the first staging run (phase 1.3) is where they meet the real services, and any differences in error handling show up there. Nothing here needs the account, so the owner's first steps (project, billing, the BAA, the KMS key ring) are listed in DEPLOYMENT.md.
+### ADR-037 · Self-service account recovery (Proposed)
+How a member who loses their phone, their password or both gets back in (PRV-07, TC-PRV-07-3), replacing the admin reset as the normal path. Proposed by the build session on 2026-10-16.
+
+**Decision.**
+- **Recovery codes, not email.** The app sends no email, and a reset by email would make the mailbox the weakest factor. Each member gets ten single-use codes of 50 random bits (`XXXXX-XXXXX`), shown once: on the enrolment page beside the authenticator QR code, after a recovery, and when a signed-in member makes new ones on the Account page (which asks for a current authenticator code). Only SHA-256 hashes are stored; codes this random don't need a slow hash. Making new codes voids the old set.
+- **One code replaces both factors.** "Forgot your password or lost your phone?" takes the email and a code. A wrong code counts toward the same lock as a wrong password (five tries, 15 minutes), and an unknown email gets the same answer. A right code is used up, the member's sessions end, and a 15-minute recovery link (its own kind of link, so an enrolment link can't change a password and a recovery link can't show a QR code) asks for a new password, then shows a new authenticator QR code and ten new codes.
+- **Nothing else changes.** Household data, keys and vault entries are untouched, so everything is there after the next sign-in. `mhs-admin reset-mfa` stays for a member with no codes left.
+
+**Consequences.** A member who loses both their phone and their codes still needs an admin. Anyone holding a member's email and one unused code can take over the account, as with any recovery code scheme; the Account page shows how many codes are left so a member notices one going missing.
 
