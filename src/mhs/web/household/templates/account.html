@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Your account{% endblock %}
+{% block content %}
+<section class="card auth">
+  <h1>Your account</h1>
+  {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
+  {% if codes %}
+  <p class="alert good">Your new recovery codes are below. The old ones no longer work.</p>
+  {% include "_recovery_codes.html" %}
+  {% else %}
+  <p>You have <strong>{{ left }}</strong> unused recovery code{{ 's' if left != 1 }}. Each one lets you back in once if you forget your password or lose your phone.</p>
+  <form method="post" action="/account/recovery-codes" class="stack">
+    {{ csrf_input() }}
+    <label>Code from your authenticator app <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required></label>
+    <button class="btn" type="submit">Make new recovery codes</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

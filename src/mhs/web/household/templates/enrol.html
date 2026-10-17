@@ -14,6 +14,7 @@
     <summary>Can't scan? Type the key instead</summary>
     <p class="small">Account: {{ email }}<br>Key (time-based): <code class="enrol-key">{{ key }}</code></p>
   </details>
+  {% if codes %}{% include "_recovery_codes.html" %}{% endif %}
   <p><a class="btn primary" href="/signin">Continue to sign in</a></p>
   {% else %}
   <p>This link shows the QR code for your authenticator app once. Open it where no one else can see your screen.</p>

@@ -29,7 +29,7 @@ from mhs.ingest.scrub import scrubber_class
 from mhs.stack import AppConfig, load_app_config
 from mhs.vault.client import VaultClient
 from mhs.web.household import security
-from mhs.web.household.auth import Accounts, Session
+from mhs.web.household.auth import AccountError, Accounts, Session
 from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.intake import Intake, add_intake
 from mhs.web.household.qr import qr_svg
@@ -231,8 +231,59 @@ def create_app(
         if found is None:
             return page(request, "enrol.html", 404, gone=True)
         email, totp_secret = found
-        return page(request, "enrol.html", email=email, qr=Markup(qr_svg(accounts.provisioning_uri(email, totp_secret))),
-                    key=" ".join(totp_secret[i:i + 4] for i in range(0, len(totp_secret), 4)))
+        return enrolled(request, email, totp_secret, accounts.new_recovery_codes(email))
+
+    def enrolled(request: Request, email: str, totp_secret: str, codes: list[str], status: int = 200):
+        """The authenticator QR code and the recovery codes, shown once."""
+        return page(request, "enrol.html", status, email=email,
+                    qr=Markup(qr_svg(accounts.provisioning_uri(email, totp_secret))),
+                    key=" ".join(totp_secret[i:i + 4] for i in range(0, len(totp_secret), 4)), codes=codes)
+
+    # Self-service recovery (TC-PRV-07-3, ADR-037): a recovery code instead of the password and the authenticator,
+    # then a new password, a new authenticator and new codes. Household data is untouched.
+    @app.get("/recover", response_class=HTMLResponse)
+    def recover_form(request: Request):
+        return page(request, "recover.html")
+
+    @app.post("/recover", response_class=HTMLResponse)
+    def recover(request: Request, email: str = Form(""), code: str = Form("")):
+        token = accounts.start_recovery(email, code)
+        if token is None:
+            return page(request, "recover.html", 401, email=email,
+                        error="That email and recovery code don't match, the code was already used, or the account "
+                              "is locked for 15 minutes after too many tries.")
+        return page(request, "recover.html", token=token)
+
+    @app.post("/recover/{token}", response_class=HTMLResponse)
+    def recover_finish(request: Request, token: str, password: str = Form(""), password2: str = Form("")):
+        if not LINK_PATTERN.match(token):
+            return page(request, "recover.html", 404, gone=True)
+        if password != password2:
+            return page(request, "recover.html", 400, token=token, error="The two passwords don't match.")
+        try:
+            done = accounts.finish_recovery(token, password)
+        except AccountError as e:
+            return page(request, "recover.html", 400, token=token, error=str(e))
+        if done is None:
+            return page(request, "recover.html", 404, gone=True)
+        email, totp_secret, codes = done
+        return enrolled(request, email, totp_secret, codes)
+
+    @app.get("/account", response_class=HTMLResponse)
+    def account(request: Request):
+        session = member(request)
+        return page(request, "account.html", left=accounts.recovery_codes_left(session.member_id))
+
+    @app.post("/account/recovery-codes", response_class=HTMLResponse)
+    def new_codes(request: Request, code: str = Form(""), csrf_token: str = Form("")):
+        """New recovery codes for a signed-in member, after a fresh authenticator code."""
+        session = member(request)
+        check_csrf(session, csrf_token)
+        if not accounts.check_totp(session.member_id, code):
+            return page(request, "account.html", 401, left=accounts.recovery_codes_left(session.member_id),
+                        error="That code didn't work. Use the current code from your authenticator app.")
+        codes = accounts.new_recovery_codes(accounts.email_of(session.member_id))
+        return page(request, "account.html", left=len(codes), codes=codes)
 
     @app.post("/signout")
     def signout(request: Request, csrf_token: str = Form("")):

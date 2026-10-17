@@ -4,7 +4,9 @@ Sign-in is two steps: email and password (Argon2id), then a TOTP code. A session
 once both have passed. Only a SHA-256 of the session cookie is stored; the token rotates after MFA.
 """
 
+import base64
 import hashlib
+import re
 import secrets
 import uuid
 from dataclasses import dataclass
@@ -22,6 +24,8 @@ MAX_FAILED = 5
 LOCK_MINUTES = 15
 TOTP_ISSUER = "My Health Spend"
 ENROLMENT_LINK_MINUTES = 15
+RECOVERY_CODES = 10
+RECOVERY_LINK_MINUTES = 15
 
 _hasher = PasswordHasher()
 # Verified against when the email is unknown, so a wrong email takes as long as a wrong password.
@@ -52,6 +56,15 @@ class Session:
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _recovery_code() -> str:
+    raw = base64.b32encode(secrets.token_bytes(7)).decode()[:10]  # 50 bits
+    return f"{raw[:5]}-{raw[5:]}"
+
+
+def _code_hash(code: str) -> bytes:
+    return hashlib.sha256(re.sub(r"[\s-]+", "", code or "").upper().encode()).digest()
 
 
 def _hash_token(token: str) -> bytes:
@@ -121,7 +134,7 @@ class Accounts:
         return Member(member_id, str(household_id), email, display_name.strip()), totp_secret
 
     def reset_mfa(self, email: str) -> str:
-        """Give a member a new TOTP secret and end their sessions (admin recovery until TC-PRV-07-3 is built)."""
+        """Give a member a new TOTP secret and end their sessions (admin reset, and the end of self-service recovery)."""
         row = self._member_row(email)
         if row is None:
             raise AccountError("No such member.")
@@ -168,22 +181,89 @@ class Accounts:
                       "VALUES (%s, %s, now() + make_interval(mins => %s))", (_hash_token(token), row["id"], minutes))
         return token
 
-    def enrolment_link_valid(self, token: str) -> bool:
+    def enrolment_link_valid(self, token: str, purpose: str = "enrol") -> bool:
         with self.db.tx() as c:
-            return c.execute("SELECT 1 FROM app.enrolment_links WHERE token_hash = %s AND expires_at > now()",
-                             (_hash_token(token),)).fetchone() is not None
+            return c.execute("SELECT 1 FROM app.enrolment_links WHERE token_hash = %s AND expires_at > now() "
+                             "AND purpose = %s", (_hash_token(token), purpose)).fetchone() is not None
 
     def redeem_enrolment_link(self, token: str) -> tuple[str, str] | None:
         """Use a link: it is deleted whether or not it was still valid. Returns the member's email and TOTP
         secret, or None for an unknown, used or expired link."""
         with self.db.tx() as c:
-            link = c.execute("DELETE FROM app.enrolment_links WHERE token_hash = %s RETURNING member_id, "
-                             "expires_at > now() AS valid", (_hash_token(token),)).fetchone()
+            link = c.execute("DELETE FROM app.enrolment_links WHERE token_hash = %s AND purpose = 'enrol' "
+                             "RETURNING member_id, expires_at > now() AS valid", (_hash_token(token),)).fetchone()
             if link is None or not link["valid"]:
                 return None
             row = c.execute("SELECT * FROM app.members WHERE id = %s", (link["member_id"],)).fetchone()
         secret = self.keyring.decrypt(str(row["household_id"]), bytes(row["totp_secret"]), f"totp:{row['id']}")
         return row["email"], secret.decode()
+
+    # --- recovery codes and self-service recovery (TC-PRV-07-3, ADR-037) ---
+
+    def new_recovery_codes(self, email: str) -> list[str]:
+        """Ten new single-use codes for the member, replacing any they had. Shown once; only hashes are kept."""
+        row = self._member_row(email)
+        if row is None:
+            raise AccountError("No such member.")
+        codes = [_recovery_code() for _ in range(RECOVERY_CODES)]
+        with self.db.tx() as c:
+            c.execute("DELETE FROM app.recovery_codes WHERE member_id = %s", (row["id"],))
+            with c.cursor() as cur:
+                cur.executemany("INSERT INTO app.recovery_codes (member_id, code_hash) VALUES (%s, %s)",
+                                [(row["id"], _code_hash(code)) for code in codes])
+        return codes
+
+    def email_of(self, member_id: str) -> str:
+        with self.db.tx() as c:
+            return c.execute("SELECT email FROM app.members WHERE id = %s", (member_id,)).fetchone()["email"]
+
+    def recovery_codes_left(self, member_id: str) -> int:
+        with self.db.tx() as c:
+            return c.execute("SELECT count(*) AS n FROM app.recovery_codes WHERE member_id = %s AND used_at IS NULL",
+                             (member_id,)).fetchone()["n"]
+
+    def start_recovery(self, email: str, code: str) -> str | None:
+        """A recovery code in place of the password and the authenticator. On success the code is used up, the
+        member's sessions end, and a short-lived recovery link (its own kind) is returned for setting a new
+        password and authenticator. None for an unknown email, a wrong or used code, or a locked account; a
+        wrong code counts toward the lock like a wrong password."""
+        row = self._member_row(email)
+        if row is None:
+            _code_hash(code)  # the same work for an unknown email
+            return None
+        if self._locked(row):
+            return None
+        with self.db.tx() as c:
+            used = c.execute("UPDATE app.recovery_codes SET used_at = now() WHERE member_id = %s AND code_hash = %s "
+                             "AND used_at IS NULL RETURNING 1", (row["id"], _code_hash(code))).fetchone()
+            if used:
+                c.execute("DELETE FROM app.sessions WHERE member_id = %s", (row["id"],))
+        if not used:
+            self._record_failure(row["id"])
+            return None
+        token = secrets.token_urlsafe(32)
+        with self.db.tx() as c:
+            c.execute("DELETE FROM app.enrolment_links WHERE expires_at <= now()")
+            c.execute("INSERT INTO app.enrolment_links (token_hash, member_id, expires_at, purpose) "
+                      "VALUES (%s, %s, now() + make_interval(mins => %s), 'recover')",
+                      (_hash_token(token), row["id"], RECOVERY_LINK_MINUTES))
+        return token
+
+    def finish_recovery(self, token: str, password: str) -> tuple[str, str, list[str]] | None:
+        """Use a recovery link: a new password, a new authenticator secret and new recovery codes. Returns
+        (email, TOTP secret, codes), or None for an unknown, used or expired link. Household data and keys
+        are untouched, so everything the member had is there when they sign in again."""
+        if len(password) < MIN_PASSWORD:
+            raise AccountError(f"The password must be at least {MIN_PASSWORD} characters.")
+        with self.db.tx() as c:
+            link = c.execute("DELETE FROM app.enrolment_links WHERE token_hash = %s AND purpose = 'recover' "
+                             "RETURNING member_id, expires_at > now() AS valid", (_hash_token(token),)).fetchone()
+            if link is None or not link["valid"]:
+                return None
+            email = c.execute("SELECT email FROM app.members WHERE id = %s", (link["member_id"],)).fetchone()["email"]
+        self.set_password(email, password)
+        totp_secret = self.reset_mfa(email)
+        return email, totp_secret, self.new_recovery_codes(email)
 
     @staticmethod
     def provisioning_uri(email: str, totp_secret: str) -> str:

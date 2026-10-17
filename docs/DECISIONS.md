@@ -42,6 +42,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 032 | Release 0 pages shared by both apps; Release 1 imports by upload only, files encrypted, edits and history per household | 2026-10-16 | Accepted |
 | 033 | Upload pipeline: exports parsed in the app tier; documents read and scrubbed in the app tier, extracted by the worker, confirmed by the member | 2026-10-16 | Accepted |
 | 034 | Ingestion engines: Tesseract OCR and Presidio in the app tier; Claude extraction per household, off by default, through a worker that only it routes out of | 2026-10-16 | Accepted with a condition |
+| 037 | Self-service account recovery with single-use recovery codes, shown once at enrolment | 2026-10-16 | Proposed |
 
 ## Records
 
@@ -201,3 +202,14 @@ Implementation choices for the rest of phase 1.3, inside ADR-028, ADR-029 and AD
 **Consequences.** The image grows from about 460 MB to 1.15 GB (Tesseract, spaCy with its model, numpy, the Anthropic SDK); `UV_NO_CACHE` keeps uv's download cache out of the layers. OCR runs in the upload request, about a quarter of a second per page; long scans make the upload slow until OCR moves to a background task in the app tier. PRV-05 date shifting for AI payloads (ADR-022, P2) is not built: AI requests carry real service dates. A production deployment needs an egress path for the AI worker (a proxy or a NAT rule for the Anthropic API only) and the API key as a secret. The extraction corpus run (PLT-02) has not measured either extractor yet.
 
 **Condition met (2026-10-16).** PRV-05 date shifting is built for AI requests: the worker shifts every date in the scrubbed text by a random per-person offset (30 to 365 days either way, kept in the household's records, never sent) just before the call, and shifts the dates in the answer back, so stored records keep real dates (TC-PRV-05-1, TC-PRV-05-2). Real household data still waits for the production project and the data-processing agreement (ADR-028).
+
+### ADR-037 · Self-service account recovery (Proposed)
+How a member who loses their phone, their password or both gets back in (PRV-07, TC-PRV-07-3), replacing the admin reset as the normal path. Proposed by the build session on 2026-10-16.
+
+**Decision.**
+- **Recovery codes, not email.** The app sends no email, and a reset by email would make the mailbox the weakest factor. Each member gets ten single-use codes of 50 random bits (`XXXXX-XXXXX`), shown once: on the enrolment page beside the authenticator QR code, after a recovery, and when a signed-in member makes new ones on the Account page (which asks for a current authenticator code). Only SHA-256 hashes are stored; codes this random don't need a slow hash. Making new codes voids the old set.
+- **One code replaces both factors.** "Forgot your password or lost your phone?" takes the email and a code. A wrong code counts toward the same lock as a wrong password (five tries, 15 minutes), and an unknown email gets the same answer. A right code is used up, the member's sessions end, and a 15-minute recovery link (its own kind of link, so an enrolment link can't change a password and a recovery link can't show a QR code) asks for a new password, then shows a new authenticator QR code and ten new codes.
+- **Nothing else changes.** Household data, keys and vault entries are untouched, so everything is there after the next sign-in. `mhs-admin reset-mfa` stays for a member with no codes left.
+
+**Consequences.** A member who loses both their phone and their codes still needs an admin. Anyone holding a member's email and one unused code can take over the account, as with any recovery code scheme; the Account page shows how many codes are left so a member notices one going missing.
+
