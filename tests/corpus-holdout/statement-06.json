@@ -1,0 +1,10 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Riley Novak",
+    "provider": "Lakeside Family Medicine",
+    "statement_date": "2026-04-20",
+    "balance_due": 87300,
+    "account_number": "178-7114"
+  }
+}

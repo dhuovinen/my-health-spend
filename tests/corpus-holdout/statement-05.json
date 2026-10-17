@@ -1,0 +1,10 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Morgan Lee",
+    "provider": "Lakeside Family Medicine",
+    "statement_date": "2026-05-07",
+    "balance_due": 17100,
+    "account_number": "790-3180"
+  }
+}

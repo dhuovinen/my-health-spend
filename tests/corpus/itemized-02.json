@@ -1,0 +1,9 @@
+{
+  "doc_type": "itemized_bill",
+  "fields": {
+    "patient": "Sam Ortiz",
+    "provider": "Mercy General Hospital",
+    "statement_date": "2026-08-12",
+    "balance_due": 49400
+  }
+}

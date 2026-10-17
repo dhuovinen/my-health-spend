@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Avery Chen",
+    "provider": "Riverbend Orthopedics",
+    "claim_number": "B84210024",
+    "service_start": "2026-10-26",
+    "billed": 90350,
+    "adjustment": 31850,
+    "allowed": 58500,
+    "insurer_paid": 56000,
+    "patient_responsibility": 2500
+  }
+}

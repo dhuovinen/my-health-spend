@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Riley Novak",
+    "provider": "Hillcrest Imaging Center",
+    "claim_number": "A74158048",
+    "service_start": "2026-08-07",
+    "billed": 180250,
+    "adjustment": 38450,
+    "allowed": 141800,
+    "insurer_paid": 113500,
+    "patient_responsibility": 28300
+  }
+}

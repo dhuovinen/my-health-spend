@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Casey Brooks",
+    "provider": "Northgate Dermatology",
+    "claim_number": "7214312249",
+    "service_start": "2026-04-29",
+    "billed": 237850,
+    "adjustment": 130950,
+    "allowed": 106900,
+    "insurer_paid": 104400,
+    "patient_responsibility": 2500
+  }
+}

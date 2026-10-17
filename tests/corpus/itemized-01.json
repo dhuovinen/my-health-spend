@@ -1,0 +1,9 @@
+{
+  "doc_type": "itemized_bill",
+  "fields": {
+    "patient": "Morgan Lee",
+    "provider": "Mercy General Hospital",
+    "statement_date": "2026-04-16",
+    "balance_due": 62000
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Jordan Rivera",
+    "provider": "Riverbend Orthopedics",
+    "claim_number": "C57028175",
+    "service_start": "2026-04-19",
+    "billed": 15700,
+    "adjustment": 7400,
+    "allowed": 8300,
+    "insurer_paid": 5800,
+    "patient_responsibility": 2500
+  }
+}

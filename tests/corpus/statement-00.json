@@ -1,0 +1,10 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Sam Ortiz",
+    "provider": "Maple Street Pediatrics",
+    "statement_date": "2026-08-16",
+    "balance_due": 12800,
+    "account_number": "9240535"
+  }
+}

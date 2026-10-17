@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Casey Brooks",
+    "provider": "Riverbend Orthopedics",
+    "claim_number": "3046250336",
+    "service_start": "2026-03-26",
+    "billed": 26000,
+    "adjustment": 11000,
+    "allowed": 15000,
+    "insurer_paid": 12500,
+    "patient_responsibility": 2500
+  }
+}

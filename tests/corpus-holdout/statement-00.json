@@ -1,0 +1,10 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Sam Ortiz",
+    "provider": "Northgate Dermatology",
+    "statement_date": "2026-09-27",
+    "balance_due": 14200,
+    "account_number": "482-5860"
+  }
+}

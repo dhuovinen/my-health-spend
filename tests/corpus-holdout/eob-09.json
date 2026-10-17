@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Morgan Lee",
+    "provider": "Northgate Dermatology",
+    "claim_number": "5231967645",
+    "service_start": "2026-08-09",
+    "billed": 221850,
+    "adjustment": 80550,
+    "allowed": 141300,
+    "insurer_paid": 136800,
+    "patient_responsibility": 4500
+  }
+}
