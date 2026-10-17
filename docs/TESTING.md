@@ -95,6 +95,12 @@ Layout rules, 2026-10-16:
 
 On the held-out set, both statement layouts ("Invoice", "Billing Statement") were read as "other", and labels without a colon or in a two-column layout ("Claim   123", "Statement Dt  10/01/2026") weren't read. The rules only know the wording they were written for, so they won't reach PLT-02 on documents they haven't seen; Claude extraction (ADR-028, ADR-034) is the way to the target. Its run (`--extractor claude`, with an API key) hasn't been made yet. Before tuning anything on these results, generate a fresh held-out set; tuning on this one would make its figure meaningless. OCR accuracy (TC-PLT-02-1) is measured with Document AI in staging.
 
+## Performance (PLT-05, TC-PLT-05-1)
+
+`tools/perf_run.py` times typical uploads on the running stack, one at a time, from the upload to a confirmed visit, leaving out the member's own review time: run it in the compose tests container with `docker compose --profile test run --rm tests python tools/perf_run.py --n 50`. The documents are synthetic: the development corpus's EOBs and statements, one in five as a phone photo read by Tesseract and some as 2 to 3 page PDFs. The stack suite runs 5 of them on every change.
+
+Local stack on the owner's Mac, 2026-10-17: 50 uploads, all confirmed; machine time p50 0.45 s, p95 0.85 s, slowest 1.05 s, against a 60-second target. Staging (Document AI, Cloud Run) is measured again in phase 1.6; AI extraction adds the model's response time when it is on.
+
 ## Levels
 
 | Level | Where | Covers |

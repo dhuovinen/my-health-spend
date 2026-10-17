@@ -233,3 +233,17 @@ def test_forwarded_email_arrives_and_is_read(member):
         time.sleep(0.5)
     assert ext["doc_type"] == "eob" and len(emailed) == 1
     db.close()
+
+
+def test_typical_uploads_reach_a_visit_within_a_minute(member):
+    """PLT-05 (TC-PLT-05-1, small): a few typical uploads, timed from upload to a confirmed visit without the member's
+    own review time; tools/perf_run.py runs the full 50."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("perf_run", Path("/srv/mhs/tools/perf_run.py"))
+    perf = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(perf)
+    results = perf.run(5, STACK_URL)
+    s = perf.summary(results)
+    assert s["confirmed"] == 5, results
+    assert s["p95_seconds"] < perf.TARGET_SECONDS, s

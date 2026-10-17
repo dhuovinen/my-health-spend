@@ -67,3 +67,5 @@ member deletes the household at once; security log kept a year.
 blanked on photos (TC-PRV-04-1), uploads read in the background, previews (HEIC as JPEG). 238 tests on the stack.
 2026-10-17: Help page (feat/r1-help). Forwarded email on feat/r1-email-forwarding (ADR-039 proposed): a private address per
 household, members' addresses only, attachments and statement bodies become uploads; local SMTP `mail` service. 276 tests on the stack.
+2026-10-17: Local performance run (PLT-05): 50 typical uploads to a confirmed visit, p95 0.85 s machine time
+(target 60 s), feat/r1-perf-run.
