@@ -18,11 +18,11 @@ docker compose --profile test run --rm tests
 uv run --with pytest-cov pytest --cov=mhs
 ```
 
-## Current state (2026-10-17, phase 1.4 built on `feat/r1-reconciliation`)
+## Current state (2026-10-17, phase 1.5 built on `feat/r1-web-experience`)
 
 | Measure | Value |
 | --- | --- |
-| Automated tests | 361 on the compose stack (none skipped); `uv run pytest` 345 with 16 skipped (stack tests and the ones that need the tesseract binary), 2026-10-17 on `main` after phase 1.4 and the integration chain merged. They include the 55 Release 0 tests (22 run a second time against Release 1), phase 1.4's core and page tests (`test_r1_reconcile.py`, `test_r1_reconcile_pages.py`), the other Release 1 tests in `tests/test_r1_*.py` (uploads, scrubbing, OCR, Claude extraction, dates, demo, corpus, cloud adapters, recovery, export and delete, the 1.3 leftovers, email, access log) and the stack tests in `tests/stack/` (including SMTP delivery and the performance check) |
+| Automated tests | 387 on the compose stack (none skipped); `uv run pytest` 371 with 16 skipped (stack tests and the ones that need the tesseract binary), 2026-10-17 on `feat/r1-web-experience`. They include phase 1.5's page and layout tests (`test_ux.py`, `test_ux_layout.py`), the 55 Release 0 tests (22 run a second time against Release 1), phase 1.4's core and page tests (`test_r1_reconcile.py`, `test_r1_reconcile_pages.py`), the other Release 1 tests in `tests/test_r1_*.py` (uploads, scrubbing, OCR, Claude extraction, dates, demo, corpus, cloud adapters, recovery, export and delete, the 1.3 leftovers, email, access log) and the stack tests in `tests/stack/` (including SMTP delivery and the performance check) |
 | Coverage, `core/` | 92 to 99% per module: `reconcile.py` 97%, `lines.py` 94%, `matching.py` 99%, `edits.py` 92% (target ≥ 80%) |
 | Coverage, `data/` | 89 to 100% per module |
 | Coverage, `web/pages.py` (shared pages), `web/household/app.py`, `auth.py` | 92%, 95%, 98% |
@@ -179,6 +179,26 @@ Defined 2026-10-16; built in phase 1.1. Environments and adapters are in [ARCHIT
 ### Production
 
 No test data and no test runs. Health checks, audit logs and the owner's acceptance in phase 1.6.
+
+## Web experience (phase 1.5)
+
+The P1 UX cases for UX-01, UX-02, UX-06 and UX-10 are automated with the synthetic three-person household in `samples/household-ingest.json` (`uv run tools/make_household_sample.py` rewrites it: the example sample plus Jordan, Alex and Sam Sample, and Sam's six-line well-child visit whose statement skips the discount on one line). `tests/test_ux.py` runs each page case against both apps through the `web` fixture; `tests/test_ux_layout.py` drives headless Chromium through Playwright at a 375 by 812 phone (touch, mobile) and a 1280 by 800 desktop, on both apps. Rules and choices: ADR-041.
+
+| Cases | Test |
+| --- | --- |
+| TC-UX-01-1 summary, then the attention queue, then cards with person, provider, date, badge, documents and amount at issue | `test_ux.py::test_tc_ux_01_1_home_order_and_cards` |
+| TC-UX-01-2 empty state (Release 1 offers Uploads) | `test_web.py::test_empty_home_has_hero_help_and_settings`, `test_ux.py::test_tc_ux_01_2_*` |
+| TC-UX-01-3 amount at issue is the open findings, the same dollars once; closing one takes it off | `test_tc_ux_01_3_*` (core), `test_card_amount_on_the_page_and_after_closing` |
+| TC-UX-02-1 documents, line comparison, allocation, findings and case history on one page | `test_tc_ux_02_1_*` |
+| TC-UX-02-2 lines that disagree are highlighted with the difference | `test_tc_ux_02_2_*`, `test_line_rows_and_case_history_units` |
+| TC-UX-06-1 per-person totals sum to the family total | `test_tc_ux_06_1_*`, `test_household_totals_without_members` |
+| TC-UX-06-2 switch individual and family; kept across pages; CSRF and sign-out | `test_tc_ux_06_2_*`, `test_view_switch_needs_the_csrf_token_and_ends_at_sign_out` |
+| TC-UX-10-1 375px: no sideways scroll on any page, tap targets at least 44px (links inside a sentence excepted, as WCAG 2.5.8 does), the bottom bar; on Release 1 a photo from "Take a photo" uploads by itself and the upload's review page fits | `test_ux_layout.py::test_tc_ux_10_1_*` (both apps) |
+| TC-UX-10-2 1280px: the six-line visit with every panel on screen, the line comparison whole, nothing scrolls sideways | `test_ux_layout.py::test_tc_ux_10_2_*` (both apps) |
+
+The layout tests skip where Playwright's Chromium isn't installed (`uv run playwright install chromium`); the compose `tests` image has it. `MHS_UX_SCREENSHOTS=<folder> uv run pytest tests/test_ux_layout.py` keeps a full-page screenshot of every page it checks (full-page captures drop the touch emulation, so Uploads' camera button doesn't show in them; the test checks it on the live page).
+
+**By hand.** The camera itself: on a real phone the "Take a photo" button opens the camera and the photo uploads when taken. The local stack binds 127.0.0.1 only, so this waits for staging (phase 1.6); the browser test covers everything but the camera app.
 
 ## Release 1 additions
 

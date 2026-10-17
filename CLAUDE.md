@@ -2,7 +2,7 @@
 
 Reconciles provider bills, insurer EOBs and HSA payments per visit to find billing errors and overpayment. **Durable tier** (docs/DECISIONS.md ADR-020): read `docs/VISION.md`, `docs/ARCHITECTURE.md` and `docs/ROADMAP.md` before structural work, and record irreversible choices as an ADR in `docs/DECISIONS.md` first.
 
-**Current phase:** Release 1, phase 1.5 (Web experience) next. On `main` (2026-10-17, tag `r1-reconciliation`): phases 1.1 to 1.4 and the local build of 1.3. Members sign in with MFA (recovery codes for a lost phone or password); upload or forward by email provider statements, EOBs (PDF or photo), HSA exports and insurer claims exports; Tesseract OCR and Presidio run in the app tier, the worker extracts fields (layout rules, or Claude per household with dates shifted, PRV-05); the member reviews and confirms; phase 1.4 matches lines, checks the three money identities with the $1.00 tolerance and gives each visit one of nine statuses. Export and delete, an access log and Google Cloud adapters (tested against emulators, DEPLOYMENT.md) are built. ADR-031 to ADR-040 are accepted. Still to come in 1.3: the staging project (needs the Google Cloud account) and the 95% accuracy target on the held-out corpus (the layout rules score 80% classification and 61.5% amounts; Claude extraction is the plan, not yet measured, needs an API key).
+**Current phase:** Release 1, phase 1.5 (Web experience) built on branch `feat/r1-web-experience` (ADR-041 proposed): home in the ADR-023 order with visit cards, the visit page in five sections, the Household page and view switch, the phone layout with a bottom bar; waiting for review and merge, then phase 1.6. On `main` (2026-10-17, tag `r1-reconciliation`): phases 1.1 to 1.4 and the local build of 1.3. Members sign in with MFA (recovery codes for a lost phone or password); upload or forward by email provider statements, EOBs (PDF or photo), HSA exports and insurer claims exports; Tesseract OCR and Presidio run in the app tier, the worker extracts fields (layout rules, or Claude per household with dates shifted, PRV-05); the member reviews and confirms; phase 1.4 matches lines, checks the three money identities with the $1.00 tolerance and gives each visit one of nine statuses. Export and delete, an access log and Google Cloud adapters (tested against emulators, DEPLOYMENT.md) are built. ADR-031 to ADR-040 are accepted. Still to come in 1.3: the staging project (needs the Google Cloud account) and the 95% accuracy target on the held-out corpus (the layout rules score 80% classification and 61.5% amounts; Claude extraction is the plan, not yet measured, needs an API key).
 
 ## How to run
 
@@ -54,6 +54,12 @@ docker compose exec app mhs-admin ai-extraction --household <household-id> on
 
  The user scenarios and how to try each by hand are in `docs/TESTING.md` ("User scenarios"). Vault backup and restore (passphrase prompted, or `MHS_BACKUP_PASSPHRASE`) are in `docs/SETUP.md`. Wipe the local stack, data included: `docker compose --profile test down -v`.
 
+A three-person synthetic household (Household page, view switch, a six-line visit) for trying the pages: point `MHS_DATA_DIR` at a scratch folder and import `samples/household-ingest.json` (regenerate with `uv run tools/make_household_sample.py`). The layout tests at 375 and 1280 px drive headless Chromium (`uv run playwright install chromium` once; they skip without it):
+
+```bash
+uv run pytest tests/test_ux_layout.py
+```
+
 Extraction accuracy on the synthetic corpus (development set `tests/corpus`, held-out set `tests/corpus-holdout`; regenerate with `uv run python tools/make_corpus.py`; add `--extractor claude` with an API key to measure Claude):
 
 ```bash
@@ -92,4 +98,6 @@ First-time setup and the converter's warnings are in `docs/SETUP.md`.
 - Upload rule: identifiers are scrubbed in the application tier (`ingest/scrub.py`, vault tokens) before anything is queued; the worker never sees raw document text, and the Claude extractor (`ingest/ai.py`) sends only that scrubbed text. OCR (`ingest/ocr.py`) also runs in the app tier. Keep it that way. Test documents come from `tests/pdfs.py` (`make_pdf`, `make_image`, `make_scanned_pdf`); never use real documents. AI tests use recorded responses in `tests/fixtures/ai` (no key, no network); `capture` serves the same recordings to `worker-ai` on the stack.
 - Tesseract isn't installed locally, so OCR tests skip under `uv run pytest`; they run in the compose `tests` container. Presidio loads spaCy `en_core_web_md` (a uv dependency) once per process.
 - The compose project is named `mhs` in every checkout, and images are tagged `mhs:dev` / `mhs:test`: running the stack from a worktree replaces the main checkout's containers. Use `docker compose -p <other-name>` with an override that changes the image tags and drops the published port to test a worktree beside a running stack.
+- Phones (ADR-041): at 860px and narrower the top nav is hidden and the pages are in `nav.tabbar`; every control is at least 44px tall. A new standalone link (not inside a sentence) needs a class the phone rule covers (`a.back`, `.page-head a`, `td > a`, or `btn`), or `tests/test_ux_layout.py` flags it. Add new pages to its `PAGES` list.
+- The household view's member is in the `mhs_view` cookie (`VIEW_COOKIE` in `web/pages.py`); Home, Visits and Household read it through `view_of()`.
 - Unit tests pin "today" (`TODAY = date(2026, 10, 9)` in `tests/test_reconcile.py`); web tests run on the real date, so don't assert exact day counts there.

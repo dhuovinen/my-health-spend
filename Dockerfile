@@ -20,7 +20,11 @@ EXPOSE 3063
 
 FROM runtime AS test
 USER root
-RUN uv sync --frozen
+# Headless Chromium for the layout tests at 375px and 1280px (tests/test_ux_layout.py, ADR-041).
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
+RUN uv sync --frozen \
+    && playwright install --with-deps --only-shell chromium \
+    && chmod -R a+rX /opt/ms-playwright
 COPY tests ./tests
 COPY tools ./tools
 USER 10001

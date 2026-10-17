@@ -4,12 +4,20 @@
 <div class="page-head"><h1>Help</h1><span class="muted small">How My Health Spend checks your health spending, and how to use it</span></div>
 
 <nav class="card section help-toc">
-  <a href="#idea">What it does</a> · {% if not path_import %}<a href="#signin">Signing in</a> · <a href="#uploads">Uploading</a> · {% endif %}<a href="#import">Importing a file</a> · <a href="#statuses">Visit statuses</a> · <a href="#checks">The checks</a> · <a href="#hsa">HSA flags</a> · <a href="#settings">Settings</a>{% if not path_import %} · <a href="#data">Your data</a>{% endif %} · <a href="#limits">What it isn't</a>
+  <a href="#idea">What it does</a> · <a href="#pages">Home, visits and household</a> · {% if not path_import %}<a href="#signin">Signing in</a> · <a href="#uploads">Uploading</a> · {% endif %}<a href="#import">Importing a file</a> · <a href="#statuses">Visit statuses</a> · <a href="#checks">The checks</a> · <a href="#hsa">HSA flags</a> · <a href="#settings">Settings</a>{% if not path_import %} · <a href="#data">Your data</a>{% endif %} · <a href="#limits">What it isn't</a>
 </nav>
 
 <section class="card section" id="idea">
   <h2>What it does</h2>
   <p>For every visit there are up to three documents: the provider's bill or statement, the insurer's decision (the EOB, explanation of benefits) and your payment, usually from your HSA. My Health Spend lines them up per visit and checks them against each other, so a bill that asks for more than the EOB says you owe, a payment made twice, or a balance nobody asked you about doesn't go unnoticed.</p>
+</section>
+
+<section class="card section" id="pages">
+  <h2>Home, visits and your household</h2>
+  <p><strong>Home</strong> starts with the year's totals and how many visits are in each status. Then <em>Needs your attention</em>: the visits that need you, the most dollars first (what's at stake plus what's still owed), then the oldest, each with the reason in a sentence. Then the year's visits as cards: who it was for, the provider and date, its status, how many of the documents it needs have arrived, and the amount at issue, which is the open findings on the visit, counting the same dollars once.</p>
+  <p><strong>A visit</strong> has everything on one page: what's wrong, the bill and the EOB line by line (a line that doesn't agree is highlighted with the difference), who pays what, the documents, and the case history from the visit to today.</p>
+  <p><strong>Household</strong> shows each person's visits and money for the year, and the family's, which is their sum. <em>Showing</em> (on Home, Household and Visits) switches between the family and one person; your choice stays while you move between pages, until you close the browser{% if not path_import %} or sign out{% endif %}.</p>
+  <p class="small muted">On a phone the pages are in the bar at the bottom of the screen; <em>Add</em> opens {{ 'Uploads, where Take a photo opens the camera' if not path_import else 'Import' }}.</p>
 </section>
 
 {% if not path_import %}
@@ -22,7 +30,7 @@
 <section class="card section" id="uploads">
   <h2>Uploading bills, EOBs and HSA statements</h2>
   <ol class="small">
-    <li>On <a href="/uploads">Uploads</a>, choose a file and what it is, or let the app decide. PDFs and phone photos (JPG, PNG, HEIC) of bills, statements and EOBs are read for you; HSA and insurer exports (CSV, XLS, XLSX) go straight to a preview.</li>
+    <li>On <a href="/uploads">Uploads</a>, choose a file and what it is, or let the app decide. On a phone, <em>Take a photo</em> opens the camera and uploads the photo as soon as you take it. PDFs and phone photos (JPG, PNG, HEIC) of bills, statements and EOBs are read for you; HSA and insurer exports (CSV, XLS, XLSX) go straight to a preview.</li>
     <li>Names, member IDs, account numbers and other identifiers are replaced with codes before anything is read further; your own pages show the real values.</li>
     <li>When the upload says <em>Review</em>, open it. The document is shown above the fields it was read into. Fields marked <span class="badge s-balance_outstanding">check</span> were read with less confidence or weren't found: compare them with the document and correct them.</li>
     <li>Choose the provider, the patient, the plan and the visit, then confirm. Nothing reaches your visits before you do, and your corrections are kept beside what was read.</li>

@@ -20,7 +20,7 @@
 </details>
 {% endmacro %}
 {% block content %}
-<p class="small"><a href="/visits?year={{ v.visit.date[:4] }}">← Visits</a></p>
+<p class="small"><a class="back" href="/visits?year={{ v.visit.date[:4] }}">← Visits</a></p>
 <div class="page-head">
   <div>
     <h1>{{ v.provider.name }}</h1>
@@ -63,6 +63,14 @@
 </div>
 {% endfor %}
 
+<nav class="jump" aria-label="On this page">
+  <a href="#findings">What's wrong{% if v.findings %} ({{ v.findings|length }}){% endif %}</a>
+  <a href="#lines">Line by line</a>
+  <a href="#allocation">Who pays what</a>
+  <a href="#documents">Documents</a>
+  <a href="#history">Case history</a>
+</nav>
+
 <div class="grid tiles">
   <div class="card tile"><div class="label">Billed to insurer</div><div class="value">{{ v.total_billed|money }}</div></div>
   <div class="card tile"><div class="label">You owe per EOB</div><div class="value">{{ v.insurer_owed|money }}</div></div>
@@ -72,7 +80,8 @@
 
 <div class="grid two">
   <div class="card" id="findings">
-    <h2>Reconciliation checks</h2>
+    <h2>What's wrong</h2>
+    {% if not v.findings %}<p class="good-ink small">No open findings.</p>{% endif %}
     {% for c in v.checks if c.result in ('fail', 'closed', 'info') %}
     <div class="check {{ c.result }}">
       <div class="mark">{{ {'fail': '✕', 'closed': '✓', 'info': 'i'}[c.result] }}</div>
@@ -126,8 +135,9 @@
     {% endif %}
   </div>
 
-  <div class="card">
-    <h2>Payments applied</h2>
+  <div class="card" id="allocation">
+    <h2>Who pays what</h2>
+    <h3>Payments applied</h3>
     {% if v.allocations %}
     <table>
       <tr><th>Date</th><th>Account</th><th class="num">Applied</th></tr>
@@ -150,47 +160,56 @@
       {% else %}<li><strong>Credit due to you</strong><strong class="num">{{ (-s.still_owed)|money }}</strong></li>{% endif %}
       {% if s.unexplained %}<li><span class="bad-ink">Of which not explained</span><span class="num bad-ink">{{ s.unexplained|money }}</span></li>{% endif %}
     </ul>
-  </div>
-</div>
-
-{% if v.buckets %}
-<div class="grid two section">
-  <div class="card" id="buckets">
-    <h2>Where the billed amount went</h2>
+    {% if v.buckets %}
+    <h3 class="section" id="buckets">Where the billed amount went</h3>
     <ul class="kv">
       {% for k, label in BUCKETS.items() if v.buckets.get(k) %}
       <li><span>{{ label }}</span><span class="num {{ 'bad-ink' if k == 'unexplained' }}">{{ v.buckets[k]|money }}</span></li>
       {% endfor %}
       <li><strong>Billed</strong><strong class="num">{{ v.buckets.values()|sum|money }}</strong></li>
     </ul>
-    {% if v.line_buckets|length > 1 %}
-    <details class="small"><summary>By line</summary>
-      <div class="table-wrap"><table>
-        <tr><th>Line</th>{% for k, label in BUCKETS.items() if v.buckets.get(k) %}<th class="num">{{ label }}</th>{% endfor %}</tr>
-        {% for name, b in v.line_buckets %}<tr><td>{{ name }}</td>{% for k, label in BUCKETS.items() if v.buckets.get(k) %}<td class="num">{{ b.get(k, 0)|money }}</td>{% endfor %}</tr>{% endfor %}
-      </table></div>
-    </details>
     {% endif %}
   </div>
-  {% if v.line_match %}
-  <div class="card" id="lines">
-    <h2>Bill lines and EOB lines</h2>
-    <div class="table-wrap"><table class="small">
-      <tr><th>On the bill</th><th>On the EOB</th><th>Note</th></tr>
-      {% for p in v.line_match.pairs %}
-      <tr><td>{% for b in p.bill %}{{ b.code or b.description }} {{ b.charge|money }}{{ '; ' if not loop.last }}{% endfor %}</td>
-          <td>{% for e in p.eob %}{{ e.code or e.description }} {{ e.billed|money }}{{ '; ' if not loop.last }}{% endfor %}</td>
-          <td class="muted">{{ p.notes|join('; ') }}</td></tr>
-      {% endfor %}
-      {% for b in v.line_match.bill_only %}<tr><td>{{ b.code or b.description }} {{ b.charge|money }}</td><td class="warn-ink">not on the EOB</td><td></td></tr>{% endfor %}
-      {% for e in v.line_match.eob_only %}<tr><td class="warn-ink">not on the bill</td><td>{{ e.code or e.description }} {{ e.billed|money }}</td><td></td></tr>{% endfor %}
+</div>
+
+<div class="card section" id="lines">
+  <h2>Line by line</h2>
+  {% if lines %}
+  <p class="muted small">Each line on the provider's bill beside the insurer's line for it. Lines that don't agree are highlighted with the difference.{% if v.line_match.complete %} All {{ v.line_match.pairs|length }} bill lines paired with the EOB.{% endif %}</p>
+  <div class="table-wrap"><table class="small line-compare">
+    <thead><tr><th>On the bill</th><th class="num">Charge</th><th class="num">Asks you</th><th>On the EOB</th><th class="num">Billed</th><th class="num">You owe</th><th class="num">Difference</th><th>Note</th></tr></thead>
+    <tbody>
+    {% for r in lines %}
+    <tr class="{{ 'disagree' if r.disagree }}">
+      <td data-label="On the bill">{% for b in r.bill %}{{ b.code or '' }} {{ b.description or '' }}{{ '; ' if not loop.last }}{% else %}<span class="warn-ink">not on the bill</span>{% endfor %}</td>
+      <td data-label="Charge" class="num">{{ r.charge|money }}</td>
+      <td data-label="Asks you" class="num">{{ r.asked|money }}</td>
+      <td data-label="On the EOB">{% for e in r.eob %}{{ e.code or '' }} {{ e.description or '' }}{{ '; ' if not loop.last }}{% else %}<span class="warn-ink">not on the EOB</span>{% endfor %}</td>
+      <td data-label="Billed" class="num">{{ r.billed|money }}</td>
+      <td data-label="You owe" class="num">{{ r.owed|money }}</td>
+      <td data-label="Difference" class="num diff">{% if r.charge_diff %}<span class="bad-ink">{{ '+' if r.charge_diff > 0 }}{{ r.charge_diff|money }} charged</span>{% endif %}{% if r.charge_diff and r.you_diff %}<br>{% endif %}{% if r.you_diff %}<span class="bad-ink">{{ '+' if r.you_diff > 0 }}{{ r.you_diff|money }} asked</span>{% endif %}{% if not r.disagree %}<span class="good-ink">Agrees</span>{% endif %}</td>
+      <td data-label="Note" class="muted {{ 'empty' if not r.notes }}">{{ r.notes|join('; ') }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% if v.line_buckets|length > 1 %}
+  <details class="small section"><summary>Where each line's billed amount went</summary>
+    <div class="table-wrap"><table>
+      <tr><th>Line</th>{% for k, label in BUCKETS.items() if v.buckets.get(k) %}<th class="num">{{ label }}</th>{% endfor %}</tr>
+      {% for name, b in v.line_buckets %}<tr><td>{{ name }}</td>{% for k, label in BUCKETS.items() if v.buckets.get(k) %}<td class="num">{{ b.get(k, 0)|money }}</td>{% endfor %}</tr>{% endfor %}
     </table></div>
-  </div>
+  </details>
+  {% endif %}
+  {% elif v.insured %}
+  <p class="muted">Comparing line by line needs the lines on the provider's bill and on the EOB. This visit doesn't have both yet.</p>
+  {% else %}
+  <p class="muted">No insurance claim for this visit, so there are no EOB lines to compare.</p>
   {% endif %}
 </div>
-{% endif %}
 
-<h2 class="section">Documents</h2>
+<section class="section" id="documents">
+<h2>Documents</h2>
 <div class="card" id="checklist">
   <h3>What this visit needs</h3>
   <div class="table-wrap"><table class="small">
@@ -262,6 +281,31 @@
   </div>
 </div>
 
+</section>
+
+<div class="grid two section">
+<div class="card" id="history">
+  <h2>Case history</h2>
+  <ol class="timeline">
+    {% for h in history %}
+    <li><span class="when muted small">{{ h.date|nice_date }}</span><span class="what">{{ h.what }}</span>{% if h.detail %}<span class="detail muted small">{{ h.detail }}</span>{% endif %}</li>
+    {% endfor %}
+  </ol>
+</div>
+<div class="card" id="notes">
+  <h3>Notes on {{ group.name }}</h3>
+  {% set providers_by_id = {} %}{% for p in group.providers %}{% set _ = providers_by_id.update({p.id: p.name}) %}{% endfor %}
+  {% for n in notes %}
+  <div class="note {{ 'dim' if n.visit_id and n.visit_id != v.id }}">
+    <div class="note-head">{{ note_meta(n, providers_by_id, group.providers|length > 1) }}</div>
+    <div class="note-text">{{ n.text }}</div>
+  </div>
+  {% else %}<p class="muted">No notes yet.</p>{% endfor %}
+  <p><a class="btn small" href="/providers/{{ v.group_id }}?year={{ v.visit.date[:4] }}#notes">Add or edit notes</a></p>
+  {% if v.visit.notes %}<h3 class="section">Import notes</h3><p class="small">{{ v.visit.notes }}</p>{% endif %}
+</div>
+</div>
+
 <details class="card section" id="visit-actions">
   <summary><strong>Change this visit</strong></summary>
   <form method="post" action="/visits/{{ v.id }}/payment-path" class="inline section">{{ csrf_input() }}
@@ -284,16 +328,4 @@
   </form>
 </details>
 
-<div class="card section" id="notes">
-  <h3>Notes on {{ group.name }}</h3>
-  {% set providers_by_id = {} %}{% for p in group.providers %}{% set _ = providers_by_id.update({p.id: p.name}) %}{% endfor %}
-  {% for n in notes %}
-  <div class="note {{ 'dim' if n.visit_id and n.visit_id != v.id }}">
-    <div class="note-head">{{ note_meta(n, providers_by_id, group.providers|length > 1) }}</div>
-    <div class="note-text">{{ n.text }}</div>
-  </div>
-  {% else %}<p class="muted">No notes yet.</p>{% endfor %}
-  <p class="small"><a href="/providers/{{ v.group_id }}?year={{ v.visit.date[:4] }}#notes">Add or edit notes</a></p>
-  {% if v.visit.notes %}<h3 class="section">Import notes</h3><p class="small">{{ v.visit.notes }}</p>{% endif %}
-</div>
 {% endblock %}

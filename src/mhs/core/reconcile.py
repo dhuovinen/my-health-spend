@@ -322,6 +322,7 @@ class LimitProgress:
     used: int
     member_names: list[str]
     note: str = ""
+    member_id: str | None = None  # an individual limit's member (UX-06), None for the family or anyone covered
 
     @property
     def pct(self) -> int:
@@ -1110,7 +1111,7 @@ def _limit_progress(ds: Dataset, year: int, claims: list[dict], members: dict) -
                     note = "Includes claims imported for: " + ", ".join(names)
                 if network == "in_network" and any(e.get("network_status", "unknown") == "unknown" for e in scoped):
                     note = (note + ". " if note else "") + "Claims with unknown network status are counted as in-network"
-                out.append(LimitProgress(plan, limit, label, used, names, note))
+                out.append(LimitProgress(plan, limit, label, used, names, note, mid))
     return out
 
 

@@ -15,5 +15,9 @@
     <button class="btn" type="submit">Make new recovery codes</button>
   </form>
   {% endif %}
+  <div class="actions section">
+    <a class="btn" href="/data">Your data</a>
+    <form method="post" action="/signout">{{ csrf_input() }}<button class="btn" type="submit">Sign out</button></form>
+  </div>
 </section>
 {% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, year_select, view_switch %}
+{% block title %}Household{% endblock %}
+{% macro person_link(p) %}/visits?year={{ report.year }}&amp;member={{ p.member_id or 'none' }}{% endmacro %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Household</h1>
+    <p class="muted flush">Each person's visits and money in {{ report.year }}, and the family's. The family row is the sum of the others.</p>
+  </div>
+  <div class="actions">
+    {{ year_select(report, "/household") }}
+    {{ view_switch(members, view, "/household?year=%s" % report.year) }}
+  </div>
+</div>
+
+{% if not members %}
+<div class="callout">No household members yet. Add each person who gets care in <a href="/settings#members">Settings</a>, then choose who each visit was for, so the app can show each person's totals and deductible.</div>
+{% endif %}
+
+{# Desktop: one table. Phones: the same rows as cards (ADR-041). #}
+<div class="card section" id="people">
+  <div class="table-wrap">
+  <table class="people">
+    <thead><tr><th>Person</th><th class="num">Visits</th><th class="num">Billed</th><th class="num">Insurer paid</th>
+      <th class="num">Paid by you</th><th class="num">Still owed</th><th class="num">At issue</th><th class="num">Need you</th></tr></thead>
+    <tbody>
+    {% for p in people %}
+    <tr class="{{ 'viewing' if view and view.id == p.member_id }}">
+      <td data-label="Person"><a href="{{ person_link(p) }}">{{ p.name }}</a>{% if view and view.id == p.member_id %} <span class="chip info">showing</span>{% endif %}</td>
+      <td data-label="Visits" class="num">{{ p.visits }}</td>
+      <td data-label="Billed" class="num">{{ p.billed|money }}</td>
+      <td data-label="Insurer paid" class="num">{{ p.insurer_paid|money }}</td>
+      <td data-label="Paid by you" class="num">{{ p.paid|money }}</td>
+      <td data-label="Still owed" class="num">{{ p.still_owed|money }}</td>
+      <td data-label="At issue" class="num {{ 'bad-ink' if p.at_issue }}">{{ p.at_issue|money }}</td>
+      <td data-label="Need you" class="num">{{ p.attention }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+    <tr class="total">
+      <td data-label="Person"><a href="/visits?year={{ report.year }}&member=">Family</a></td>
+      <td data-label="Visits" class="num">{{ family.visits }}</td>
+      <td data-label="Billed" class="num">{{ family.billed|money }}</td>
+      <td data-label="Insurer paid" class="num">{{ family.insurer_paid|money }}</td>
+      <td data-label="Paid by you" class="num">{{ family.paid|money }}</td>
+      <td data-label="Still owed" class="num">{{ family.still_owed|money }}</td>
+      <td data-label="At issue" class="num {{ 'bad-ink' if family.at_issue }}">{{ family.at_issue|money }}</td>
+      <td data-label="Need you" class="num">{{ family.attention }}</td>
+    </tr>
+    </tfoot>
+  </table>
+  </div>
+  <p class="muted small">"Paid by you" is what was applied to these visits, net of refunds. "At issue" counts each visit's open findings once. Payments a provider holds as a credit, and visits from earlier years still on a statement, are on the provider pages.</p>
+</div>
+
+<div class="grid two section">
+  {% for p in people if p.member_id %}
+  <div class="card person-card">
+    <h2><a href="{{ person_link(p) }}">{{ p.name }}</a></h2>
+    <ul class="status-strip compact">
+      {% for s in STATUS_ORDER if p.status_counts[s] %}<li><a href="/visits?year={{ report.year }}&member={{ p.member_id }}&status={{ s }}">{{ badge(s) }}<strong>{{ p.status_counts[s] }}</strong></a></li>{% endfor %}
+    </ul>
+    {% for l in limits[p.member_id] %}
+    <div class="limit">
+      <div class="row"><span>{{ l.label }}</span><span class="num">{{ l.used|money }} of {{ l.limit.amount|money }}</span></div>
+      <div class="bar"><span data-pct="{{ l.pct }}"></span></div>
+    </div>
+    {% else %}<p class="muted small">No individual limits for {{ p.name }} in {{ report.year }}.</p>{% endfor %}
+  </div>
+  {% endfor %}
+  {% if family_limits %}
+  <div class="card person-card">
+    <h2>Family limits</h2>
+    {% for l in family_limits %}
+    <div class="limit">
+      <div class="row"><span>{{ l.label }}</span><span class="num">{{ l.used|money }} of {{ l.limit.amount|money }}</span></div>
+      <div class="bar"><span data-pct="{{ l.pct }}"></span></div>
+      {% if l.note %}<div class="muted small">{{ l.note }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

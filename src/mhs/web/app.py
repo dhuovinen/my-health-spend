@@ -22,6 +22,7 @@ class LocalHost:
     """PagesHost for Release 0."""
 
     path_import = True
+    cookie_secure = False  # loopback http
 
     def __init__(self, config: Config):
         self.config = config

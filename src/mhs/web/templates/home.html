@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, year_select %}
+{% from "_macros.html" import badge, year_select, visit_card, reason, view_switch %}
 {% block title %}Home{% endblock %}
 {% block content %}
+{% set add_url = '/uploads' if session else '/import' %}
 <section class="hero">
   <div>
     <h1>My Health Spend</h1>
@@ -9,37 +10,81 @@
   </div>
   <div class="actions">
     {{ year_select(report, "/") }}
+    {{ view_switch(members, view, "/?year=%s" % report.year) }}
     <a class="btn secondary" href="/visits?year={{ report.year }}&flagged=1">Review flagged visits</a>
-    <a class="btn primary" href="/import">Import data</a>
+    <a class="btn primary" href="{{ add_url }}">{{ 'Add documents' if session else 'Import data' }}</a>
   </div>
 </section>
 
 {% if not report.visits and not report.groups %}
 <div class="card empty">
   <h2>No visits yet</h2>
-  <p class="muted">Gather three things for each visit: the provider's bill or statement, the insurer's claim (EOB), and your HSA or card payment. Put them in an ingest file and import it.</p>
+  <p class="muted">Gather three things for each visit: the provider's bill or statement, the insurer's claim (EOB), and your HSA or card payment.
+  {% if session %}Upload them as PDFs or photos, or your HSA's export, and check what the app read.{% else %}Put them in an ingest file and import it.{% endif %}</p>
+  {% if session %}
+  <div class="actions center">
+    <a class="btn primary" href="/uploads">Upload your first documents</a>
+    <a class="btn" href="/import">Import an ingest file</a>
+  </div>
+  {% else %}
   <a class="btn primary" href="/import">Import your first file</a>
+  {% endif %}
 </div>
 {% else %}
 
-<div class="grid tiles">
-  <div class="card tile"><div class="label">Total billed</div><div class="value">{{ totals.billed|money }}</div><div class="muted small">{{ report.visits|length }} visits in {{ report.year }}</div></div>
-  <div class="card tile"><div class="label">Insurer paid</div><div class="value">{{ totals.insurer_paid|money }}</div></div>
-  <div class="card tile"><div class="label">You paid</div><div class="value">{{ totals.you_paid|money }}</div><div class="muted small">Payments to providers in {{ report.year }}</div></div>
-  <div class="card tile accent"><div class="label">$ at stake</div><div class="value">{{ totals.at_stake|money }}</div><div class="muted small">Overpayments and bill/EOB mismatches</div></div>
-</div>
-
-<div class="grid two">
-  <div class="card">
-    <h2>Visits by status</h2>
-    <ul class="status-list">
-      {% for s in STATUS_ORDER %}
-      <li><a href="/visits?year={{ report.year }}&status={{ s }}">{{ badge(s) }}</a><strong>{{ report.status_counts[s] }}</strong></li>
-      {% endfor %}
-    </ul>
+<section id="summary" aria-label="Summary">
+  {% if view %}<p class="view-note">Showing <strong>{{ view.name }}</strong>'s visits. <a href="/household?year={{ report.year }}">The whole household</a></p>{% endif %}
+  <div class="grid tiles">
+    <div class="card tile"><div class="label">Total billed</div><div class="value">{{ totals.billed|money }}</div><div class="muted small">{{ visits|length }} visit{{ 's' if visits|length != 1 }} in {{ report.year }}</div></div>
+    <div class="card tile"><div class="label">Insurer paid</div><div class="value">{{ totals.insurer_paid|money }}</div></div>
+    <div class="card tile"><div class="label">You paid</div><div class="value">{{ totals.you_paid|money }}</div><div class="muted small">{{ "Applied to these visits" if view else "Payments to providers in %s" % report.year }}</div></div>
+    <div class="card tile accent"><div class="label">$ at stake</div><div class="value">{{ totals.at_stake|money }}</div><div class="muted small">Overpayments and bill/EOB mismatches</div></div>
   </div>
-  <div class="card">
-    <h2>HSA</h2>
+  <ul class="status-strip" aria-label="Visits by status">
+    {% for s in STATUS_ORDER %}
+    <li class="{{ 'zero' if not status_counts[s] }}"><a href="/visits?year={{ report.year }}&status={{ s }}">{{ badge(s) }}<strong>{{ status_counts[s] }}</strong></a></li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% if report.unconfirmed_relationships %}
+<div class="alert warn section">
+  {{ report.unconfirmed_relationships|length }} provider match{{ 'es' if report.unconfirmed_relationships|length != 1 }} not yet confirmed. Payments and claims are reconciled together until you confirm or reject them in <a href="/settings#relationships">Settings</a>.
+</div>
+{% endif %}
+
+<section class="card section" id="attention">
+  <h2>Needs your attention</h2>
+  {% if attention %}
+  <p class="muted small rule">Most dollars first (at stake plus still owed), then the oldest visit.</p>
+  <ol class="queue">
+    {% for v in attention %}
+    <li>
+      <a href="/visits/{{ v.id }}">
+        <span class="q-head"><span class="provider">{{ v.provider.name }}</span>{{ badge(v.status) }}</span>
+        <span class="q-meta muted small">{{ v.visit.date|nice_date }}{% if v.member %} · {{ v.member.name }}{% endif %}</span>
+        <span class="q-why small">{{ reason(v) }}</span>
+        <span class="q-amount num">{% if v.at_stake %}<strong class="bad-ink">{{ v.at_stake|money }}</strong> at issue{% endif %}{% if v.at_stake and v.remaining %} · {% endif %}{% if v.remaining %}{{ v.remaining|money }} owed{% endif %}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ol>
+  {% if attention_more > 0 %}<p class="small"><a href="/visits?year={{ report.year }}&flagged=1">{{ attention_more }} more</a></p>{% endif %}
+  {% else %}<p class="muted">Nothing needs you right now.</p>{% endif %}
+</section>
+
+<section class="section" id="visits">
+  <div class="page-head flush-head"><h2>Visits in {{ report.year }}</h2>
+    <a class="small" href="/visits?year={{ report.year }}">All {{ visits|length }} visits</a></div>
+  {% if cards %}
+  <div class="grid cards">{% for v in cards %}{{ visit_card(v) }}{% endfor %}</div>
+  {% else %}<div class="card muted">No visits for {{ view.name if view else 'the household' }} in {{ report.year }}.</div>{% endif %}
+</section>
+
+<h2 class="section year-detail">The year in detail</h2>
+<div class="grid two">
+  <div class="card" id="hsa">
+    <h2>HSA{% if view %} <span class="muted small">(whole family)</span>{% endif %}</h2>
     {% set hc = report.hsa_counts %}
     {% set y = report.year %}
     <ul class="kv">
@@ -50,37 +95,14 @@
           ('unexplained', 'Settled by provider, no matching payment', '/visits?year=%s&hsa=unexplained' % y, 'visit'),
           ('no_claim', 'HSA payments with no claim', '/providers?year=%s&flag=no_claim' % y, 'payment')] %}
       <li><span>{% if hc[key] %}<a href="{{ url }}">{{ label }}</a>{% else %}{{ label }}{% endif %}
-        <span class="muted small">· {{ hc[key] }} {{ unit }}{{ 's' if hc[key] != 1 }}</span></span><strong>{{ totals[key]|money }}</strong></li>
+        <span class="muted small">· {{ hc[key] }} {{ unit }}{{ 's' if hc[key] != 1 }}</span></span><strong>{{ report.totals[key]|money }}</strong></li>
       {% endfor %}
     </ul>
     <p class="muted small">Flags show possible HSA opportunities; they don't confirm an expense is HSA-eligible.</p>
   </div>
-</div>
-
-{% if report.unconfirmed_relationships %}
-<div class="alert warn section">
-  {{ report.unconfirmed_relationships|length }} provider match{{ 'es' if report.unconfirmed_relationships|length != 1 }} not yet confirmed. Payments and claims are reconciled together until you confirm or reject them in <a href="/settings#relationships">Settings</a>.
-</div>
-{% endif %}
-
-<div class="grid two section">
-  <div class="card">
-    <h2>Needs attention</h2>
-    {% if attention %}
-    <table>
-      {% for v in attention %}
-      <tr>
-        <td><a href="/visits/{{ v.id }}">{{ v.provider.name }}</a><div class="muted small">{{ v.visit.date|nice_date }}</div></td>
-        <td>{{ badge(v.status) }}</td>
-        <td class="num">{{ (v.at_stake or v.remaining)|money }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-    {% else %}<p class="muted">Nothing flagged.</p>{% endif %}
-  </div>
-  <div class="card">
+  <div class="card" id="limits">
     <h2>Plan limits {{ report.year }}</h2>
-    {% for l in report.limits %}
+    {% for l in limits %}
     <div class="limit">
       <div class="row"><span>{{ l.label }}</span><span class="num">{{ l.used|money }} of {{ l.limit.amount|money }}</span></div>
       <div class="bar"><span data-pct="{{ l.pct }}"></span></div>
@@ -96,7 +118,7 @@
 {% if yb %}
 <div class="grid two section">
   <div class="card" id="buckets">
-    <h2>Where {{ report.year }}'s billed dollars went</h2>
+    <h2>Where {{ report.year }}'s billed dollars went{% if view %} <span class="muted small">(whole family)</span>{% endif %}</h2>
     <ul class="kv">
       {% for k, label in BUCKETS.items() if yb.get(k) %}<li><span>{{ label }}</span><span class="num {{ 'bad-ink' if k == 'unexplained' }}">{{ yb[k]|money }}</span></li>{% endfor %}
       <li><strong>Billed</strong><strong class="num">{{ yb.values()|sum|money }}</strong></li>

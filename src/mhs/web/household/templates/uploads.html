@@ -7,9 +7,19 @@
 </div>
 {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
 {% if uploaded %}<p class="alert good">Uploaded. It's being read now; it appears below as ready to review in a moment.</p>{% endif %}
-<section class="card section uploads">
+<section class="card section uploads" id="capture">
+  {# Phones (UX-10, ADR-041): one tap opens the camera and the photo uploads as soon as it is taken. #}
+  <form method="post" action="/uploads" enctype="multipart/form-data" class="camera">{{ csrf_input() }}
+    <input type="hidden" name="kind" value="auto">
+    <label class="btn primary big camera-btn">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      Take a photo of a bill or EOB
+      <input class="visually-hidden" type="file" name="file" accept="image/*" capture="environment" data-autosubmit required>
+    </label>
+    <noscript><button class="btn" type="submit">Upload the photo</button></noscript>
+  </form>
   <form method="post" action="/uploads" enctype="multipart/form-data" class="inline">{{ csrf_input() }}
-    <label class="grow-wide">File <input type="file" name="file" accept="application/pdf,image/jpeg,image/png,image/heic,image/webp,.heic,.csv,.xls,.xlsx,text/csv" capture="environment" required></label>
+    <label class="grow-wide">File <input type="file" name="file" accept="application/pdf,image/jpeg,image/png,image/heic,image/webp,.heic,.csv,.xls,.xlsx,text/csv" required></label>
     <label>What is it?
       <select name="kind">
         {% for value, label in kinds.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
@@ -17,6 +27,7 @@
     </label>
     <button class="btn primary" type="submit">Upload</button>
   </form>
+  <p class="small muted">Have an ingest file from the converter? <a href="/import">Import it</a>.</p>
   <p class="small muted inbound">Or forward bills and EOBs by email from your own address to <code>{{ inbound }}</code>: each PDF or photo attached, or a statement in the email itself, arrives here to review.</p>
   {% if originals %}
   <div class="table-wrap">
