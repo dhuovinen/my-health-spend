@@ -57,3 +57,17 @@ back on the answer); meets ADR-034's condition. 209 tests on the stack.
 2026-10-16: Extraction corpus and accuracy run on feat/r1-extraction-corpus: 56 development and 50 held-out synthetic
 documents with ground truth. Layout rules: 100% on development, 80% classification / 61.5% amounts on held-out
 (targets 95%). PLT-02 needs Claude extraction; its run needs an API key.
+2026-10-16: Google Cloud adapters over REST (Cloud Storage, KMS, Document AI) tested against fake GCS and API-shaped
+fakes; import previews sealed in the database; DEPLOYMENT.md (feat/r1-cloud-adapters, ADR-036 proposed). 240 tests on the stack.
+2026-10-16: Self-service account recovery with single-use recovery codes (TC-PRV-07-3) on feat/r1-account-recovery
+(ADR-037 proposed).
+2026-10-16: Export and delete (PRV-09) on feat/r1-export-delete (ADR-038 proposed): re-importable ZIP; deleting the last
+member deletes the household at once; security log kept a year.
+2026-10-17: Phase 1.3 local leftovers on feat/r1-ingest-leftovers: copies and versions on review (ING-07), identifiers
+blanked on photos (TC-PRV-04-1), uploads read in the background, previews (HEIC as JPEG). 238 tests on the stack.
+2026-10-17: Help page (feat/r1-help). Forwarded email on feat/r1-email-forwarding (ADR-039 proposed): a private address per
+household, members' addresses only, attachments and statement bodies become uploads; local SMTP `mail` service. 276 tests on the stack.
+2026-10-17: Local performance run (PLT-05): 50 typical uploads to a confirmed visit, p95 0.85 s machine time
+(target 60 s), feat/r1-perf-run.
+2026-10-17: Access log (PRV-10) on feat/r1-access-log (ADR-040 proposed): member views and changes per household, readable on
+"Your data", append-only for the app.

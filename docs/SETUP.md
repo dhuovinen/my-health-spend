@@ -94,7 +94,7 @@ docker compose exec app mhs-admin create-household "Household name"
 docker compose exec -it app mhs-admin add-member --household <household-id> --email you@example.com --name "Your name"
 ```
 
-`add-member` asks for a password (12 characters or more) and prints an authenticator secret and `otpauth://` URI, once, with a single-use enrolment link: `http://127.0.0.1:3063/enrol/<token>` offers a button that shows the secret as a QR code to scan, then the link stops working (it also expires after 15 minutes, and `reset-mfa` cancels it; only a hash of the token is stored). Add it to an authenticator app, then sign in at http://127.0.0.1:3063 with email, password and the 6-digit code. Five wrong tries lock the account for 15 minutes; sessions end after 15 idle minutes or 12 hours. Lost authenticator: `docker compose exec app mhs-admin reset-mfa --email you@example.com` issues a new secret and ends the member's sessions.
+`add-member` asks for a password (12 characters or more) and prints an authenticator secret and `otpauth://` URI, once, with a single-use enrolment link: `http://127.0.0.1:3063/enrol/<token>` offers a button that shows the secret as a QR code to scan, then the link stops working (it also expires after 15 minutes, and `reset-mfa` cancels it; only a hash of the token is stored). Add it to an authenticator app, then sign in at http://127.0.0.1:3063 with email, password and the 6-digit code. Five wrong tries lock the account for 15 minutes; sessions end after 15 idle minutes or 12 hours. The enrolment page also shows ten single-use recovery codes, once: save them. Forgot your password or lost your phone? Use one on the sign-in page's "Forgot your password or lost your phone?" link to set a new password and a new authenticator (ADR-037); the Account page (your name in the header) makes new codes. No codes left: `docker compose exec app mhs-admin reset-mfa --email you@example.com` issues a new secret and ends the member's sessions.
 
 ### Demo household
 
@@ -107,7 +107,7 @@ On the Uploads page, choose a file and what it is (or let the app decide):
 - **Provider bills, statements, EOBs** as PDF, or a photo (JPG, PNG, HEIC). The app reads the text, replaces names and ID numbers with vault tokens, and the worker extracts the fields. When the status turns to Review, open it, check the fields ("check" marks the doubtful ones), correct them and confirm. Only then does the document reach your visits. Photos and scanned PDFs are read with OCR (Tesseract); iPhone HEIC photos are converted first. A photo that can't be opened is refused with the reason.
 - **HSA/FSA exports** (CSV, XLS, XLSX) and the **insurer's claims export** (CSV) go straight to the import preview; confirm there.
 
-The same file twice is refused. Add your household members and the year's plan in Settings first, so patients and claims match.
+You can also forward bills and EOBs by email from your own address to the address shown on Uploads (locally the `mail` service receives them on the internal network, `mail:2525`). The same file twice is refused. Add your household members and the year's plan in Settings first, so patients and claims match.
 
 ### AI extraction (optional, off by default)
 
@@ -131,6 +131,10 @@ docker compose exec app mhs-admin import --household <household-id> /srv/mhs/sam
 ```
 
 Without `--yes` it only previews (counts, warnings, member edits it would keep); add `--yes` to save, and `--replace-edits` to let the file overwrite edits made in the app. For a file on your machine, copy its folder in first with `docker compose cp <folder> app:/tmp/import`. The local stack is for synthetic data only (ARCHITECTURE.md "Environments"). Settings has a "Download settings.json" link for `tools/build_ingest.py`.
+
+### Export and delete your data (PRV-09)
+
+"Your data" in the header: download everything as a ZIP (records as an ingest file with its files, uploads, identifiers, a manifest), or delete your account. Deleting the last member's account deletes the household's records, files and identifiers at once (ADR-038). The same page shows the access log: who viewed or changed which record, and when (ADR-040).
 
 ### Back up and restore the vault (PRV-07)
 
@@ -162,6 +166,8 @@ This runs the whole suite in the `tests` container: unit and integration tests o
 | --- | --- | --- |
 | `MHS_DATABASE_URL` | app, worker, vault | Full Postgres URL; otherwise built from `MHS_DB_HOST`, `MHS_DB_NAME`, `MHS_DB_USER` and `MHS_DB_PASSWORD(_FILE)` |
 | `MHS_KEY_FILE` | app, vault | The service's key-encryption key file |
+| `MHS_KEYS` | app, vault | `file` (default) or `kms` with `MHS_KMS_KEY` (Google Cloud, DEPLOYMENT.md) |
+| `MHS_OBJECT_STORE` | app | `local` (default, `MHS_OBJECTS_DIR`) or `gcs` with `MHS_GCS_BUCKET` |
 | `MHS_VAULT_URL`, `MHS_VAULT_TOKEN(_FILE)` | app, vault | Where the vault is, and the shared service token |
 | `MHS_OBJECTS_DIR` | app | Folder for encrypted originals |
 | `MHS_HOST`, `MHS_APP_PORT` | app | Bind address (0.0.0.0 inside the container) and port (3063) |
@@ -169,7 +175,7 @@ This runs the whole suite in the `tests` container: unit and integration tests o
 | `MHS_COOKIE_SECURE` | app | `1` once served over TLS (staging, production) |
 | `MHS_SESSION_IDLE_MINUTES`, `MHS_SESSION_MAX_HOURS` | app | Session timeouts (15, 12) |
 | `MHS_WORKER_POLL_SECONDS` | worker | Queue poll interval (1) |
-| `MHS_OCR_ENGINE` | app | `tesseract` (compose) or `stub` (default: photos are typed by hand) |
+| `MHS_OCR_ENGINE` | app | `tesseract` (compose), `documentai` (Google Cloud, with `MHS_DOCAI_PROCESSOR`) or `stub` (default: photos are typed by hand) |
 | `MHS_SCRUBBER` | app | `presidio` (compose) or `rules` (default) |
 | `MHS_EXTRACTOR` | worker | `rules` (default) or `claude`, which lets the worker take AI extraction jobs |
 | `MHS_ANTHROPIC_API_KEY(_FILE)` | worker | Anthropic API key, when `MHS_EXTRACTOR=claude` |

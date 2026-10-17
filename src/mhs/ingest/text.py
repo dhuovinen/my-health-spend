@@ -13,6 +13,7 @@ from mhs.ingest.ocr import OcrEngine, OcrUnavailable, UnreadableImage, get_engin
 
 PDF = "application/pdf"
 IMAGES = {"image/jpeg", "image/png", "image/heic", "image/heif", "image/webp"}
+TEXT = {"text/html", "text/plain"}
 EXTENSIONS = {".pdf": PDF, ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".heic": "image/heic",
               ".heif": "image/heif", ".webp": "image/webp", ".csv": "text/csv", ".xls": "application/vnd.ms-excel",
               ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
@@ -29,6 +30,7 @@ class DocumentText:
     pages: int
     how: str  # how it was read, shown on the review page
     confidence: float = 1.0  # OCR's mean word confidence; 1.0 for a text layer
+    words: tuple = ()  # OCR word boxes (ingest.ocr.Word), for blanking identifiers on the image (PRV-04)
 
 
 def content_type(filename: str, declared: str) -> str:
@@ -84,7 +86,7 @@ def read_text(kind: str, data: bytes, ocr: OcrEngine | None = None) -> DocumentT
         merged = [p if p.strip() else (result.pages[i] if i < len(result.pages) else "") for i, p in enumerate(pages)]
         how = (f"scanned PDF, OCR ({result.engine})" if scanned == len(pages)
                else f"pdf text layer, {scanned} scanned page{'s' if scanned != 1 else ''} by OCR ({result.engine})")
-        return DocumentText("\n\f\n".join(merged), len(pages), how, result.confidence)
+        return DocumentText("\n\f\n".join(merged), len(pages), how, result.confidence, tuple(result.words))
     if kind in IMAGES:
         try:
             result = ocr.read(data, kind)
@@ -92,5 +94,25 @@ def read_text(kind: str, data: bytes, ocr: OcrEngine | None = None) -> DocumentT
             return DocumentText("", 1, "photo: OCR not available")
         except UnreadableImage as e:
             raise Unreadable(str(e)) from e
-        return DocumentText(result.text, 1, f"photo, OCR ({result.engine})", result.confidence)
+        return DocumentText(result.text, 1, f"photo, OCR ({result.engine})", result.confidence, tuple(result.words))
+    if kind in TEXT:  # a statement in the body of a forwarded email (ING-01, ADR-039)
+        body = data.decode("utf-8", "replace")
+        return DocumentText(html_to_text(body) if kind == "text/html" else body, 1, "email body")
     raise Unreadable("Only PDFs and photos (JPG, PNG, HEIC) can be read as documents.")
+
+
+def html_to_text(html_text: str) -> str:
+    """Readable lines from an HTML email: rows and paragraphs become lines, table cells stay apart like columns."""
+    import html as html_lib
+    import re
+
+    t = re.sub(r"(?is)<(script|style|head)\b.*?</\1>", " ", html_text)
+    t = re.sub(r"(?i)<br\s*/?>|</(p|div|tr|li|h[1-6]|table)>", "\n", t)
+    t = re.sub(r"(?i)</t[dh]>", "   ", t)
+    t = html_lib.unescape(re.sub(r"<[^>]+>", " ", t)).replace("\u00a0", " ")
+    lines = []
+    for line in t.splitlines():
+        cells = [re.sub(r"\s+", " ", c).strip() for c in re.split(r"\s{3,}", line)]
+        if line := "   ".join(c for c in cells if c):
+            lines.append(line)
+    return "\n".join(lines)

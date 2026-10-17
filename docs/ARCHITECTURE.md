@@ -108,9 +108,11 @@ The same containers run in every environment. Only four adapters change, so the 
 | Adapter | Local (Docker Compose) | Staging and production (Google Cloud) |
 | --- | --- | --- |
 | Records database and job queue | `postgres` container | Cloud SQL for PostgreSQL |
-| Object storage (originals, scrubbed images) | Local folder on a Docker volume | Cloud Storage, one bucket per environment |
-| Keys (ADR-025) | Key file on a Docker volume, same envelope-encryption code path | Cloud KMS, one key ring per environment, a data key per household |
-| OCR (ADR-029) | Tesseract in the image, run by the app tier (ADR-034) | Document AI Enterprise OCR |
+| Object storage (originals, scrubbed images) | Local folder on a Docker volume | Cloud Storage, one bucket per environment (`MHS_OBJECT_STORE=gcs`, ADR-036) |
+| Keys (ADR-025) | Key file on a Docker volume, same envelope-encryption code path | Cloud KMS, one key ring per environment, a data key per household (`MHS_KEYS=kms`, ADR-036) |
+| OCR (ADR-029) | Tesseract in the image, run by the app tier (ADR-034) | Document AI Enterprise OCR (`MHS_OCR_ENGINE=documentai`, ADR-036) |
+
+The Google Cloud adapters are built and tested against emulators and fakes (ADR-036); `docs/DEPLOYMENT.md` lists the services, identities and settings for staging.
 
 | Environment | Runs | Data | Purpose |
 | --- | --- | --- | --- |

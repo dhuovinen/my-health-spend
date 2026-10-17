@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Your data<section class="card section">
+  <h2>Access log</h2>
+  <p class="small muted">Who looked at or changed {{ household }}'s records, most recent first (the last 200). Entries can't be edited or removed.</p>
+  {% if access_log %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>When (UTC)</th><th>Who</th><th>What</th><th>Record</th></tr></thead>
+      <tbody>
+      {% for e in access_log %}
+        <tr><td class="small">{{ e.at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ e.display_name or 'A former member' }}</td><td>{{ e.action }}</td><td class="small">{{ e.kind|humanize }} <code>{{ e.record_id }}</code></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="muted">Nothing yet.</p>{% endif %}
+</section>
+{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Your data</h1></div>
+{% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
+<div class="grid two">
+  <section class="card">
+    <h2>Export everything</h2>
+    <p class="small">A ZIP of {{ household }}'s records, the statements, EOBs and uploads you stored, what was read from them, and the names and numbers behind the tokens. You can import it again. Keep it somewhere safe: it holds health information.</p>
+    <form method="post" action="/data/export" class="stack">
+      {{ csrf_input() }}
+      <label>Your password <input type="password" name="password" autocomplete="current-password" required></label>
+      <button class="btn" type="submit">Download my data</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Delete my account</h2>
+    {% if last %}
+    <p class="small"><strong>You're the last member of {{ household }}, so this deletes all of its data:</strong> records, stored files and identifiers, at once. Backups age out within 35 days. It can't be undone; export first if you want a copy.</p>
+    {% else %}
+    <p class="small">This deletes your account only. {{ household }}'s records stay for the other members.</p>
+    {% endif %}
+    <form method="post" action="/data/delete" class="stack">
+      {{ csrf_input() }}
+      <label>Your password <input type="password" name="password" autocomplete="current-password" required></label>
+      <label>Code from your authenticator app <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required></label>
+      <label>Type DELETE to confirm <input name="confirm" autocomplete="off" required></label>
+      <button class="btn danger" type="submit">{{ 'Delete my account and all data' if last else 'Delete my account' }}</button>
+    </form>
+  </section>
+</div>
+<section class="card section">
+  <h2>Access log</h2>
+  <p class="small muted">Who looked at or changed {{ household }}'s records, most recent first (the last 200). Entries can't be edited or removed.</p>
+  {% if access_log %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>When (UTC)</th><th>Who</th><th>What</th><th>Record</th></tr></thead>
+      <tbody>
+      {% for e in access_log %}
+        <tr><td class="small">{{ e.at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ e.display_name or 'A former member' }}</td><td>{{ e.action }}</td><td class="small">{{ e.kind|humanize }} <code>{{ e.record_id }}</code></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="muted">Nothing yet.</p>{% endif %}
+</section>
+{% endblock %}

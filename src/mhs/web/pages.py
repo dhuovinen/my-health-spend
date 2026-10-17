@@ -5,6 +5,7 @@ the Release 1 application tier (web/household/app.py) hosts them behind MFA sign
 household's Postgres store. A PagesHost supplies everything that differs between the two.
 """
 
+import base64
 import json
 import re
 import secrets
@@ -19,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 from jinja2 import pass_context
 from markupsafe import Markup, escape
 
-from mhs.core.reconcile import STATUS_LABELS, STATUS_ORDER, Report, available_years, build_report
+from mhs.core.reconcile import CHECK_NAMES, STATUS_LABELS, STATUS_ORDER, Report, available_years, build_report
 from mhs.data import importer
 from mhs.data.importer import DocumentFiles, FileSource, UploadedSource
 from mhs.data.money import cents, to_dollars
@@ -42,6 +43,26 @@ HSA_FILTERS = {
     "unpaid": ("remaining", "Unpaid — pay from HSA"),
     "outside_hsa": ("outside_hsa", "Paid outside the HSA"),
     "unexplained": ("unexplained", "Settled by provider, no matching payment"),
+}
+
+
+# Plain-language help for the statuses and checks (UX-05); the Help page lists whatever the engine defines, so a
+# status or check without a sentence here still shows with its name.
+STATUS_HELP = {
+    "discrepancy": "A check failed: the bill, the EOB and the payments disagree. The visit's page shows the numbers.",
+    "balance_outstanding": "The provider shows money still owed, and nothing explains it yet.",
+    "missing_documents": "A document you'd expect isn't here, such as the EOB a month after the visit.",
+    "waiting": "Recent: the EOB or the statement may simply not have arrived yet.",
+    "matched": "Everything that's here agrees.",
+}
+CHECK_HELP = {
+    "C1": "The EOB's own numbers add up: billed = plan paid + discounts + what you owe, and what you owe = deductible "
+          "+ copay + coinsurance + not covered.",
+    "C2": "What the provider's latest statement asks you for equals what the EOB says you owe, and the provider billed "
+          "the insurer what it billed you.",
+    "C3": "The bill, the EOB and your provider list agree on whether the provider is in network.",
+    "C4": "What you paid the provider matches what you owe: no overpayment, underpayment or payment made twice.",
+    "C6": "A balance the provider shows as owed, how long it has been owed, and whether it's a second notice.",
 }
 
 
@@ -74,13 +95,40 @@ class PagesHost(Protocol):
         """Where attached files go on import."""
         ...
 
-    def scope(self, request: Request) -> str:
-        """Key that keeps one household's import preview away from another's."""
+    def save_preview(self, request: Request, preview: dict) -> str:
+        """Keep an import preview (JSON-safe dict) until it is confirmed; returns its token. One per household."""
+        ...
+
+    def load_preview(self, request: Request, token: str) -> dict | None:
+        """Take back this household's preview for the token (it can be used once), or None."""
+        ...
+
+    def record_view(self, request: Request, kind: str, record_id: str, action: str = "view") -> None:
+        """Note that the request's member looked at a record (Release 1's access log, PRV-10)."""
         ...
 
     def default_import_path(self) -> str: ...
 
     def resolve_import_path(self, text: str) -> Path: ...
+
+
+def files_to_json(files) -> dict | None:
+    """Where an import's attached files come from, in a form a preview can be stored as."""
+    if files is None:
+        return None
+    if isinstance(files, Path):
+        return {"folder": str(files)}
+    if isinstance(files, UploadedSource):
+        return {"uploaded": {n: base64.b64encode(d).decode() for n, d in files.files.items()}}
+    raise TypeError(type(files))
+
+
+def files_from_json(spec: dict | None):
+    if spec is None:
+        return None
+    if "folder" in spec:
+        return Path(spec["folder"])
+    return UploadedSource({n: base64.b64decode(d) for n, d in spec["uploaded"].items()})
 
 
 def money_text(value: int | None) -> str:
@@ -135,7 +183,6 @@ def make_templates(directories: list[Path], context: Callable[[Request], dict]) 
 def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Callable:
     """Mount the pages. Returns preview_import(request, store, data, source, files, notes), which shows the import
     preview for records built elsewhere (Release 1 uploads of HSA and claims exports) and confirms them the same way."""
-    pending: dict[str, tuple[str, importer.ImportPlan]] = {}  # token -> (scope, plan)
 
     def report_for(store: Store, year: int | None) -> Report:
         ds = load_dataset(store)
@@ -228,6 +275,7 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         visit = store.get("visit", visit_id)
         if not visit:
             raise HTTPException(404, "Visit not found")
+        host.record_view(request, "visit", visit_id)
         report = report_for(store, int(visit["date"][:4]))
         vr = report.visit(visit_id)
         group = report.group(vr.group_id)
@@ -287,6 +335,7 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         doc = store.get("document", doc_id)
         if not doc or "stored_file" not in doc:
             raise HTTPException(404, "No file stored for this document")
+        host.record_view(request, "document", doc_id, "download")
         return host.file_response(store, doc)
 
     # ---------- import ----------
@@ -331,20 +380,19 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                        status_code: int = 200) -> HTMLResponse:
         plan = importer.prepare(data, store, source, files)
         plan.warnings.extend(notes)
-        scope = host.scope(request)
-        for token in [t for t, (s, _) in pending.items() if s == scope]:
-            del pending[token]
-        token = secrets.token_urlsafe(16)
-        pending[token] = (scope, plan)
+        token = host.save_preview(request, {"source": source, "data": data, "files": files_to_json(files)})
         return render(request, "import_preview.html", status_code=status_code, plan=plan, token=token)
 
     @app.post("/import/confirm")
     async def import_confirm(request: Request):
         store, form = await posted(request)
-        scope, plan = pending.get(form.get("token", ""), (None, None))
-        if plan is None or scope != host.scope(request) or not plan.ok:
+        preview = host.load_preview(request, form.get("token") or "")
+        if preview is None:
             return RedirectResponse("/import", status_code=303)
-        del pending[form.get("token")]
+        # The plan is made again from what was checked; commit re-checks member edits made since the preview.
+        plan = importer.prepare(preview["data"], store, preview["source"], files_from_json(preview["files"]))
+        if not plan.ok:
+            return RedirectResponse("/import", status_code=303)
         importer.commit(plan, store, host.document_files(request), replace_edits=form.get("replace_edits") == "1")
         if any(s in plan.data for s in ("plans", "accounts", "members", "providers", "provider_relationships")):
             host.settings_saved(store)
@@ -507,6 +555,6 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
     @app.get("/help", response_class=HTMLResponse)
     def help_page(request: Request):
         host.store(request)
-        return render(request, "help.html")
+        return render(request, "help.html", CHECK_NAMES=CHECK_NAMES, CHECK_HELP=CHECK_HELP, STATUS_HELP=STATUS_HELP)
 
     return preview_import

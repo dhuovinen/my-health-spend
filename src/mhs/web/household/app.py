@@ -6,8 +6,10 @@ exist (PRV-11). Files are sealed with the household's data key before they reach
 The Release 0 pages (web/pages.py) are mounted over the household's store (ADR-032).
 """
 
+import json
 import re
 import secrets
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -20,16 +22,16 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from mhs.data.db import Database
 from mhs.data.household_store import HouseholdStore
-from mhs.data.keys import Keyring, LocalKeyFile, db_keyring
-from mhs.data.objects import LocalObjectStore, ObjectStore
+from mhs.data.keys import Keyring, db_keyring, keys_from_env
+from mhs.data.objects import ObjectStore, object_store_from_env
 from mhs.data.queue import JobQueue
 from mhs.data.records import HouseholdRecords
 from mhs.ingest.ocr import get_engine
 from mhs.ingest.scrub import scrubber_class
 from mhs.stack import AppConfig, load_app_config
 from mhs.vault.client import VaultClient
-from mhs.web.household import security
-from mhs.web.household.auth import Accounts, Session
+from mhs.web.household import privacy, security
+from mhs.web.household.auth import AccountError, Accounts, Session
 from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.intake import Intake, add_intake
 from mhs.web.household.qr import qr_svg
@@ -38,6 +40,7 @@ from mhs.web.pages import WEB, add_pages, make_templates
 HERE = Path(__file__).parent
 COOKIE = "mhs_session"
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+PREVIEW_MINUTES = 60  # an import preview must be confirmed within an hour
 LINK_PATTERN = re.compile(r"^[A-Za-z0-9_-]{20,100}$")
 
 
@@ -62,7 +65,11 @@ class HouseholdHost:
         return self.state.member(request)
 
     def store(self, request: Request) -> HouseholdStore:
-        return HouseholdStore(self.db, self.session(request).household_id)
+        session = self.session(request)
+        return HouseholdStore(self.db, session.household_id, actor=session.member_id)
+
+    def record_view(self, request: Request, kind: str, record_id: str, action: str = "view") -> None:
+        self.store(request).log(action, kind, record_id)
 
     def check_form(self, request: Request, form) -> None:
         self.state.check_csrf(self.session(request), form.get("csrf_token"))
@@ -79,8 +86,27 @@ class HouseholdHost:
     def document_files(self, request: Request) -> EncryptedFiles:
         return EncryptedFiles(self.objects, self.keyring, self.session(request).household_id)
 
-    def scope(self, request: Request) -> str:
-        return self.session(request).household_id
+    def save_preview(self, request: Request, preview: dict) -> str:
+        """Sealed in the database (ADR-036), so any app instance can confirm it; replaces the household's last one."""
+        hid = self.session(request).household_id
+        token = secrets.token_urlsafe(16)
+        sealed = self.keyring.encrypt(hid, json.dumps(preview).encode(), f"preview:{token}")
+        with self.db.tx(hid) as c:
+            c.execute("DELETE FROM app.import_previews WHERE household_id = %s", (hid,))
+            c.execute("INSERT INTO app.import_previews (household_id, token, sealed) VALUES (%s, %s, %s)",
+                      (hid, token, sealed))
+        return token
+
+    def load_preview(self, request: Request, token: str) -> dict | None:
+        hid = self.session(request).household_id
+        with self.db.tx(hid) as c:
+            row = c.execute(
+                "DELETE FROM app.import_previews WHERE household_id = %s AND token = %s "
+                "RETURNING sealed, created_at > now() - interval '%s minutes' AS fresh",
+                (hid, token, PREVIEW_MINUTES)).fetchone()
+        if row is None or not row["fresh"]:
+            return None
+        return json.loads(self.keyring.decrypt(hid, bytes(row["sealed"]), f"preview:{token}"))
 
     def default_import_path(self) -> str:
         return ""
@@ -98,8 +124,8 @@ def create_app(
     vault: VaultClient | None = None,
 ) -> FastAPI:
     db = db or Database(config.database_url)
-    keyring = keyring or db_keyring(db, LocalKeyFile(config.key_file), "app.household_keys")
-    objects = objects or LocalObjectStore(config.objects_dir)
+    keyring = keyring or db_keyring(db, keys_from_env(config.key_file), "app.household_keys")
+    objects = objects or object_store_from_env(config.objects_dir)
     vault = vault or VaultClient(config.vault_url, config.vault_token)
     accounts = Accounts(db, keyring, config.session_idle_minutes, config.session_max_hours)
     queue = JobQueue(db)
@@ -231,8 +257,104 @@ def create_app(
         if found is None:
             return page(request, "enrol.html", 404, gone=True)
         email, totp_secret = found
-        return page(request, "enrol.html", email=email, qr=Markup(qr_svg(accounts.provisioning_uri(email, totp_secret))),
-                    key=" ".join(totp_secret[i:i + 4] for i in range(0, len(totp_secret), 4)))
+        return enrolled(request, email, totp_secret, accounts.new_recovery_codes(email))
+
+    def enrolled(request: Request, email: str, totp_secret: str, codes: list[str], status: int = 200):
+        """The authenticator QR code and the recovery codes, shown once."""
+        return page(request, "enrol.html", status, email=email,
+                    qr=Markup(qr_svg(accounts.provisioning_uri(email, totp_secret))),
+                    key=" ".join(totp_secret[i:i + 4] for i in range(0, len(totp_secret), 4)), codes=codes)
+
+    # Self-service recovery (TC-PRV-07-3, ADR-037): a recovery code instead of the password and the authenticator,
+    # then a new password, a new authenticator and new codes. Household data is untouched.
+    @app.get("/recover", response_class=HTMLResponse)
+    def recover_form(request: Request):
+        return page(request, "recover.html")
+
+    @app.post("/recover", response_class=HTMLResponse)
+    def recover(request: Request, email: str = Form(""), code: str = Form("")):
+        token = accounts.start_recovery(email, code)
+        if token is None:
+            return page(request, "recover.html", 401, email=email,
+                        error="That email and recovery code don't match, the code was already used, or the account "
+                              "is locked for 15 minutes after too many tries.")
+        return page(request, "recover.html", token=token)
+
+    @app.post("/recover/{token}", response_class=HTMLResponse)
+    def recover_finish(request: Request, token: str, password: str = Form(""), password2: str = Form("")):
+        if not LINK_PATTERN.match(token):
+            return page(request, "recover.html", 404, gone=True)
+        if password != password2:
+            return page(request, "recover.html", 400, token=token, error="The two passwords don't match.")
+        try:
+            done = accounts.finish_recovery(token, password)
+        except AccountError as e:
+            return page(request, "recover.html", 400, token=token, error=str(e))
+        if done is None:
+            return page(request, "recover.html", 404, gone=True)
+        email, totp_secret, codes = done
+        return enrolled(request, email, totp_secret, codes)
+
+    @app.get("/account", response_class=HTMLResponse)
+    def account(request: Request):
+        session = member(request)
+        return page(request, "account.html", left=accounts.recovery_codes_left(session.member_id))
+
+    @app.post("/account/recovery-codes", response_class=HTMLResponse)
+    def new_codes(request: Request, code: str = Form(""), csrf_token: str = Form("")):
+        """New recovery codes for a signed-in member, after a fresh authenticator code."""
+        session = member(request)
+        check_csrf(session, csrf_token)
+        if not accounts.check_totp(session.member_id, code):
+            return page(request, "account.html", 401, left=accounts.recovery_codes_left(session.member_id),
+                        error="That code didn't work. Use the current code from your authenticator app.")
+        codes = accounts.new_recovery_codes(accounts.email_of(session.member_id))
+        return page(request, "account.html", left=len(codes), codes=codes)
+
+    # --- your data: export, and delete the account (PRV-09) ---
+
+    def data_page(request: Request, session: Session, status: int = 200, **ctx) -> HTMLResponse:
+        return page(request, "data.html", status, household=accounts.household_name(session.household_id),
+                    last=privacy.member_count(db, session.household_id) == 1,
+                    access_log=HouseholdStore(db, session.household_id).access_log(), **ctx)
+
+    @app.get("/data", response_class=HTMLResponse)
+    def your_data(request: Request):
+        return data_page(request, member(request))
+
+    @app.post("/data/export")
+    def export(request: Request, password: str = Form(""), csrf_token: str = Form("")):
+        session = member(request)
+        check_csrf(session, csrf_token)
+        if accounts.check_password(privacy.member_email(db, session.member_id), password) is None:
+            return data_page(request, session, 401, error="That password didn't work.")
+        privacy.log_event(db, session.household_id, session.member_id, "data_exported")
+        HouseholdStore(db, session.household_id, actor=session.member_id).log("export", "household", session.household_id)
+        data = privacy.export_household(db, keyring, objects, vault, session.household_id,
+                                        accounts.household_name(session.household_id) or "")
+        name = f"my-health-spend-export-{datetime.now(timezone.utc).date().isoformat()}.zip"
+        return Response(data, media_type="application/zip",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @app.post("/data/delete", response_class=HTMLResponse)
+    def delete_account(request: Request, password: str = Form(""), code: str = Form(""), confirm: str = Form(""),
+                       csrf_token: str = Form("")):
+        session = member(request)
+        check_csrf(session, csrf_token)
+        if confirm.strip() != "DELETE":
+            return data_page(request, session, 400, error="Type DELETE to confirm.")
+        if accounts.check_password(privacy.member_email(db, session.member_id), password) is None \
+                or not accounts.check_totp(session.member_id, code):
+            return data_page(request, session, 401, error="That password or authenticator code didn't work.")
+        last = privacy.member_count(db, session.household_id) == 1
+        if last:
+            reference = privacy.delete_household(db, objects, vault, session.household_id, session.member_id)
+        else:
+            reference = privacy.delete_member(db, session.household_id, session.member_id)
+        request.state.session = None
+        response = page(request, "deleted.html", household_deleted=last, reference=reference)
+        response.delete_cookie(COOKIE, path="/")
+        return response
 
     @app.post("/signout")
     def signout(request: Request, csrf_token: str = Form("")):

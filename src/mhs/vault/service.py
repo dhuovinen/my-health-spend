@@ -13,7 +13,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from mhs.data.db import Database
-from mhs.data.keys import LocalKeyFile, db_keyring
+from mhs.data.keys import db_keyring, keys_from_env
 from mhs.stack import VAULT_PORT, database_url, secret
 from mhs.vault.store import KIND_PATTERN, VaultStore
 
@@ -63,12 +63,26 @@ def create_app(store: VaultStore, service_token: str) -> FastAPI:
             raise HTTPException(404, "Not found")
         return {"kind": found[0], "value": found[1]}
 
+    @app.get("/v1/households/{household_id}/entries", dependencies=[Depends(authorized)])
+    def entries(household_id: str):
+        hid = household(household_id)
+        found = store.entries(hid)
+        log.info("export household=%s entries=%s", hid, len(found))
+        return {"entries": found}
+
+    @app.delete("/v1/households/{household_id}", dependencies=[Depends(authorized)])
+    def delete_household(household_id: str):
+        hid = household(household_id)
+        n = store.delete_household(hid)
+        log.info("delete household=%s entries=%s", hid, n)
+        return {"deleted": n}
+
     return app
 
 
 def store_from_env() -> tuple[Database, VaultStore]:
     db = Database(database_url(), max_size=5)
-    keys = LocalKeyFile(os.environ.get("MHS_KEY_FILE", "/run/secrets/mhs/kek"))
+    keys = keys_from_env("/run/secrets/mhs/kek")
     return db, VaultStore(db, db_keyring(db, keys, "vault.household_keys"))
 
 

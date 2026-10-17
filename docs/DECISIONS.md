@@ -42,6 +42,11 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 032 | Release 0 pages shared by both apps; Release 1 imports by upload only, files encrypted, edits and history per household | 2026-10-16 | Accepted |
 | 033 | Upload pipeline: exports parsed in the app tier; documents read and scrubbed in the app tier, extracted by the worker, confirmed by the member | 2026-10-16 | Accepted |
 | 034 | Ingestion engines: Tesseract OCR and Presidio in the app tier; Claude extraction per household, off by default, through a worker that only it routes out of | 2026-10-16 | Accepted with a condition |
+| 036 | Google Cloud adapters over REST (Cloud Storage, Cloud KMS, Document AI), chosen by environment variables; import previews sealed in the database | 2026-10-16 | Proposed |
+| 037 | Self-service account recovery with single-use recovery codes, shown once at enrolment | 2026-10-16 | Proposed |
+| 038 | Export and delete: a re-importable ZIP; deleting the last member deletes the household at once, a security log line stays a year | 2026-10-16 | Proposed |
+| 039 | Forwarded email: a private address per household, members' own addresses only, attachments and statement bodies become uploads | 2026-10-17 | Proposed |
+| 040 | Access log: member views and changes logged per household, readable by members, append-only for the app | 2026-10-17 | Proposed |
 
 ## Records
 
@@ -201,3 +206,54 @@ Implementation choices for the rest of phase 1.3, inside ADR-028, ADR-029 and AD
 **Consequences.** The image grows from about 460 MB to 1.15 GB (Tesseract, spaCy with its model, numpy, the Anthropic SDK); `UV_NO_CACHE` keeps uv's download cache out of the layers. OCR runs in the upload request, about a quarter of a second per page; long scans make the upload slow until OCR moves to a background task in the app tier. PRV-05 date shifting for AI payloads (ADR-022, P2) is not built: AI requests carry real service dates. A production deployment needs an egress path for the AI worker (a proxy or a NAT rule for the Anthropic API only) and the API key as a secret. The extraction corpus run (PLT-02) has not measured either extractor yet.
 
 **Condition met (2026-10-16).** PRV-05 date shifting is built for AI requests: the worker shifts every date in the scrubbed text by a random per-person offset (30 to 365 days either way, kept in the household's records, never sent) just before the call, and shifts the dates in the answer back, so stored records keep real dates (TC-PRV-05-1, TC-PRV-05-2). Real household data still waits for the production project and the data-processing agreement (ADR-028).
+
+### ADR-036 · Google Cloud adapters, built before the account (Proposed)
+How the four adapters (ARCHITECTURE.md "Environments", ADR-030) reach Google Cloud, built and tested locally so staging becomes configuration. Proposed by the build session on 2026-10-16.
+
+**Decision.**
+- **REST over httpx, not the client libraries.** Cloud Storage (JSON API), Cloud KMS (`encrypt`/`decrypt`) and Document AI (`process`) are called over HTTPS with httpx, which the app already uses; `google-auth` supplies the access token (the Cloud Run service account through the metadata server). The gRPC client libraries would add several hundred megabytes to an image that is already 1.15 GB, for three calls each.
+- **Chosen by environment variables, local by default.** `MHS_OBJECT_STORE=gcs` with `MHS_GCS_BUCKET`; `MHS_KEYS=kms` with `MHS_KMS_KEY` (one key per service and environment: the app's and the vault's, as the two key files are now); `MHS_OCR_ENGINE=documentai` with `MHS_DOCAI_PROCESSOR`. The envelope encryption, per-household data keys and object layout don't change; KMS takes the place of the key file only.
+- **Tested without an account.** Cloud Storage against the fake GCS server in the compose test profile; KMS and Document AI against fakes that answer in the APIs' request and response shapes. HEIC photos are converted to JPEG before Document AI, which doesn't take HEIC.
+- **Import previews in the database.** The preview between "Check" and "Confirm" (ADR-032 kept it in the app's memory) is stored per household with row-level security, sealed with the household's data key because it can hold attached statements, and expires after an hour. The plan is computed again at confirm, as the importer already re-checks member edits there. More than one app instance can then serve a household. Release 0 keeps its in-memory preview.
+
+**Consequences.** The adapters have only met emulators and fakes; the first staging run (phase 1.3) is where they meet the real services, and any differences in error handling show up there. Nothing here needs the account, so the owner's first steps (project, billing, the BAA, the KMS key ring) are listed in DEPLOYMENT.md.
+### ADR-037 · Self-service account recovery (Proposed)
+How a member who loses their phone, their password or both gets back in (PRV-07, TC-PRV-07-3), replacing the admin reset as the normal path. Proposed by the build session on 2026-10-16.
+
+**Decision.**
+- **Recovery codes, not email.** The app sends no email, and a reset by email would make the mailbox the weakest factor. Each member gets ten single-use codes of 50 random bits (`XXXXX-XXXXX`), shown once: on the enrolment page beside the authenticator QR code, after a recovery, and when a signed-in member makes new ones on the Account page (which asks for a current authenticator code). Only SHA-256 hashes are stored; codes this random don't need a slow hash. Making new codes voids the old set.
+- **One code replaces both factors.** "Forgot your password or lost your phone?" takes the email and a code. A wrong code counts toward the same lock as a wrong password (five tries, 15 minutes), and an unknown email gets the same answer. A right code is used up, the member's sessions end, and a 15-minute recovery link (its own kind of link, so an enrolment link can't change a password and a recovery link can't show a QR code) asks for a new password, then shows a new authenticator QR code and ten new codes.
+- **Nothing else changes.** Household data, keys and vault entries are untouched, so everything is there after the next sign-in. `mhs-admin reset-mfa` stays for a member with no codes left.
+
+**Consequences.** A member who loses both their phone and their codes still needs an admin. Anyone holding a member's email and one unused code can take over the account, as with any recovery code scheme; the Account page shows how many codes are left so a member notices one going missing.
+### ADR-038 · Export and delete (Proposed)
+How PRV-09 and ADR-025's deletion rule are built, ahead of the launch gate. Proposed by the build session on 2026-10-16.
+
+**Decision.**
+- **Export** is a ZIP any member can download from "Your data" after typing their password: the household's records as an ingest file with the attached files beside it (so it imports again), the uploads with what was read from them and the member's corrections, the identifiers behind the tokens (from the vault), and a manifest with counts and a SHA-256 per file.
+- **Deleting an account** needs the password, a current authenticator code and typing DELETE. If other members remain, only that member's account goes. If it is the last member, the household goes at once: the vault deletes its entries and its data key first (if the vault can't be reached nothing is deleted, so the member can try again), then the stored files, then every record and the app's household data key with the household row. Deleting the data keys makes anything left behind (a stray copy, a backup) unreadable.
+- **The security log** (`app.security_log`) records exports and deletions with the household and member ids, the event and the time, and nothing else; it has no foreign key, so the record of a deletion survives the household, and lines older than a year are removed.
+
+**Consequences.** One member can delete the household only as its last member, so a household with two adults needs both to leave. Database backups and vault backup files keep the data until they rotate out (within 35 days in production, DEPLOYMENT.md); local vault backup files are not rotated automatically.
+
+### ADR-039 · Forwarded email (Proposed)
+How ING-01's forwarded email (TC-ING-01-4) works. Proposed by the build session on 2026-10-17.
+
+**Decision.**
+- **One private address per household** (`<random token>@<inbound domain>`), shown on the Uploads page. The token is the only thing that routes mail to a household, so it is random and can be replaced.
+- **Only the household's members' own email addresses are accepted** as senders; anything else is refused at SMTP and nothing is stored. Locally the `From` header is taken on trust; in production the inbound-mail service's sender checks (SPF, DKIM, DMARC) must pass before a message is handed over.
+- **What becomes an upload:** each PDF or photo attachment, also inside a forwarded message; a message without one becomes an upload only when its body (HTML or text) reads as a statement, bill or EOB. Other attachments are skipped, the same file twice is a duplicate, and a message with nothing usable is refused. From there it is the Uploads page's path: stored sealed, scrubbed, read by the worker, reviewed and confirmed.
+- **Locally an SMTP service** (`mhs-mail`, the `mail` container on the internal network); in production an inbound-mail service posts the raw message to the same handler, which needs an account and a domain with an MX record (DEPLOYMENT.md).
+
+**Consequences.** An attacker who learns a household's address and fakes a member's `From` could add uploads locally, but they still wait for a member's review; production relies on the sender checks. Email bodies are stored as uploads like any other original, sealed with the household key.
+
+### ADR-040 · Access log (Proposed)
+PRV-10 (P2, built early because it needs no account): who looked at or changed which record. Proposed by the build session on 2026-10-17.
+
+**Decision.**
+- **What is logged:** every change a member makes through the app (records created, changed or deleted, through Settings, notes, imports or confirming an upload), and their views of a visit, an upload's review, and downloads of stored files, plus exports. Each entry has the member, the action, the record's kind and id, and the time. Work the worker does on its own (reading an upload) isn't a member's action and isn't logged as one.
+- **Where:** `app.access_log`, per household with row-level security; the application tier's role can add and read entries but has no right to change or delete them, so an edit is impossible from the app (TC-PRV-10-2). Members read the last 200 entries on "Your data".
+- **How:** the household store logs changes when it acts for a member (the pages and uploads pass the signed-in member); views go through one hook per route. Release 0 has one owner and no log.
+
+**Consequences.** Record ids name providers and dates, so the log goes with the household when it is deleted (ADR-038); the security log keeps the deletion itself. List pages (visits, providers) aren't logged entry by entry; the visit detail is.
+

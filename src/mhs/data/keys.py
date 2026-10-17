@@ -13,8 +13,11 @@ import secrets
 from pathlib import Path
 from typing import Callable, Protocol
 
+import httpx
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from mhs.data.gcp import GoogleError, default_token
 
 MAGIC = b"MHS1"
 NONCE_BYTES = 12
@@ -131,3 +134,46 @@ def db_keyring(db, keys: KeyService, table: str) -> Keyring:
         return bytes(row["wrapped"])
 
     return Keyring(keys, load, save)
+
+
+class CloudKms:
+    """KeyService on a Cloud KMS symmetric key over its REST API (ADR-036): the key never leaves KMS; the context
+    is passed as additional authenticated data, so a wrapped key only opens for the household it was made for."""
+
+    def __init__(self, key_name: str, http=None, token=None, endpoint: str = "https://cloudkms.googleapis.com"):
+        self.key_name = key_name
+        self.endpoint = endpoint.rstrip("/")
+        self.http = http or httpx.Client(timeout=30)
+        self.tokens = token or default_token(emulated=endpoint != "https://cloudkms.googleapis.com")
+
+    def _call(self, verb: str, body: dict) -> dict:
+        r = self.http.post(f"{self.endpoint}/v1/{self.key_name}:{verb}", json=body,
+                           headers={"Authorization": f"Bearer {self.tokens.token()}"})
+        if r.status_code == 400 and verb == "decrypt":
+            raise DecryptError("could not decrypt")
+        if r.status_code >= 400:
+            raise GoogleError(f"kms {verb} failed: HTTP {r.status_code}")
+        return r.json()
+
+    def wrap(self, data_key: bytes, context: str) -> bytes:
+        aad = base64.b64encode(("wrap:" + context).encode()).decode()
+        out = self._call("encrypt", {"plaintext": base64.b64encode(data_key).decode(), "additionalAuthenticatedData": aad})
+        return base64.b64decode(out["ciphertext"])
+
+    def unwrap(self, wrapped: bytes, context: str) -> bytes:
+        aad = base64.b64encode(("wrap:" + context).encode()).decode()
+        out = self._call("decrypt", {"ciphertext": base64.b64encode(wrapped).decode(), "additionalAuthenticatedData": aad})
+        return base64.b64decode(out["plaintext"])
+
+
+def keys_from_env(default_key_file) -> KeyService:
+    """MHS_KEYS=file (default: MHS_KEY_FILE) or kms (MHS_KMS_KEY, the full key resource name)."""
+    kind = os.environ.get("MHS_KEYS", "file")
+    if kind == "file":
+        return LocalKeyFile(Path(os.environ.get("MHS_KEY_FILE", default_key_file)))
+    if kind == "kms":
+        key = os.environ.get("MHS_KMS_KEY")
+        if not key:
+            raise SystemExit("MHS_KEYS=kms needs MHS_KMS_KEY (projects/.../locations/.../keyRings/.../cryptoKeys/...)")
+        return CloudKms(key, endpoint=os.environ.get("MHS_KMS_ENDPOINT", "https://cloudkms.googleapis.com"))
+    raise SystemExit(f"unknown MHS_KEYS {kind!r}: file or kms")

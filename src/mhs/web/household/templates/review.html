@@ -8,6 +8,20 @@
 {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
 {% if rec.status == 'confirmed' %}<p class="alert good">Confirmed. Saving again updates the visit with your changes.</p>{% endif %}
 {% for w in ext.warnings %}<p class="alert warn">{{ w }}</p>{% endfor %}
+{% if copy %}
+<div class="alert {{ 'warn' if copy.kind != 'version' else 'good' }} copy-note">
+  <p>{{ copy.message }}</p>
+  {% if copy.kind in ('duplicate', 'resent') %}
+  <form method="post" action="/uploads/{{ rec.id }}/file" class="inline">{{ csrf_input() }}<button class="btn small" type="submit">It's a copy: keep it filed</button></form>
+  {% endif %}
+</div>
+{% endif %}
+{% if rec.content_type and (rec.content_type.startswith('image/') or rec.content_type == 'application/pdf') %}
+<details class="card section doc-preview" open>
+  <summary>The document</summary>
+  <img src="/uploads/{{ rec.id }}/preview" alt="Picture of {{ rec.filename }}">
+</details>
+{% endif %}
 
 <section class="card section">
   <form method="post" action="/uploads/{{ rec.id }}/reclassify" class="inline">{{ csrf_input() }}

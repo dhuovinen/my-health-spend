@@ -25,6 +25,8 @@ dependencies = [
     "en-core-web-md",
     "anthropic>=1.15.0",
     "segno>=1.6.6",
+    "google-auth>=2.30",
+    "aiosmtpd>=1.4",
 ]
 
 [project.scripts]
@@ -34,6 +36,7 @@ mhs-worker = "mhs.ingest.worker:main"
 mhs-vault = "mhs.vault.cli:main"
 mhs-admin = "mhs.web.household.admin:main"
 mhs-stack = "mhs.stack:main"
+mhs-mail = "mhs.web.household.mail:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "httpx>=0.27", "zxing-cpp>=3.1.1"]
