@@ -148,8 +148,16 @@ details summary { cursor: pointer; }
   .topbar .inner { flex-wrap: wrap; gap: .5rem; }
 }
 @media (max-width: 480px) {
-  .tiles { grid-template-columns: 1fr; }
-  .tile .value { font-size: 1.35rem; }
+  /* Phones (UX-10): brand and icons on one row, the nav on one row below it; tiles two to a row. */
+  .topbar .nav { order: 3; width: 100%; flex-wrap: nowrap; overflow-x: auto; }
+  .nav a { padding: .35rem .45rem; font-size: .95rem; white-space: nowrap; }
+  .topbar .member-name { display: none; }
+  .grid > * { min-width: 0; }  /* a wide table can't push a grid column past the screen */
+  .card table td .badge { white-space: normal; }
+  .tiles { gap: .6rem; }
+  .tile { padding: .75rem .8rem; }
+  .tile .label { font-size: .8rem; }
+  .tile .value { font-size: 1.15rem; }
 }
 .note { padding: .75rem 0; border-bottom: 1px solid var(--border); }
 .note:first-child { padding-top: 0; }
@@ -172,6 +180,9 @@ label.grow textarea { width: 100%; }
 .auth h1 { font-size: 1.4rem; }
 form.stack { display: flex; flex-direction: column; gap: .8rem; margin-top: 1rem; }
 form.stack .btn { align-self: flex-start; }
+.enrol .qr-box { background: #fff; border-radius: var(--radius); padding: .5rem; margin: 1rem auto; max-width: 280px; }
+.enrol .qr-box svg { display: block; width: 100%; height: auto; }
+.enrol-key { font-size: 1rem; letter-spacing: .05em; word-break: break-all; }
 .topbar .icons form { margin: 0; }
 .uploads form.inline { margin-bottom: 1rem; }
 .review label.low input, .review label.low select { border-color: var(--warn); background: var(--warn-soft); }

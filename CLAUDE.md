@@ -28,7 +28,13 @@ docker compose exec app mhs-admin create-household "Household name"
 docker compose exec -it app mhs-admin add-member --household <household-id> --email you@example.com --name "Your name"
 ```
 
-The second command prints an authenticator secret and URI once; sign in with email, password and the 6-digit code. Load the made-up sample into a household (or upload an ingest file on the Import page):
+The second command prints, once, an authenticator secret and a single-use link (`/enrol/<token>`, 15 minutes) that shows it as a QR code to scan; sign in with email, password and the 6-digit code. For a demo, one command does all of that plus Settings (household member, 2026 plan, HSA) and prints a generated password; then upload the four files in `samples/demo/` and follow `docs/DEMO.md` (rerunnable; new password and code each time):
+
+```bash
+docker compose exec app mhs-admin demo-setup
+```
+
+Regenerate the synthetic demo pack (committed) after changing its text: `uv run tools/make_demo_pack.py`. Load the made-up sample into a household (or upload an ingest file on the Import page):
 
 ```bash
 docker compose exec app mhs-admin import --household <household-id> /srv/mhs/samples/example-ingest.json --yes

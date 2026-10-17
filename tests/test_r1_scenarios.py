@@ -187,6 +187,8 @@ def test_eob_upload_corrected_and_matched_to_the_visit(member):
     [fix] = extraction["corrections"]
     assert (fix["field"], fix["extracted"], fix["confirmed"]) == ("patient_responsibility", 4500, 5400) and fix["at"]
     assert extraction["fields"]["patient_responsibility"]["value"] == 4500  # what was read stays visible
+    # The visit was made from the statement; the EOB gives it the plan, so the claim counts toward the limits.
+    assert member.store.get("visit", "v-2026-09-28-example-dermatology")["plan_id"] == "plan-2026-medical"
     visit_page = member.client.get("/visits/v-2026-09-28-example-dermatology").text
     assert "$54.00" in visit_page and "$320.00" in visit_page
 

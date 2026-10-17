@@ -94,7 +94,11 @@ docker compose exec app mhs-admin create-household "Household name"
 docker compose exec -it app mhs-admin add-member --household <household-id> --email you@example.com --name "Your name"
 ```
 
-`add-member` asks for a password (12 characters or more) and prints an authenticator secret and `otpauth://` URI, once. Add it to an authenticator app, then sign in at http://127.0.0.1:3063 with email, password and the 6-digit code. Five wrong tries lock the account for 15 minutes; sessions end after 15 idle minutes or 12 hours. Lost authenticator: `docker compose exec app mhs-admin reset-mfa --email you@example.com` issues a new secret and ends the member's sessions.
+`add-member` asks for a password (12 characters or more) and prints an authenticator secret and `otpauth://` URI, once, with a single-use enrolment link: `http://127.0.0.1:3063/enrol/<token>` offers a button that shows the secret as a QR code to scan, then the link stops working (it also expires after 15 minutes, and `reset-mfa` cancels it; only a hash of the token is stored). Add it to an authenticator app, then sign in at http://127.0.0.1:3063 with email, password and the 6-digit code. Five wrong tries lock the account for 15 minutes; sessions end after 15 idle minutes or 12 hours. Lost authenticator: `docker compose exec app mhs-admin reset-mfa --email you@example.com` issues a new secret and ends the member's sessions.
+
+### Demo household
+
+`docker compose exec app mhs-admin demo-setup` creates the household "Sample household" and the member `demo@example.com` (Jordan Sample) with a generated password, adds Jordan, a 2026 HDHP plan and the HSA in Settings, and prints the sign-in details and enrolment link once. Rerunning it reuses the household, sets a new password and authenticator secret, and restores those Settings records. `--email`, `--name`, `--household` and `--password-stdin` change the defaults. The walkthrough with the synthetic documents in `samples/demo/` is [DEMO.md](DEMO.md).
 
 ### Upload documents
 
@@ -161,6 +165,7 @@ This runs the whole suite in the `tests` container: unit and integration tests o
 | `MHS_VAULT_URL`, `MHS_VAULT_TOKEN(_FILE)` | app, vault | Where the vault is, and the shared service token |
 | `MHS_OBJECTS_DIR` | app | Folder for encrypted originals |
 | `MHS_HOST`, `MHS_APP_PORT` | app | Bind address (0.0.0.0 inside the container) and port (3063) |
+| `MHS_PUBLIC_URL` | app, mhs-admin | Where members open the app, for the enrolment links `mhs-admin` prints (`http://127.0.0.1:3063`) |
 | `MHS_COOKIE_SECURE` | app | `1` once served over TLS (staging, production) |
 | `MHS_SESSION_IDLE_MINUTES`, `MHS_SESSION_MAX_HOURS` | app | Session timeouts (15, 12) |
 | `MHS_WORKER_POLL_SECONDS` | worker | Queue poll interval (1) |

@@ -22,5 +22,6 @@ FROM runtime AS test
 USER root
 RUN uv sync --frozen
 COPY tests ./tests
+COPY tools ./tools
 USER 10001
 CMD ["pytest", "-q"]
