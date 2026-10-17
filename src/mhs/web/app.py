@@ -53,6 +53,9 @@ class LocalHost:
     def load_preview(self, request: Request, token: str) -> dict | None:
         return self._previews.pop(token, None)
 
+    def record_view(self, request: Request, kind: str, record_id: str, action: str = "view") -> None:
+        pass  # one owner on their own laptop: no access log
+
     def default_import_path(self) -> str:
         candidates = sorted(self.config.data_dir.glob("ingest-*.json"))
         return str(candidates[-1]) if candidates else ""

@@ -134,7 +134,7 @@ Without `--yes` it only previews (counts, warnings, member edits it would keep);
 
 ### Export and delete your data (PRV-09)
 
-"Your data" in the header: download everything as a ZIP (records as an ingest file with its files, uploads, identifiers, a manifest), or delete your account. Deleting the last member's account deletes the household's records, files and identifiers at once (ADR-038).
+"Your data" in the header: download everything as a ZIP (records as an ingest file with its files, uploads, identifiers, a manifest), or delete your account. Deleting the last member's account deletes the household's records, files and identifiers at once (ADR-038). The same page shows the access log: who viewed or changed which record, and when (ADR-040).
 
 ### Back up and restore the vault (PRV-07)
 

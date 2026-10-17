@@ -103,6 +103,10 @@ class PagesHost(Protocol):
         """Take back this household's preview for the token (it can be used once), or None."""
         ...
 
+    def record_view(self, request: Request, kind: str, record_id: str, action: str = "view") -> None:
+        """Note that the request's member looked at a record (Release 1's access log, PRV-10)."""
+        ...
+
     def default_import_path(self) -> str: ...
 
     def resolve_import_path(self, text: str) -> Path: ...
@@ -271,6 +275,7 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         visit = store.get("visit", visit_id)
         if not visit:
             raise HTTPException(404, "Visit not found")
+        host.record_view(request, "visit", visit_id)
         report = report_for(store, int(visit["date"][:4]))
         vr = report.visit(visit_id)
         group = report.group(vr.group_id)
@@ -330,6 +335,7 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         doc = store.get("document", doc_id)
         if not doc or "stored_file" not in doc:
             raise HTTPException(404, "No file stored for this document")
+        host.record_view(request, "document", doc_id, "download")
         return host.file_response(store, doc)
 
     # ---------- import ----------

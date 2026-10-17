@@ -116,7 +116,7 @@ class Intake:
         upload_id = "upl_" + secrets.token_hex(12)
         object_key = f"households/{hid}/originals/{upload_id}"
         self.objects.put(object_key, self.keyring.encrypt(hid, data, f"original:{upload_id}"))
-        HouseholdStore(self.db, hid).put(ORIGINAL, {
+        HouseholdStore(self.db, hid, actor=member_id).put(ORIGINAL, {
             "id": upload_id, "content_type": ctype, "size": len(data),
             "sha256": hashlib.sha256(data).hexdigest(),  # ING-10: originals are hashed and never modified
             "object_key": object_key, "doc_kind": doc_kind, "via": via,
@@ -276,6 +276,7 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
     def download(request: Request, upload_id: str):
         session = it.member(request)
         rec = get_original(session, upload_id)
+        HouseholdStore(it.db, session.household_id, actor=session.member_id).log("download", ORIGINAL, upload_id)
         data = it.original_bytes(session.household_id, rec)
         name = re.sub(r"[^A-Za-z0-9._ -]", "_", it.original_name(session.household_id, rec))
         return Response(data, media_type=rec["content_type"],
@@ -359,6 +360,7 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
     def review(request: Request, upload_id: str):
         session = it.member(request)
         rec = get_original(session, upload_id)
+        HouseholdStore(it.db, session.household_id, actor=session.member_id).log("view", ORIGINAL, upload_id)
         ext = HouseholdStore(it.db, session.household_id).get(EXTRACTION, upload_id)
         if ext is None:
             return RedirectResponse(f"/uploads?reading={upload_id}", status_code=303)
@@ -407,7 +409,7 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
         it.check_csrf(session, form.get("csrf_token"))
         hid = session.household_id
         rec = get_original(session, upload_id)
-        store = HouseholdStore(it.db, hid)
+        store = HouseholdStore(it.db, hid, actor=session.member_id)
         ext = store.get(EXTRACTION, upload_id)
         if ext is None:
             raise HTTPException(404)

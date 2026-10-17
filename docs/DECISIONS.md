@@ -46,6 +46,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 037 | Self-service account recovery with single-use recovery codes, shown once at enrolment | 2026-10-16 | Proposed |
 | 038 | Export and delete: a re-importable ZIP; deleting the last member deletes the household at once, a security log line stays a year | 2026-10-16 | Proposed |
 | 039 | Forwarded email: a private address per household, members' own addresses only, attachments and statement bodies become uploads | 2026-10-17 | Proposed |
+| 040 | Access log: member views and changes logged per household, readable by members, append-only for the app | 2026-10-17 | Proposed |
 
 ## Records
 
@@ -245,4 +246,14 @@ How ING-01's forwarded email (TC-ING-01-4) works. Proposed by the build session 
 - **Locally an SMTP service** (`mhs-mail`, the `mail` container on the internal network); in production an inbound-mail service posts the raw message to the same handler, which needs an account and a domain with an MX record (DEPLOYMENT.md).
 
 **Consequences.** An attacker who learns a household's address and fakes a member's `From` could add uploads locally, but they still wait for a member's review; production relies on the sender checks. Email bodies are stored as uploads like any other original, sealed with the household key.
+
+### ADR-040 · Access log (Proposed)
+PRV-10 (P2, built early because it needs no account): who looked at or changed which record. Proposed by the build session on 2026-10-17.
+
+**Decision.**
+- **What is logged:** every change a member makes through the app (records created, changed or deleted, through Settings, notes, imports or confirming an upload), and their views of a visit, an upload's review, and downloads of stored files, plus exports. Each entry has the member, the action, the record's kind and id, and the time. Work the worker does on its own (reading an upload) isn't a member's action and isn't logged as one.
+- **Where:** `app.access_log`, per household with row-level security; the application tier's role can add and read entries but has no right to change or delete them, so an edit is impossible from the app (TC-PRV-10-2). Members read the last 200 entries on "Your data".
+- **How:** the household store logs changes when it acts for a member (the pages and uploads pass the signed-in member); views go through one hook per route. Release 0 has one owner and no log.
+
+**Consequences.** Record ids name providers and dates, so the log goes with the household when it is deleted (ADR-038); the security log keeps the deletion itself. List pages (visits, providers) aren't logged entry by entry; the visit detail is.
 

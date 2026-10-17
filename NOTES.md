@@ -69,3 +69,5 @@ blanked on photos (TC-PRV-04-1), uploads read in the background, previews (HEIC 
 household, members' addresses only, attachments and statement bodies become uploads; local SMTP `mail` service. 276 tests on the stack.
 2026-10-17: Local performance run (PLT-05): 50 typical uploads to a confirmed visit, p95 0.85 s machine time
 (target 60 s), feat/r1-perf-run.
+2026-10-17: Access log (PRV-10) on feat/r1-access-log (ADR-040 proposed): member views and changes per household, readable on
+"Your data", append-only for the app.

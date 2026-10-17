@@ -65,7 +65,11 @@ class HouseholdHost:
         return self.state.member(request)
 
     def store(self, request: Request) -> HouseholdStore:
-        return HouseholdStore(self.db, self.session(request).household_id)
+        session = self.session(request)
+        return HouseholdStore(self.db, session.household_id, actor=session.member_id)
+
+    def record_view(self, request: Request, kind: str, record_id: str, action: str = "view") -> None:
+        self.store(request).log(action, kind, record_id)
 
     def check_form(self, request: Request, form) -> None:
         self.state.check_csrf(self.session(request), form.get("csrf_token"))
@@ -311,7 +315,8 @@ def create_app(
 
     def data_page(request: Request, session: Session, status: int = 200, **ctx) -> HTMLResponse:
         return page(request, "data.html", status, household=accounts.household_name(session.household_id),
-                    last=privacy.member_count(db, session.household_id) == 1, **ctx)
+                    last=privacy.member_count(db, session.household_id) == 1,
+                    access_log=HouseholdStore(db, session.household_id).access_log(), **ctx)
 
     @app.get("/data", response_class=HTMLResponse)
     def your_data(request: Request):
@@ -324,6 +329,7 @@ def create_app(
         if accounts.check_password(privacy.member_email(db, session.member_id), password) is None:
             return data_page(request, session, 401, error="That password didn't work.")
         privacy.log_event(db, session.household_id, session.member_id, "data_exported")
+        HouseholdStore(db, session.household_id, actor=session.member_id).log("export", "household", session.household_id)
         data = privacy.export_household(db, keyring, objects, vault, session.household_id,
                                         accounts.household_name(session.household_id) or "")
         name = f"my-health-spend-export-{datetime.now(timezone.utc).date().isoformat()}.zip"

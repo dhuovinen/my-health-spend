@@ -1,5 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Your data{% endblock %}
+{% block title %}Your data<section class="card section">
+  <h2>Access log</h2>
+  <p class="small muted">Who looked at or changed {{ household }}'s records, most recent first (the last 200). Entries can't be edited or removed.</p>
+  {% if access_log %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>When (UTC)</th><th>Who</th><th>What</th><th>Record</th></tr></thead>
+      <tbody>
+      {% for e in access_log %}
+        <tr><td class="small">{{ e.at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ e.display_name or 'A former member' }}</td><td>{{ e.action }}</td><td class="small">{{ e.kind|humanize }} <code>{{ e.record_id }}</code></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="muted">Nothing yet.</p>{% endif %}
+</section>
+{% endblock %}
 {% block content %}
 <div class="page-head"><h1>Your data</h1></div>
 {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
@@ -29,4 +45,20 @@
     </form>
   </section>
 </div>
+<section class="card section">
+  <h2>Access log</h2>
+  <p class="small muted">Who looked at or changed {{ household }}'s records, most recent first (the last 200). Entries can't be edited or removed.</p>
+  {% if access_log %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>When (UTC)</th><th>Who</th><th>What</th><th>Record</th></tr></thead>
+      <tbody>
+      {% for e in access_log %}
+        <tr><td class="small">{{ e.at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ e.display_name or 'A former member' }}</td><td>{{ e.action }}</td><td class="small">{{ e.kind|humanize }} <code>{{ e.record_id }}</code></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="muted">Nothing yet.</p>{% endif %}
+</section>
 {% endblock %}
