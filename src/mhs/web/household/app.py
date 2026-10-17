@@ -9,6 +9,7 @@ The Release 0 pages (web/pages.py) are mounted over the household's store (ADR-0
 import json
 import re
 import secrets
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -29,7 +30,7 @@ from mhs.ingest.ocr import get_engine
 from mhs.ingest.scrub import scrubber_class
 from mhs.stack import AppConfig, load_app_config
 from mhs.vault.client import VaultClient
-from mhs.web.household import security
+from mhs.web.household import privacy, security
 from mhs.web.household.auth import AccountError, Accounts, Session
 from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.intake import Intake, add_intake
@@ -305,6 +306,49 @@ def create_app(
                         error="That code didn't work. Use the current code from your authenticator app.")
         codes = accounts.new_recovery_codes(accounts.email_of(session.member_id))
         return page(request, "account.html", left=len(codes), codes=codes)
+
+    # --- your data: export, and delete the account (PRV-09) ---
+
+    def data_page(request: Request, session: Session, status: int = 200, **ctx) -> HTMLResponse:
+        return page(request, "data.html", status, household=accounts.household_name(session.household_id),
+                    last=privacy.member_count(db, session.household_id) == 1, **ctx)
+
+    @app.get("/data", response_class=HTMLResponse)
+    def your_data(request: Request):
+        return data_page(request, member(request))
+
+    @app.post("/data/export")
+    def export(request: Request, password: str = Form(""), csrf_token: str = Form("")):
+        session = member(request)
+        check_csrf(session, csrf_token)
+        if accounts.check_password(privacy.member_email(db, session.member_id), password) is None:
+            return data_page(request, session, 401, error="That password didn't work.")
+        privacy.log_event(db, session.household_id, session.member_id, "data_exported")
+        data = privacy.export_household(db, keyring, objects, vault, session.household_id,
+                                        accounts.household_name(session.household_id) or "")
+        name = f"my-health-spend-export-{datetime.now(timezone.utc).date().isoformat()}.zip"
+        return Response(data, media_type="application/zip",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @app.post("/data/delete", response_class=HTMLResponse)
+    def delete_account(request: Request, password: str = Form(""), code: str = Form(""), confirm: str = Form(""),
+                       csrf_token: str = Form("")):
+        session = member(request)
+        check_csrf(session, csrf_token)
+        if confirm.strip() != "DELETE":
+            return data_page(request, session, 400, error="Type DELETE to confirm.")
+        if accounts.check_password(privacy.member_email(db, session.member_id), password) is None \
+                or not accounts.check_totp(session.member_id, code):
+            return data_page(request, session, 401, error="That password or authenticator code didn't work.")
+        last = privacy.member_count(db, session.household_id) == 1
+        if last:
+            reference = privacy.delete_household(db, objects, vault, session.household_id, session.member_id)
+        else:
+            reference = privacy.delete_member(db, session.household_id, session.member_id)
+        request.state.session = None
+        response = page(request, "deleted.html", household_deleted=last, reference=reference)
+        response.delete_cookie(COOKIE, path="/")
+        return response
 
     @app.post("/signout")
     def signout(request: Request, csrf_token: str = Form("")):

@@ -61,3 +61,5 @@ documents with ground truth. Layout rules: 100% on development, 80% classificati
 fakes; import previews sealed in the database; DEPLOYMENT.md (feat/r1-cloud-adapters, ADR-036 proposed). 240 tests on the stack.
 2026-10-16: Self-service account recovery with single-use recovery codes (TC-PRV-07-3) on feat/r1-account-recovery
 (ADR-037 proposed).
+2026-10-16: Export and delete (PRV-09) on feat/r1-export-delete (ADR-038 proposed): re-importable ZIP; deleting the last
+member deletes the household at once; security log kept a year.

@@ -28,6 +28,18 @@ class VaultClient:
         body = r.json()
         return body["kind"], body["value"]
 
+    def entries(self, household_id: str) -> list[dict]:
+        r = self.http.get(f"/v1/households/{household_id}/entries", headers=self.headers)
+        if r.status_code != 200:
+            raise VaultError(f"vault export failed: HTTP {r.status_code}")
+        return r.json()["entries"]
+
+    def delete_household(self, household_id: str) -> int:
+        r = self.http.delete(f"/v1/households/{household_id}", headers=self.headers)
+        if r.status_code != 200:
+            raise VaultError(f"vault delete failed: HTTP {r.status_code}")
+        return r.json()["deleted"]
+
     def healthy(self) -> bool:
         try:
             return self.http.get("/health").status_code == 200

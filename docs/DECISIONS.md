@@ -44,6 +44,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 034 | Ingestion engines: Tesseract OCR and Presidio in the app tier; Claude extraction per household, off by default, through a worker that only it routes out of | 2026-10-16 | Accepted with a condition |
 | 036 | Google Cloud adapters over REST (Cloud Storage, Cloud KMS, Document AI), chosen by environment variables; import previews sealed in the database | 2026-10-16 | Proposed |
 | 037 | Self-service account recovery with single-use recovery codes, shown once at enrolment | 2026-10-16 | Proposed |
+| 038 | Export and delete: a re-importable ZIP; deleting the last member deletes the household at once, a security log line stays a year | 2026-10-16 | Proposed |
 
 ## Records
 
@@ -223,4 +224,13 @@ How a member who loses their phone, their password or both gets back in (PRV-07,
 - **Nothing else changes.** Household data, keys and vault entries are untouched, so everything is there after the next sign-in. `mhs-admin reset-mfa` stays for a member with no codes left.
 
 **Consequences.** A member who loses both their phone and their codes still needs an admin. Anyone holding a member's email and one unused code can take over the account, as with any recovery code scheme; the Account page shows how many codes are left so a member notices one going missing.
+### ADR-038 · Export and delete (Proposed)
+How PRV-09 and ADR-025's deletion rule are built, ahead of the launch gate. Proposed by the build session on 2026-10-16.
+
+**Decision.**
+- **Export** is a ZIP any member can download from "Your data" after typing their password: the household's records as an ingest file with the attached files beside it (so it imports again), the uploads with what was read from them and the member's corrections, the identifiers behind the tokens (from the vault), and a manifest with counts and a SHA-256 per file.
+- **Deleting an account** needs the password, a current authenticator code and typing DELETE. If other members remain, only that member's account goes. If it is the last member, the household goes at once: the vault deletes its entries and its data key first (if the vault can't be reached nothing is deleted, so the member can try again), then the stored files, then every record and the app's household data key with the household row. Deleting the data keys makes anything left behind (a stray copy, a backup) unreadable.
+- **The security log** (`app.security_log`) records exports and deletions with the household and member ids, the event and the time, and nothing else; it has no foreign key, so the record of a deletion survives the household, and lines older than a year are removed.
+
+**Consequences.** One member can delete the household only as its last member, so a household with two adults needs both to leave. Database backups and vault backup files keep the data until they rotate out (within 35 days in production, DEPLOYMENT.md); local vault backup files are not rotated automatically.
 

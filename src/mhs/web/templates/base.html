@@ -30,6 +30,7 @@
       </a>
       {% if session %}
       <a class="small member-name" href="/account">{{ session.display_name }}</a>
+      <a class="small" href="/data">Your data</a>
       <form method="post" action="/signout">{{ csrf_input() }}<button class="btn small" type="submit">Sign out</button></form>
       {% endif %}
     </div>

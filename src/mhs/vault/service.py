@@ -63,6 +63,20 @@ def create_app(store: VaultStore, service_token: str) -> FastAPI:
             raise HTTPException(404, "Not found")
         return {"kind": found[0], "value": found[1]}
 
+    @app.get("/v1/households/{household_id}/entries", dependencies=[Depends(authorized)])
+    def entries(household_id: str):
+        hid = household(household_id)
+        found = store.entries(hid)
+        log.info("export household=%s entries=%s", hid, len(found))
+        return {"entries": found}
+
+    @app.delete("/v1/households/{household_id}", dependencies=[Depends(authorized)])
+    def delete_household(household_id: str):
+        hid = household(household_id)
+        n = store.delete_household(hid)
+        log.info("delete household=%s entries=%s", hid, n)
+        return {"deleted": n}
+
     return app
 
 
