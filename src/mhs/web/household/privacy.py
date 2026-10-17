@@ -111,7 +111,7 @@ def delete_household(db: Database, objects: ObjectStore, vault: VaultClient, hou
     """Delete everything of a household at once. Returns the security log reference shown on the confirmation.
     The vault goes first: if it can't be reached nothing else is deleted, so the member can try again."""
     store = HouseholdStore(db, household_id)
-    keys = [r["object_key"] for r in store.all("original")]
+    keys = [k for r in store.all("original") for k in [r["object_key"], *r.get("scrubbed_keys", [])]]
     keys += [d["stored_file"] for d in store.all("document") if d.get("stored_file")]
     vault.delete_household(household_id)
     for key in keys:

@@ -99,6 +99,19 @@ def test_tc_prv_09_2_and_3_deleting_the_last_member_deletes_the_household(full, 
     assert r.status_code == 401
 
 
+def test_deletion_includes_blanked_copies(full, household):
+    """Blanked page images (PRV-04) are stored files of the household too, and go with it."""
+    from mhs.data.objects import LocalObjectStore
+
+    rec = full.store.all("original")[0]
+    key = f"households/{full.who.household_id}/scrubbed/{rec['id']}-p1"
+    LocalObjectStore(household.objects_dir).put(key, b"sealed blanked page")
+    full.store.put("original", {**rec, "scrubbed_keys": [key]})
+    full.client.post("/data/delete", data={"password": full.who.password, "code": next_code(full.who),
+                                           "confirm": "DELETE"})
+    assert not (household.objects_dir / key).exists()
+
+
 def test_deleting_one_member_keeps_the_household(household, app_db, worker_db, pgdb):
     first = Member(household, app_db, worker_db)
     second = household.enrol(household_id=first.who.household_id)
