@@ -21,12 +21,15 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.background import BackgroundTask
 
+from mhs.core import matching
+from mhs.core.reconcile import provider_groups
 from mhs.data import importer
 from mhs.data.db import Database
 from mhs.data.household_store import HouseholdStore
 from mhs.data.importer import UploadedSource
 from mhs.data.keys import Keyring
 from mhs.data.money import to_dollars
+from mhs.data.repository import load_dataset
 from mhs.data.objects import ObjectStore
 from mhs.data.queue import JobQueue
 from mhs.ingest import claims, hsa
@@ -257,7 +260,7 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
     def export_upload(request: Request, session: Session, filename: str, ctype: str, data: bytes, kind: str):
         store = HouseholdStore(it.db, session.household_id)
         if kind == "claims_export" or (kind == "auto" and claims.is_claims_export(filename, data)):
-            records = {k: store.all(k) for k in ("provider", "member", "plan", "visit")}
+            records = {k: store.all(k) for k in ("provider", "member", "plan", "visit", "document")}
             ingest, errors, notes = claims.to_ingest(filename, data, records)
             doc_kind = "claims_export"
         else:
@@ -343,7 +346,16 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
         provider_id = Providers(providers).find(str(fields.get("provider", {}).get("value", "")))
         member_id = Members(members).find(str(patient))
         when = fields.get("service_start", {}).get("value") or (ext.get("lines") or [{}])[0].get("service_date") or ""
-        visits = [v for v in store.all("visit") if not provider_id or v["provider_id"] == provider_id]
+        related = same_group(store, provider_id) if provider_id else set()
+        visits = [v for v in store.all("visit") if not provider_id or v["provider_id"] in related | {provider_id}]
+        match = None
+        if provider_id and re.match(r"\d{4}-\d{2}-\d{2}$", str(when)):  # MAT-05: preselect the visit by score
+            billed = extracted.get("billed", {}).get("value")
+            claim = reidentify(hid, extracted.get("claim_number", {}).get("value"))
+            facts = matching.Facts(provider_id, when, member_id, claim or None, billed if isinstance(billed, int) else None)
+            top, what = matching.best(facts, store.all("visit"), store.all("document"), related)
+            if top:
+                match = {"visit_id": top.visit_id, "score": top.score, "reasons": top.reasons, "decision": what}
         lines = [{**l, **{k: f"{l[k] / 100:.2f}" for k in l if isinstance(l.get(k), int)}} for l in ext.get("lines", [])]
         return {
             "rec": view(hid, rec, ext), "ext": ext, "fields": fields, "patient": str(patient).title(), "lines": lines, "types": TYPES,
@@ -352,7 +364,7 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
             "members": members, "member_id": member_id or "", "plans": store.all("plan"),
             "plan_id": plan_for(store.all("plan"), int(when[:4])) if re.match(r"\d{4}", when) else "",
             "visits": sorted(visits, key=lambda v: v["date"], reverse=True),
-            "visit_id": next((v["id"] for v in visits if v["date"] == when and provider_id), ""),
+            "visit_id": match["visit_id"] if match else "", "match": match,
             "copy": earlier_copy(store, ext) if ext.get("status") != "confirmed" else None,
         }
 
@@ -437,6 +449,12 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
         return RedirectResponse(f"/visits/{visit_ids[0]}" if visit_ids else "/visits", status_code=303)
 
 
+def same_group(store: HouseholdStore, provider_id: str) -> set[str]:
+    """The providers reconciled together with this one (MAT-04 relationships), for matching."""
+    groups = provider_groups(load_dataset(store))
+    return {pid for pid, gid in groups.items() if gid == groups.get(provider_id) and pid != provider_id}
+
+
 def _money(form, name: str, required: bool = False) -> float | None:
     raw = (form.get(name) or "").strip()
     if not raw:
@@ -505,15 +523,22 @@ def build_records(store: HouseholdStore, form, ext: dict, rec: dict, upload_id: 
         data["providers"] = list(providers.new.values())
         created += [("provider", p) for p in providers.new]
     existing_visits = {v["id"]: v for v in store.all("visit")}
+    documents = store.all("document")
+    proposals: dict[str, dict] = {}  # visit id -> match, for statement lines linked by a proposal (MAT-05)
+    related = same_group(store, provider_id) if provider_id in providers.records else set()
 
-    def visit_for(when: str, choice: str = "", plan_id: str | None = None) -> str:
+    def visit_for(when: str, choice: str = "", plan_id: str | None = None, billed: int | None = None) -> str:
         if choice and choice != "new":
             if choice not in existing_visits:
                 raise ValueError("Choose a visit.")
             return choice
-        for v in existing_visits.values():
-            if v["provider_id"] == provider_id and v["date"] == when and not choice:
-                return v["id"]
+        if not choice:
+            facts = matching.Facts(provider_id, when, member_id, billed=billed)
+            top, what = matching.best(facts, list(existing_visits.values()), documents, related)
+            if what in ("link", "propose"):
+                if what == "propose":
+                    proposals[top.visit_id] = {"status": "proposed", "score": top.score, "reasons": top.reasons}
+                return top.visit_id
         vid = base = f"v-{when}-{provider_id.removeprefix('prov-')}"
         n = 2
         while vid in existing_visits or any(v["id"] == vid for v in data["visits"]):
@@ -575,8 +600,8 @@ def build_records(store: HouseholdStore, form, ext: dict, rec: dict, upload_id: 
         bill_lines = []
         if groups:
             for when, items in groups.items():
-                vid = visit_for(when)
                 cents = lambda k: sum(i.get(k) or 0 for i in items)  # noqa: E731
+                vid = visit_for(when, billed=cents("charge") or None)
                 balance = cents("balance") if any("balance" in i for i in items) else cents("charge")
                 patient_amount = cents("patient_amount") or balance + cents("patient_paid")
                 line = {"visit_id": vid, "description": "; ".join(i.get("description", "") for i in items),
@@ -585,6 +610,13 @@ def build_records(store: HouseholdStore, form, ext: dict, rec: dict, upload_id: 
                 for k in ("insurance_paid", "adjustment", "patient_paid"):
                     if any(i.get(k) for i in items):
                         line[k] = dollars(cents(k))
+                # Each printed line is kept with its code, so it can be paired with the EOB's lines (MAT-06).
+                line["items"] = [{**{k: i[k] for k in ("code", "description") if i.get(k)}, "service_date": when,
+                                  **{k: dollars(i[k]) for k in ("charge", "adjustment", "insurance_paid",
+                                                                "patient_paid", "balance") if isinstance(i.get(k), int)}}
+                                 for i in items]
+                if vid in proposals:
+                    line["match"] = proposals[vid]
                 bill_lines.append(line)
         else:  # TC-ING-04-2: no line detail on the statement; one line for the visit it's for, no invented items
             when = _date(form, "service_start", required=not form.get("visit_id") or form.get("visit_id") == "new")

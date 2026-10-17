@@ -205,6 +205,8 @@ def test_demo_story(make_household, app_db, worker_db):
     m.work()
     text, values = m.review(eid)
     assert values["visit_id"] == "v-2026-08-14-riverbend-orthopedics"
+    assert "Matched automatically (100%): same provider, same date of service, same person, same billed amount $480.00" \
+        in text  # MAT-05
     assert values["plan_id"] == "plan-2026-example-hdhp-1700" and values["patient_responsibility"] == "300.00"
     assert m.confirm(eid, values).status_code == 303
 
@@ -228,8 +230,11 @@ def test_demo_story(make_household, app_db, worker_db):
 
     riverbend = m.client.get("/visits/v-2026-08-14-riverbend-orthopedics").text
     assert "Discrepancy" in riverbend
-    assert "statement of 2026-09-10 asks $480.00, EOB says you owe $300.00" in riverbend
-    assert "Payments of $480.00 applied" in riverbend and "HSA" in riverbend
+    assert "Statement of 2026-09-10 asks $480.00, EOB says you owe $300.00" in riverbend
+    assert "Missed adjustment" in riverbend and "doesn&#39;t apply the plan&#39;s $180.00 discount" in riverbend
+    # REC-03: the HSA payment covered the $480.00 bill, so $180.00 of it is an overpayment shown on the visit.
+    assert "You paid $180.00 more than you owe for this visit" in riverbend and "HSA" in riverbend
+    assert "Bill lines and EOB lines" in riverbend and "2 of 2 bill lines paired with the EOB" in riverbend
     lakeside = m.client.get("/visits/v-2026-09-22-lakeside-imaging").text
     assert "Balance outstanding" in lakeside and "$800.00 unpaid per insurer" in lakeside
     home = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m.client.get("/?year=2026").text))

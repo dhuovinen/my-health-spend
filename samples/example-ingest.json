@@ -96,7 +96,7 @@
       "plan_id": "plan-2026",
       "category": "provider_visit",
       "description": "Office visit, sinus infection",
-      "notes": "Expected: Matched."
+      "notes": "Expected: Complete."
     },
     {
       "id": "v-2026-04-02-pcp",
@@ -105,7 +105,7 @@
       "plan_id": "plan-2026",
       "category": "provider_visit",
       "description": "Follow-up visit",
-      "notes": "Expected: Discrepancy. Provider billed the full $180 charge instead of the $100 agreed rate; $80 overpaid."
+      "notes": "Expected: Discrepancy found. Provider billed the full $180 charge instead of the $100 agreed rate; $80 overpaid."
     },
     {
       "id": "v-2026-04-02-lab",
@@ -114,7 +114,7 @@
       "plan_id": "plan-2026",
       "category": "service",
       "description": "Blood panel",
-      "notes": "Expected: Matched. Paid by card, then reimbursed from the HSA, so no HSA flag."
+      "notes": "Expected: Complete. Paid by card, then reimbursed from the HSA, so no HSA flag."
     },
     {
       "id": "v-2026-06-15-vitamins",
@@ -122,7 +122,7 @@
       "provider_id": "prov-vitamins",
       "category": "supplements",
       "description": "Vitamin D and magnesium",
-      "notes": "Expected: Matched, with a 'possible HSA/FSA opportunity' flag (eligibility not confirmed)."
+      "notes": "Expected: Complete, with a 'possible HSA/FSA opportunity' flag (eligibility not confirmed)."
     },
     {
       "id": "v-2026-07-20-imaging",
@@ -140,7 +140,7 @@
       "plan_id": "plan-2026",
       "category": "provider_visit",
       "description": "Skin check",
-      "notes": "Expected: Waiting. No documents yet and under 30 days since the visit."
+      "notes": "Expected: Awaiting EOB. No documents yet and under 30 days since the visit."
     }
   ],
   "documents": [

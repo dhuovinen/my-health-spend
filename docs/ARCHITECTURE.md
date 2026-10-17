@@ -23,7 +23,7 @@ flowchart LR
 
 | Layer | Code | Responsibility | Rule |
 | --- | --- | --- | --- |
-| Core | `src/mhs/core/` | Checks, visit status, payment allocation, provider ledgers, HSA flags, plan-limit progress | Pure functions over record dicts, money in integer cents. No database or web imports. Never changed to suit the UI. |
+| Core | `src/mhs/core/` | Checks, visit status, payment allocation, provider ledgers, HSA flags, plan-limit progress (`reconcile.py`); identities, buckets, line pairing (`lines.py`); match scores (`matching.py`); the member's decisions as record changes (`edits.py`) | Pure functions over record dicts, money in integer cents. No database or web imports. Never changed to suit the UI. |
 | Data | `src/mhs/data/` | Record store (one JSON record per kind and id), import validation and upsert, owner-edit protection, money conversion, settings export | The store does not mirror schema fields as columns, so the ingest schema can evolve |
 | Web | `src/mhs/web/` | Server-rendered pages, forms, file serving | Binds to 127.0.0.1 only; no login |
 | Tools | `tools/build_ingest.py` | Converts real source files into ingest JSON | Reads `data/settings.json` so in-app edits carry through |

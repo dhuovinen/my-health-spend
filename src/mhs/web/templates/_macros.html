@@ -27,6 +27,7 @@
     <div><span>Paid</span>{{ v.paid|money }}</div>
     {% if v.at_stake %}<div><span>At stake</span><strong class="bad-ink">{{ v.at_stake|money }}</strong></div>{% endif %}
   </div>
+  <div class="small docs">{% for d in v.documents if d.state != 'not_applicable' %}<span class="{{ 'good-ink' if d.state == 'present' else 'warn-ink' }}">{{ '✓' if d.state == 'present' else '…' }} {{ d.label }}</span>{{ ' · ' if not loop.last }}{% endfor %}</div>
   {% for f in v.hsa_flags %}<span class="chip">HSA: {{ f }}</span>{% endfor %}
 </a>
 {% endmacro %}

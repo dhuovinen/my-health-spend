@@ -91,5 +91,19 @@
     {% endfor %}
   </div>
 </div>
+
+{% set yb = report.buckets %}
+{% if yb %}
+<div class="grid two section">
+  <div class="card" id="buckets">
+    <h2>Where {{ report.year }}'s billed dollars went</h2>
+    <ul class="kv">
+      {% for k, label in BUCKETS.items() if yb.get(k) %}<li><span>{{ label }}</span><span class="num {{ 'bad-ink' if k == 'unexplained' }}">{{ yb[k]|money }}</span></li>{% endfor %}
+      <li><strong>Billed</strong><strong class="num">{{ yb.values()|sum|money }}</strong></li>
+    </ul>
+    <p class="muted small">From the insurers' decisions (and self-pay bills). Visits still waiting for an EOB aren't in it yet.</p>
+  </div>
+</div>
+{% endif %}
 {% endif %}
 {% endblock %}

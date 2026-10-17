@@ -18,16 +18,16 @@ docker compose --profile test run --rm tests
 uv run --with pytest-cov pytest --cov=mhs
 ```
 
-## Current state (2026-10-16, phase 1.3 in progress, engines on `feat/r1-ingest-engines`)
+## Current state (2026-10-17, phase 1.4 built on `feat/r1-reconciliation`)
 
 | Measure | Value |
 | --- | --- |
-| Automated tests | 267 on the compose stack; `uv run pytest` 253 with 14 skipped (5 stack tests, including the fake GCS server round trip, and 9 that need the tesseract binary), 2026-10-17 on `integration/r1-next`. They include 55 from the Release 0 suite (the 32 Appendix A tests plus one Settings regression, 22 of them run a second time against Release 1 with `[release1]` or `[postgres]` ids), the Release 1 tests in `tests/test_r1_*.py` (upload scenarios, rules and scrubbing, OCR, recall, Claude extraction, PRV-05 dates, the laptop demo, the corpus, Google Cloud adapters, account recovery, export and delete, and the 1.3 leftovers) and the stack tests in `tests/stack/` |
-| Coverage, `core/` | 96% (target ≥ 80%) |
+| Automated tests | TO_FILL |
+| Coverage, `core/` | 92 to 99% per module: `reconcile.py` 97%, `lines.py` 94%, `matching.py` 99%, `edits.py` 92% (target ≥ 80%) |
 | Coverage, `data/` | 89 to 100% per module |
-| Coverage, `web/pages.py` (shared pages), `web/household/app.py`, `auth.py` | 85%, 95%, 98% |
+| Coverage, `web/pages.py` (shared pages), `web/household/app.py`, `auth.py` | 92%, 95%, 98% |
 | Coverage, `ingest/` (upload pipeline), `web/household/intake.py` | 72 to 100% per module under `uv run pytest` (OCR and worker paths run fully only on the stack) |
-| Coverage, total | 91% (`uv run pytest`) |
+| Coverage, total | 92% (`uv run pytest`) |
 
 **Appendix A on the server (phase 1.2 exit).** `tests/test_web.py` runs each Release 0 web test against both apps through the `web` fixture: Release 0 over SQLite, and the Release 1 application tier as a signed-in member, importing by upload, with CSRF tokens on every post. `tests/test_importer.py` runs each store-backed importer test against the SQLite store and a household's Postgres store (`store` fixture). The core tests (`test_reconcile.py`) are shared code. `tests/test_r1_pages.py` adds household isolation on every ported page, encrypted import attachments and `mhs-admin import`.
 
@@ -101,6 +101,34 @@ On the held-out set, both statement layouts ("Invoice", "Billing Statement") wer
 `tools/perf_run.py` times typical uploads on the running stack, one at a time, from the upload to a confirmed visit, leaving out the member's own review time: run it in the compose tests container with `docker compose --profile test run --rm tests python tools/perf_run.py --n 50`. The documents are synthetic: the development corpus's EOBs and statements, one in five as a phone photo read by Tesseract and some as 2 to 3 page PDFs. The stack suite runs 5 of them on every change.
 
 Local stack on the owner's Mac, 2026-10-17: 50 uploads, all confirmed; machine time p50 0.45 s, p95 0.85 s, slowest 1.05 s, against a 60-second target. Staging (Document AI, Cloud Run) is measured again in phase 1.6; AI extraction adds the model's response time when it is on.
+## Matching and reconciliation (phase 1.4)
+
+Every P1 case for MAT-01, MAT-05, MAT-06, MAT-10, REC-01 to REC-05, REC-11, REC-13 and ALC-01, plus the member's overrides in MAT-07 and ALC-04, is automated. Core cases (U) are in `tests/test_r1_reconcile.py`, with "today" pinned to 2026-10-09; integration and page cases (I, E) are in `tests/test_r1_reconcile_pages.py`, which runs each test against both apps (Release 0 over SQLite, Release 1 as a signed-in member) through the `web` fixture. Rules and choices: ADR-035.
+
+| Cases | Test |
+| --- | --- |
+| TC-MAT-01-1 two claims of three lines with allocations round-trip; 01-2 one payment across three visits; 01-3 HSA and card on one visit; 01-5 account transactions stay out of visit totals | `test_mat_01_1_*` (both stores), `test_mat_01_2_*`, `test_mat_01_3_*`, `test_mat_01_5_*` |
+| TC-MAT-01-4 a visit with documents can't be deleted; an empty one can, and stays deleted on re-import | `test_r1_reconcile_pages.py::test_mat_01_4_*` |
+| TC-MAT-05-1 to 05-4 scores, reasons, bands, two members, another provider | `test_mat_05_1_*` to `test_mat_05_4_*`; on the claims export: `test_claims_export_matches_by_score_and_keeps_rejections` |
+| TC-MAT-05-5, TC-MAT-07-1 a proposed match shows its reasons; confirming it | `test_mat_05_5_and_mat_07_1_*` |
+| TC-MAT-06-1 to 06-5 code, bundled (CARC 97), panel, unmatched, modifier | `test_mat_06_1_*` to `test_mat_06_5_*` |
+| TC-MAT-07-2 a rejected match is never proposed again | `test_mat_07_2_*` (core and pages), `test_claims_export_matches_by_score_and_keeps_rejections` |
+| TC-MAT-07-3 split a statement, merge visits; totals unchanged | `test_merge_and_split_keep_totals`, `test_mat_07_3_*` |
+| TC-MAT-10-1, 10-3, 10-4, 10-5 the document checklist (10-2 is Appendix A) | `test_mat_10_1_*`, `test_mat_10_3_*` (core), `test_mat_10_3_and_4_*` (pages, visit cards), `test_mat_10_5_*` |
+| TC-REC-01-1 to 01-6 identities per line and claim, other savings and second payer, self-pay (01-2 is Appendix A) | `test_rec_01_*` |
+| TC-ALC-01-1 to 01-4 buckets, denied line, write-off is settlement, 1,000 random lines | `test_rec_01_1_and_alc_01_1_*`, `test_alc_01_2_*`, `test_alc_01_3_*`, `test_alc_01_4_*` |
+| TC-REC-02-1 to 02-5 missed adjustment and balance billing, exact, before the EOB, asks less, charges differ | `test_rec_02_*` |
+| TC-REC-03-1, 03-3, 03-4, 03-5 (03-2 is Appendix A); the $5.00 cap | `test_rec_03_*`, `test_tolerance_cap_flags_the_provider` |
+| TC-REC-04-1, 04-2, 04-4 (04-3 is Appendix A) | `test_rec_04_*` |
+| TC-REC-05-1 to 05-3 (05-4 is Appendix A) | `test_rec_05_*` |
+| TC-REC-11-1 to 11-4 every status, precedence, lifecycle, threshold; 11-5 badges in words | `test_rec_11_*` (core), `test_rec_11_4_waiting_threshold_setting`, `test_rec_11_dispute_lifecycle_and_findings_on_the_pages` |
+| TC-REC-13-1, 13-3, 13-4 (13-2 is Appendix A, plus the statement-balance case) | `test_rec_13_*`, `test_rec_03_4_and_rec_13_3_*` |
+| TC-ALC-04-1, 04-2, 04-4 (04-3 is Appendix A) | `test_alc_04_1_*`, `test_alc_04_2_*` (core and pages), `test_alc_04_4_*` |
+| PRV-11 on the new routes | `test_another_household_cannot_change_these_records` |
+
+**Appendix A change.** `test_sample_statuses_match_the_notes_in_the_sample_file` (the one marked ⚠) now expects the nine statuses: Matched became Complete and Waiting became Awaiting EOB; `test_suspected_relationship_*` and `test_missing_eob_waits_then_becomes_missing` changed their status names the same way. The demo story (`test_r1_demo.py`) now expects the $180.00 paid on the inflated Riverbend bill to show on the visit as an overpayment (REC-03) besides the missed adjustment.
+
+**By hand.** Release 0 on a scratch data folder with the sample imported (`MHS_DATA_DIR=<scratch> uv run mhs`): a visit's findings, buckets, settlement and checklist; the ledger's split form; no page scrolls sideways at 375 px with every section opened.
 
 ## Levels
 

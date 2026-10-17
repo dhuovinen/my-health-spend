@@ -16,7 +16,18 @@
   {% endif %}
 </div>
 
-<nav class="toc small"><a href="#plans">Insurance plans</a><a href="#members">Household members</a><a href="#accounts">Payment accounts</a><a href="#providers">Providers</a><a href="#relationships">Provider matches</a><a href="#later">Coming later</a></nav>
+<nav class="toc small"><a href="#plans">Insurance plans</a><a href="#members">Household members</a><a href="#accounts">Payment accounts</a><a href="#providers">Providers</a><a href="#relationships">Provider matches</a><a href="#reconciliation">Reconciliation</a><a href="#later">Coming later</a></nav>
+
+<section id="reconciliation" class="section">
+  <h2>Reconciliation</h2>
+  <div class="card">
+    <form method="post" action="/settings/reconciliation" class="inline">{{ csrf_input() }}
+      <label>Days to wait for an EOB or another document<input name="waiting_days" type="number" min="1" max="365" class="w-6" value="{{ waiting_days }}"></label>
+      <button class="btn primary">Save</button>
+    </form>
+    <p class="muted small">Until then a visit is "Awaiting EOB" or "Awaiting documents"; after it, "Missing documents". Differences under $1.00 are cleared within tolerance, and a provider is flagged once they add up to more than $5.00 in a plan year.</p>
+  </div>
+</section>
 
 <section id="plans" class="section">
   <h2>Insurance plans</h2>

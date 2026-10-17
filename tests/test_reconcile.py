@@ -11,15 +11,16 @@ def report(store, year=2026):
 
 
 def test_sample_statuses_match_the_notes_in_the_sample_file(loaded_store):
+    """The nine REC-11 statuses (ADR-009) replace Release 0's five: Matched is Complete, Waiting is Awaiting EOB."""
     r = report(loaded_store)
     status = {v.id: v.status for v in r.visits}
     assert status == {
-        "v-2026-02-10-pcp": "matched",
+        "v-2026-02-10-pcp": "complete",
         "v-2026-04-02-pcp": "discrepancy",
-        "v-2026-04-02-lab": "matched",
-        "v-2026-06-15-vitamins": "matched",
-        "v-2026-07-20-imaging": "balance_outstanding",
-        "v-2026-09-28-derm": "waiting",
+        "v-2026-04-02-lab": "complete",
+        "v-2026-06-15-vitamins": "complete",
+        "v-2026-07-20-imaging": "balance_outstanding",  # TC-REC-11-2: balance owed + missing EOB
+        "v-2026-09-28-derm": "awaiting_eob",
     }
 
 
@@ -92,7 +93,7 @@ def test_suspected_relationship_joins_ledgers_and_flags_until_confirmed():
     g = r.group("a")
     assert [p["id"] for p in g.providers] == ["a", "b"]
     assert g.unconfirmed == [rel] and "unconfirmed" in g.flags
-    assert r.visit("v1").status == "matched"
+    assert r.visit("v1").status == "complete"
 
     rel_rejected = {**rel, "status": "rejected"}
     r2 = build_report(base(relationships=[rel_rejected], visits=ds.visits, documents=ds.documents), 2026, TODAY)
@@ -159,7 +160,7 @@ def test_eob_that_does_not_add_up_fails_c1():
 def test_missing_eob_waits_then_becomes_missing():
     ds = base(visits=[visit("new", "2026-10-01"), visit("old", "2026-06-01")])
     r = build_report(ds, 2026, TODAY)
-    assert r.visit("new").status == "waiting"
+    assert r.visit("new").status == "awaiting_eob"
     assert r.visit("old").status == "missing_documents"
 
 
