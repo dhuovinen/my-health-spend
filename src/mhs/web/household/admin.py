@@ -17,9 +17,9 @@ from pathlib import Path
 from mhs.data import importer
 from mhs.data.db import Database
 from mhs.data.household_store import HouseholdStore
-from mhs.data.keys import LocalKeyFile, db_keyring
+from mhs.data.keys import db_keyring, keys_from_env
 from mhs.data.money import to_dollars
-from mhs.data.objects import LocalObjectStore
+from mhs.data.objects import object_store_from_env
 from mhs.ingest.resolve import slug
 from mhs.stack import load_app_config
 from mhs.web.household.files import EncryptedFiles
@@ -29,7 +29,7 @@ from mhs.web.household.auth import AccountError, Accounts
 def accounts_from_env() -> tuple[Database, Accounts]:
     config = load_app_config()
     db = Database(config.database_url, max_size=2)
-    return db, Accounts(db, db_keyring(db, LocalKeyFile(config.key_file), "app.household_keys"))
+    return db, Accounts(db, db_keyring(db, keys_from_env(config.key_file), "app.household_keys"))
 
 
 def import_file(accounts: Accounts, household_id: str, path: Path, commit: bool, replace_edits: bool) -> None:
@@ -57,7 +57,7 @@ def import_file(accounts: Accounts, household_id: str, path: Path, commit: bool,
         print("Preview only: run again with --yes to save.")
         return
     config = load_app_config()
-    files = EncryptedFiles(LocalObjectStore(config.objects_dir), accounts.keyring, household_id)
+    files = EncryptedFiles(object_store_from_env(config.objects_dir), accounts.keyring, household_id)
     summary = importer.commit(plan, store, files, replace_edits=replace_edits)
     print(f"saved: {json.dumps(summary)}")
 

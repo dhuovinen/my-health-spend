@@ -1,7 +1,7 @@
 """OCR adapter (ADR-029): photos and scanned PDFs become text with word boxes, in the application tier.
 
-Engines: `tesseract` (the binary in the app image; keeps the stack offline) and `stub` (reads nothing, so the
-member enters the fields by hand). Document AI Enterprise OCR joins in Google Cloud behind the same interface.
+Engines: `tesseract` (the binary in the app image; keeps the stack offline), `documentai` (Document AI Enterprise
+OCR in Google Cloud, ADR-036) and `stub` (reads nothing, so the member enters the fields by hand).
 Word boxes are part of the result because scrubbing blanks identifiers on the image from them (PRV-04).
 The app picks the engine from MHS_OCR_ENGINE (stack.py).
 """
@@ -158,7 +158,74 @@ def tsv_to_text(tsv: str, page: int, width: int, height: int) -> tuple[str, list
     return "\n".join(out), words
 
 
-ENGINES: dict[str, type] = {"stub": StubOcr, "tesseract": TesseractOcr}
+class DocumentAiOcr:
+    """Document AI (Enterprise Document OCR) over its REST API (ADR-029, ADR-036). Keeps photos and scans inside
+    the Google Cloud project and BAA. MHS_DOCAI_PROCESSOR names the processor
+    (projects/<p>/locations/<us|eu>/processors/<id>); MHS_DOCAI_ENDPOINT points elsewhere in tests."""
+
+    name = "documentai"
+    TYPES = {PDF, "image/jpeg", "image/png", "image/webp", "image/tiff", "image/gif", "image/bmp"}
+
+    def __init__(self, processor: str | None = None, http=None, token=None, endpoint: str | None = None):
+        import os
+
+        self.processor = processor or os.environ.get("MHS_DOCAI_PROCESSOR", "")
+        location = self.processor.split("/locations/")[1].split("/")[0] if "/locations/" in self.processor else "us"
+        self.endpoint = (endpoint or os.environ.get("MHS_DOCAI_ENDPOINT")
+                         or f"https://{location}-documentai.googleapis.com").rstrip("/")
+        self._http, self._token = http, token
+
+    def read(self, data: bytes, content_type: str) -> OcrResult:
+        import base64
+
+        import httpx
+
+        from mhs.data.gcp import GoogleError, default_token
+
+        if not self.processor:
+            raise OcrUnavailable("Document AI isn't configured on this server (MHS_DOCAI_PROCESSOR)")
+        if content_type not in self.TYPES:  # HEIC and anything else Document AI doesn't take: send it as JPEG
+            buf = io.BytesIO()
+            open_image(data, content_type).convert("RGB").save(buf, "JPEG", quality=92)
+            data, content_type = buf.getvalue(), "image/jpeg"
+        http = self._http or httpx.Client(timeout=120)
+        token = self._token or default_token(emulated="googleapis.com" not in self.endpoint)
+        r = http.post(f"{self.endpoint}/v1/{self.processor}:process",
+                      json={"rawDocument": {"content": base64.b64encode(data).decode(), "mimeType": content_type},
+                            "skipHumanReview": True},
+                      headers={"Authorization": f"Bearer {token.token()}"})
+        if r.status_code >= 400:
+            raise GoogleError(f"document ai process failed: HTTP {r.status_code}")
+        return documentai_result(r.json().get("document", {}))
+
+
+def _anchor_text(text: str, layout: dict) -> str:
+    segments = (layout.get("textAnchor") or {}).get("textSegments") or []
+    return "".join(text[int(s.get("startIndex", 0)):int(s.get("endIndex", 0))] for s in segments)
+
+
+def documentai_result(document: dict) -> OcrResult:
+    """A Document AI `Document` as text with word boxes (fractions of the page) and confidences."""
+    text = document.get("text", "")
+    pages, words = [], []
+    for number, page in enumerate(document.get("pages", []), start=1):
+        layout = page.get("layout") or {}
+        pages.append(_anchor_text(text, layout).strip("\n") if layout.get("textAnchor") else "")
+        for tok in page.get("tokens", []):
+            tl = tok.get("layout") or {}
+            word = _anchor_text(text, tl).strip()
+            vertices = (tl.get("boundingPoly") or {}).get("normalizedVertices") or []
+            if not word or not vertices:
+                continue
+            xs, ys = [v.get("x", 0.0) for v in vertices], [v.get("y", 0.0) for v in vertices]
+            words.append(Word(word, number, (round(min(xs), 4), round(min(ys), 4), round(max(xs), 4),
+                                             round(max(ys), 4)), round(float(tl.get("confidence", 0.0)), 2)))
+    if not pages:
+        pages = [text]
+    return OcrResult("\n\f\n".join(pages) if any(pages) else text, words, "documentai", pages)
+
+
+ENGINES: dict[str, type] = {"stub": StubOcr, "tesseract": TesseractOcr, "documentai": DocumentAiOcr}
 
 
 def get_engine(name: str = "stub") -> OcrEngine:

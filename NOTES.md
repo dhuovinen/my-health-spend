@@ -57,3 +57,5 @@ back on the answer); meets ADR-034's condition. 209 tests on the stack.
 2026-10-16: Extraction corpus and accuracy run on feat/r1-extraction-corpus: 56 development and 50 held-out synthetic
 documents with ground truth. Layout rules: 100% on development, 80% classification / 61.5% amounts on held-out
 (targets 95%). PLT-02 needs Claude extraction; its run needs an API key.
+2026-10-16: Google Cloud adapters over REST (Cloud Storage, KMS, Document AI) tested against fake GCS and API-shaped
+fakes; import previews sealed in the database; DEPLOYMENT.md (feat/r1-cloud-adapters, ADR-036 proposed). 240 tests on the stack.
