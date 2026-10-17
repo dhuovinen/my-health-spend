@@ -107,7 +107,7 @@ On the Uploads page, choose a file and what it is (or let the app decide):
 - **Provider bills, statements, EOBs** as PDF, or a photo (JPG, PNG, HEIC). The app reads the text, replaces names and ID numbers with vault tokens, and the worker extracts the fields. When the status turns to Review, open it, check the fields ("check" marks the doubtful ones), correct them and confirm. Only then does the document reach your visits. Photos and scanned PDFs are read with OCR (Tesseract); iPhone HEIC photos are converted first. A photo that can't be opened is refused with the reason.
 - **HSA/FSA exports** (CSV, XLS, XLSX) and the **insurer's claims export** (CSV) go straight to the import preview; confirm there.
 
-The same file twice is refused. Add your household members and the year's plan in Settings first, so patients and claims match.
+You can also forward bills and EOBs by email from your own address to the address shown on Uploads (locally the `mail` service receives them on the internal network, `mail:2525`). The same file twice is refused. Add your household members and the year's plan in Settings first, so patients and claims match.
 
 ### AI extraction (optional, off by default)
 

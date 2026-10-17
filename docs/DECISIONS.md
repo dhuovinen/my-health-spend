@@ -45,6 +45,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 036 | Google Cloud adapters over REST (Cloud Storage, Cloud KMS, Document AI), chosen by environment variables; import previews sealed in the database | 2026-10-16 | Proposed |
 | 037 | Self-service account recovery with single-use recovery codes, shown once at enrolment | 2026-10-16 | Proposed |
 | 038 | Export and delete: a re-importable ZIP; deleting the last member deletes the household at once, a security log line stays a year | 2026-10-16 | Proposed |
+| 039 | Forwarded email: a private address per household, members' own addresses only, attachments and statement bodies become uploads | 2026-10-17 | Proposed |
 
 ## Records
 
@@ -233,4 +234,15 @@ How PRV-09 and ADR-025's deletion rule are built, ahead of the launch gate. Prop
 - **The security log** (`app.security_log`) records exports and deletions with the household and member ids, the event and the time, and nothing else; it has no foreign key, so the record of a deletion survives the household, and lines older than a year are removed.
 
 **Consequences.** One member can delete the household only as its last member, so a household with two adults needs both to leave. Database backups and vault backup files keep the data until they rotate out (within 35 days in production, DEPLOYMENT.md); local vault backup files are not rotated automatically.
+
+### ADR-039 · Forwarded email (Proposed)
+How ING-01's forwarded email (TC-ING-01-4) works. Proposed by the build session on 2026-10-17.
+
+**Decision.**
+- **One private address per household** (`<random token>@<inbound domain>`), shown on the Uploads page. The token is the only thing that routes mail to a household, so it is random and can be replaced.
+- **Only the household's members' own email addresses are accepted** as senders; anything else is refused at SMTP and nothing is stored. Locally the `From` header is taken on trust; in production the inbound-mail service's sender checks (SPF, DKIM, DMARC) must pass before a message is handed over.
+- **What becomes an upload:** each PDF or photo attachment, also inside a forwarded message; a message without one becomes an upload only when its body (HTML or text) reads as a statement, bill or EOB. Other attachments are skipped, the same file twice is a duplicate, and a message with nothing usable is refused. From there it is the Uploads page's path: stored sealed, scrubbed, read by the worker, reviewed and confirmed.
+- **Locally an SMTP service** (`mhs-mail`, the `mail` container on the internal network); in production an inbound-mail service posts the raw message to the same handler, which needs an account and a domain with an MX record (DEPLOYMENT.md).
+
+**Consequences.** An attacker who learns a household's address and fakes a member's `From` could add uploads locally, but they still wait for a member's review; production relies on the sender checks. Email bodies are stored as uploads like any other original, sealed with the household key.
 

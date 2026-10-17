@@ -27,6 +27,10 @@ These need your Google account and decisions; nothing in the repository can do t
 | key files | Cloud KMS key ring per environment with two symmetric keys: `app` and `vault` | `MHS_KEYS=kms`, `MHS_KMS_KEY` per service |
 | Tesseract | Document AI Enterprise OCR | `MHS_OCR_ENGINE=documentai`, `MHS_DOCAI_PROCESSOR` |
 
+## Inbound email (ADR-039)
+
+Forwarded bills need an inbound-mail service (for example a mail provider's inbound route) on a domain with an MX record, posting the raw message to the app with its sender checks (SPF, DKIM, DMARC) passed; locally the `mail` container stands in for it. This needs an account and the domain, so it comes with staging.
+
 ## Identities and access
 
 | Service account | Can |

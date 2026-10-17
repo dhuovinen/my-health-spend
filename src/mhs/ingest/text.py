@@ -13,6 +13,7 @@ from mhs.ingest.ocr import OcrEngine, OcrUnavailable, UnreadableImage, get_engin
 
 PDF = "application/pdf"
 IMAGES = {"image/jpeg", "image/png", "image/heic", "image/heif", "image/webp"}
+TEXT = {"text/html", "text/plain"}
 EXTENSIONS = {".pdf": PDF, ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".heic": "image/heic",
               ".heif": "image/heif", ".webp": "image/webp", ".csv": "text/csv", ".xls": "application/vnd.ms-excel",
               ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
@@ -94,4 +95,24 @@ def read_text(kind: str, data: bytes, ocr: OcrEngine | None = None) -> DocumentT
         except UnreadableImage as e:
             raise Unreadable(str(e)) from e
         return DocumentText(result.text, 1, f"photo, OCR ({result.engine})", result.confidence, tuple(result.words))
+    if kind in TEXT:  # a statement in the body of a forwarded email (ING-01, ADR-039)
+        body = data.decode("utf-8", "replace")
+        return DocumentText(html_to_text(body) if kind == "text/html" else body, 1, "email body")
     raise Unreadable("Only PDFs and photos (JPG, PNG, HEIC) can be read as documents.")
+
+
+def html_to_text(html_text: str) -> str:
+    """Readable lines from an HTML email: rows and paragraphs become lines, table cells stay apart like columns."""
+    import html as html_lib
+    import re
+
+    t = re.sub(r"(?is)<(script|style|head)\b.*?</\1>", " ", html_text)
+    t = re.sub(r"(?i)<br\s*/?>|</(p|div|tr|li|h[1-6]|table)>", "\n", t)
+    t = re.sub(r"(?i)</t[dh]>", "   ", t)
+    t = html_lib.unescape(re.sub(r"<[^>]+>", " ", t)).replace("\u00a0", " ")
+    lines = []
+    for line in t.splitlines():
+        cells = [re.sub(r"\s+", " ", c).strip() for c in re.split(r"\s{3,}", line)]
+        if line := "   ".join(c for c in cells if c):
+            lines.append(line)
+    return "\n".join(lines)

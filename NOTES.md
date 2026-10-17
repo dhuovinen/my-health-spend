@@ -65,3 +65,5 @@ fakes; import previews sealed in the database; DEPLOYMENT.md (feat/r1-cloud-adap
 member deletes the household at once; security log kept a year.
 2026-10-17: Phase 1.3 local leftovers on feat/r1-ingest-leftovers: copies and versions on review (ING-07), identifiers
 blanked on photos (TC-PRV-04-1), uploads read in the background, previews (HEIC as JPEG). 238 tests on the stack.
+2026-10-17: Help page (feat/r1-help). Forwarded email on feat/r1-email-forwarding (ADR-039 proposed): a private address per
+household, members' addresses only, attachments and statement bodies become uploads; local SMTP `mail` service. 276 tests on the stack.

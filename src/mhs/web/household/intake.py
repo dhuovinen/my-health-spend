@@ -39,6 +39,7 @@ from mhs.ingest.text import IMAGES, PDF, Unreadable, check_image, content_type, 
 from mhs.ingest.values import dollars, parse_amount, parse_date
 from mhs.vault.client import VaultClient
 from mhs.web.household.auth import Session
+from mhs.web.household.inbound import address_for
 from mhs.web.household.files import EncryptedFiles
 
 log = logging.getLogger("mhs.intake")
@@ -86,13 +87,85 @@ class Intake:
     objects: ObjectStore
     vault: VaultClient
     queue: JobQueue
-    member: Callable[[Request], Session]
-    check_csrf: Callable
-    household_name: Callable[[str], str | None]
-    preview_import: Callable
+    member: Callable[[Request], Session] | None = None
+    check_csrf: Callable | None = None
+    household_name: Callable[[str], str | None] | None = None
+    preview_import: Callable | None = None
     ocr: OcrEngine = field(default_factory=StubOcr)
     scrubber: type[Scrubber] = Scrubber
     ai_extraction: Callable[[str], bool] = lambda household_id: False
+
+    # The upload steps, shared by the Uploads page and forwarded email (ADR-039).
+
+    def original_name(self, hid: str, rec: dict) -> str:
+        return self.keyring.decrypt(hid, bytes.fromhex(rec["filename_sealed"]), f"filename:{rec['id']}").decode()
+
+    def original_bytes(self, hid: str, rec: dict) -> bytes:
+        data = self.keyring.decrypt(hid, self.objects.get(rec["object_key"]), f"original:{rec['id']}")
+        if hashlib.sha256(data).hexdigest() != rec["sha256"]:
+            raise HTTPException(500)
+        return data
+
+    def duplicate_of(self, hid: str, data: bytes) -> dict | None:
+        """The upload this exact file already is (same SHA-256 in the household), if any (TC-ING-07-1)."""
+        digest = hashlib.sha256(data).hexdigest()
+        return next((r for r in HouseholdStore(self.db, hid).all(ORIGINAL) if r["sha256"] == digest), None)
+
+    def store_original(self, hid: str, member_id: str | None, filename: str, ctype: str, data: bytes,
+                       doc_kind: str, via: str = "upload") -> str:
+        upload_id = "upl_" + secrets.token_hex(12)
+        object_key = f"households/{hid}/originals/{upload_id}"
+        self.objects.put(object_key, self.keyring.encrypt(hid, data, f"original:{upload_id}"))
+        HouseholdStore(self.db, hid).put(ORIGINAL, {
+            "id": upload_id, "content_type": ctype, "size": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),  # ING-10: originals are hashed and never modified
+            "object_key": object_key, "doc_kind": doc_kind, "via": via,
+            "filename_sealed": self.keyring.encrypt(hid, filename.encode(), f"filename:{upload_id}").hex(),
+            "uploaded_at": _now(), "uploaded_by": member_id,
+        })
+        return upload_id
+
+    def read_in_background(self, hid: str, upload_id: str, ctype: str, data: bytes, forced_type: str | None) -> None:
+        """Runs after the upload's response, so a long scan doesn't hold the member's browser. If reading fails,
+        the upload says so and offers to read it again, instead of staying at "Reading…"."""
+        try:
+            self.scrub_and_queue(hid, upload_id, ctype, data, forced_type)
+        except Exception as e:  # noqa: BLE001 - any failure is reported on the upload
+            log.warning("upload %s couldn't be read: %s", upload_id, type(e).__name__)
+            HouseholdStore(self.db, hid).put(EXTRACTION, {
+                "id": upload_id, "status": "failed", "doc_type": "other", "type_confidence": 0.0, "fields": {},
+                "lines": [], "how_read": "", "pages": 0, "extracted_at": _now(), "extractor": "none",
+                "warnings": ["This file couldn't be read. Choose its type and read it again."]})
+
+    def store_blanked(self, hid: str, upload_id: str, ctype: str, data: bytes, words, found) -> None:
+        """Page images with every identifier word painted over, sealed like the original (TC-PRV-04-1)."""
+        pages, _ = blank_pages(page_images(data, ctype), list(words), identifier_words(found))
+        keys = []
+        for n, page in enumerate(pages, start=1):
+            buf = io.BytesIO()
+            page.save(buf, "PNG")
+            key = f"households/{hid}/scrubbed/{upload_id}-p{n}"
+            self.objects.put(key, self.keyring.encrypt(hid, buf.getvalue(), f"scrubbed:{upload_id}:{n}"))
+            keys.append(key)
+        store = HouseholdStore(self.db, hid)
+        rec = store.get(ORIGINAL, upload_id)
+        if rec is not None:
+            rec["scrubbed_keys"] = keys
+            store.put(ORIGINAL, rec)
+
+    def scrub_and_queue(self, hid: str, upload_id: str, ctype: str, data: bytes, forced_type: str | None) -> None:
+        """Read the text here, swap identifiers for vault tokens, and hand only that to the worker (PRV-01)."""
+        doc = read_text(ctype, data, self.ocr)
+        store = HouseholdStore(self.db, hid)
+        names = [n for m in store.all("member") for n in [m["name"], *m.get("aliases", [])]]
+        keep = [p["name"] for p in store.all("provider")] + [p.get("insurer", "") for p in store.all("plan")]
+        scrubbed = self.scrubber(lambda kind, value: self.vault.tokenize(hid, kind, value), names, keep).scrub(doc.text)
+        if doc.words:  # a photo or scan: keep a copy with the identifiers blanked out (PRV-04)
+            self.store_blanked(hid, upload_id, ctype, data, doc.words, scrubbed.found)
+        kind = "extract_ai" if self.ai_extraction(hid) else "extract"
+        self.queue.enqueue(hid, kind, {"upload_id": upload_id, "text": scrubbed.text, "pages": doc.pages,
+                                       "how_read": doc.how, "text_confidence": doc.confidence,
+                                       "forced_type": forced_type})
 
 
 class UploadRefused(Exception):
@@ -104,15 +177,6 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
     def page(request: Request, name: str, status: int = 200, **ctx) -> HTMLResponse:
         return templates.TemplateResponse(request, name, ctx, status_code=status)
 
-    def original_name(hid: str, rec: dict) -> str:
-        return it.keyring.decrypt(hid, bytes.fromhex(rec["filename_sealed"]), f"filename:{rec['id']}").decode()
-
-    def original_bytes(hid: str, rec: dict) -> bytes:
-        data = it.keyring.decrypt(hid, it.objects.get(rec["object_key"]), f"original:{rec['id']}")
-        if hashlib.sha256(data).hexdigest() != rec["sha256"]:
-            raise HTTPException(500)
-        return data
-
     def status_of(rec: dict, extraction: dict | None) -> str:
         if extraction:
             return extraction.get("status", "review")
@@ -120,7 +184,7 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
 
     def view(hid: str, rec: dict, extraction: dict | None) -> dict:
         out = {k: rec.get(k) for k in ("id", "content_type", "size", "sha256", "uploaded_at", "doc_kind")}
-        out["filename"] = original_name(hid, rec)
+        out["filename"] = it.original_name(hid, rec)
         out["status"] = status_of(rec, extraction)
         if extraction:
             out["doc_type"] = extraction.get("doc_type")
@@ -143,63 +207,7 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
     def uploads_page(request: Request, session: Session, status: int = 200, **ctx) -> HTMLResponse:
         return page(request, "uploads.html", status, household=it.household_name(session.household_id),
                     originals=uploads_list(session), kinds=UPLOAD_KINDS, types=TYPES,
-                    ai=it.ai_extraction(session.household_id), **ctx)
-
-    def store_original(session: Session, filename: str, ctype: str, data: bytes, doc_kind: str) -> str:
-        hid = session.household_id
-        upload_id = "upl_" + secrets.token_hex(12)
-        object_key = f"households/{hid}/originals/{upload_id}"
-        it.objects.put(object_key, it.keyring.encrypt(hid, data, f"original:{upload_id}"))
-        HouseholdStore(it.db, hid).put(ORIGINAL, {
-            "id": upload_id, "content_type": ctype, "size": len(data),
-            "sha256": hashlib.sha256(data).hexdigest(),  # ING-10: originals are hashed and never modified
-            "object_key": object_key, "doc_kind": doc_kind,
-            "filename_sealed": it.keyring.encrypt(hid, filename.encode(), f"filename:{upload_id}").hex(),
-            "uploaded_at": _now(), "uploaded_by": session.member_id,
-        })
-        return upload_id
-
-    def read_in_background(hid: str, upload_id: str, ctype: str, data: bytes, forced_type: str | None) -> None:
-        """Runs after the upload's response, so a long scan doesn't hold the member's browser. If reading fails,
-        the upload says so and offers to read it again, instead of staying at "Reading…"."""
-        try:
-            scrub_and_queue(hid, upload_id, ctype, data, forced_type)
-        except Exception as e:  # noqa: BLE001 - any failure is reported on the upload
-            log.warning("upload %s couldn't be read: %s", upload_id, type(e).__name__)
-            HouseholdStore(it.db, hid).put(EXTRACTION, {
-                "id": upload_id, "status": "failed", "doc_type": "other", "type_confidence": 0.0, "fields": {},
-                "lines": [], "how_read": "", "pages": 0, "extracted_at": _now(), "extractor": "none",
-                "warnings": ["This file couldn't be read. Choose its type and read it again."]})
-
-    def store_blanked(hid: str, upload_id: str, ctype: str, data: bytes, words, found) -> None:
-        """Page images with every identifier word painted over, sealed like the original (TC-PRV-04-1)."""
-        pages, _ = blank_pages(page_images(data, ctype), list(words), identifier_words(found))
-        keys = []
-        for n, page in enumerate(pages, start=1):
-            buf = io.BytesIO()
-            page.save(buf, "PNG")
-            key = f"households/{hid}/scrubbed/{upload_id}-p{n}"
-            it.objects.put(key, it.keyring.encrypt(hid, buf.getvalue(), f"scrubbed:{upload_id}:{n}"))
-            keys.append(key)
-        store = HouseholdStore(it.db, hid)
-        rec = store.get(ORIGINAL, upload_id)
-        if rec is not None:
-            rec["scrubbed_keys"] = keys
-            store.put(ORIGINAL, rec)
-
-    def scrub_and_queue(hid: str, upload_id: str, ctype: str, data: bytes, forced_type: str | None) -> None:
-        """Read the text here, swap identifiers for vault tokens, and hand only that to the worker (PRV-01)."""
-        doc = read_text(ctype, data, it.ocr)
-        store = HouseholdStore(it.db, hid)
-        names = [n for m in store.all("member") for n in [m["name"], *m.get("aliases", [])]]
-        keep = [p["name"] for p in store.all("provider")] + [p.get("insurer", "") for p in store.all("plan")]
-        scrubbed = it.scrubber(lambda kind, value: it.vault.tokenize(hid, kind, value), names, keep).scrub(doc.text)
-        if doc.words:  # a photo or scan: keep a copy with the identifiers blanked out (PRV-04)
-            store_blanked(hid, upload_id, ctype, data, doc.words, scrubbed.found)
-        kind = "extract_ai" if it.ai_extraction(hid) else "extract"
-        it.queue.enqueue(hid, kind, {"upload_id": upload_id, "text": scrubbed.text, "pages": doc.pages,
-                                          "how_read": doc.how, "text_confidence": doc.confidence,
-                                          "forced_type": forced_type})
+                    ai=it.ai_extraction(session.household_id), inbound=address_for(it.db, session.household_id), **ctx)
 
     # --- upload ---
 
@@ -226,11 +234,9 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
             if not data:
                 raise UploadRefused(f"{filename} is empty.")
             ctype = content_type(filename, file.content_type or "")
-            digest = hashlib.sha256(data).hexdigest()
-            for rec in HouseholdStore(it.db, session.household_id).all(ORIGINAL):
-                if rec["sha256"] == digest:  # TC-ING-07-1
-                    raise UploadRefused(f"{filename} was already uploaded on {rec['uploaded_at'][:10]} as "
-                                        f"{original_name(session.household_id, rec)}; it wasn't added again.", 409)
+            if rec := it.duplicate_of(session.household_id, data):  # TC-ING-07-1
+                raise UploadRefused(f"{filename} was already uploaded on {rec['uploaded_at'][:10]} as "
+                                    f"{it.original_name(session.household_id, rec)}; it wasn't added again.", 409)
             if ctype in EXPORT_TYPES or kind in ("hsa_export", "claims_export"):
                 return export_upload(request, session, filename, ctype, data, kind)
             if ctype != PDF and ctype not in IMAGES:
@@ -244,9 +250,9 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
             return uploads_page(request, session, e.status, error=e.message)
         except Unreadable as e:
             return uploads_page(request, session, 400, error=f"{filename}: {e}")
-        upload_id = store_original(session, filename, ctype, data, kind)
+        upload_id = it.store_original(session.household_id, session.member_id, filename, ctype, data, kind)
         return RedirectResponse(f"/uploads?uploaded={upload_id}", status_code=303, background=BackgroundTask(
-            read_in_background, session.household_id, upload_id, ctype, data, kind if kind in TYPES else None))
+            it.read_in_background, session.household_id, upload_id, ctype, data, kind if kind in TYPES else None))
 
     def export_upload(request: Request, session: Session, filename: str, ctype: str, data: bytes, kind: str):
         store = HouseholdStore(it.db, session.household_id)
@@ -263,15 +269,15 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
             doc_kind = "hsa_export"
         if errors:
             raise UploadRefused(f"{filename}: " + " ".join(errors))
-        store_original(session, filename, ctype, data, doc_kind)
+        it.store_original(session.household_id, session.member_id, filename, ctype, data, doc_kind)
         return it.preview_import(request, store, ingest, filename, None, notes)
 
     @app.get("/uploads/{upload_id}")
     def download(request: Request, upload_id: str):
         session = it.member(request)
         rec = get_original(session, upload_id)
-        data = original_bytes(session.household_id, rec)
-        name = re.sub(r"[^A-Za-z0-9._ -]", "_", original_name(session.household_id, rec))
+        data = it.original_bytes(session.household_id, rec)
+        name = re.sub(r"[^A-Za-z0-9._ -]", "_", it.original_name(session.household_id, rec))
         return Response(data, media_type=rec["content_type"],
                         headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
@@ -283,7 +289,7 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
         rec = get_original(session, upload_id)
         if rec["content_type"] not in IMAGES and rec["content_type"] != PDF:
             raise HTTPException(404)
-        data = original_bytes(session.household_id, rec)
+        data = it.original_bytes(session.household_id, rec)
         try:
             image = page_images(data, rec["content_type"])[0]
         except Exception:  # noqa: BLE001 - a file that can't be pictured just has no preview
@@ -374,8 +380,8 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
                 raise HTTPException(400, "This document is already confirmed")
             store.delete(EXTRACTION, upload_id)
         return RedirectResponse(f"/uploads?reading={upload_id}", status_code=303, background=BackgroundTask(
-            read_in_background, session.household_id, upload_id, rec["content_type"],
-            original_bytes(session.household_id, rec), doc_type))
+            it.read_in_background, session.household_id, upload_id, rec["content_type"],
+            it.original_bytes(session.household_id, rec), doc_type))
 
     @app.post("/uploads/{upload_id}/file")
     async def file_as_copy(request: Request, upload_id: str):
@@ -411,11 +417,11 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
             return RedirectResponse("/uploads", status_code=303)
         try:
             data, created, document_id, visit_ids = build_records(store, form, ext, rec, upload_id,
-                                                                  original_name(hid, rec))
+                                                                  it.original_name(hid, rec))
         except ValueError as e:
             ctx = review_context(session, rec, ext)
             return page(request, "review.html", 400, error=str(e), **ctx)
-        files = UploadedSource({original_name(hid, rec): original_bytes(hid, rec)})
+        files = UploadedSource({it.original_name(hid, rec): it.original_bytes(hid, rec)})
         plan = importer.prepare(data, store, f"upload {upload_id}", files)
         if not plan.ok:
             return page(request, "review.html", 400, error="; ".join(plan.errors), **review_context(session, rec, ext))
