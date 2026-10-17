@@ -48,7 +48,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 038 | Export and delete: a re-importable ZIP; deleting the last member deletes the household at once, a security log line stays a year | 2026-10-16 | Accepted |
 | 039 | Forwarded email: a private address per household, members' own addresses only, attachments and statement bodies become uploads | 2026-10-17 | Accepted |
 | 040 | Access log: member views and changes logged per household, readable by members, append-only for the app | 2026-10-17 | Accepted |
-| 041 | Web experience: home order, amount at issue, a household view kept in a cookie, phone layout with a bottom bar and 44px targets, browser layout tests | 2026-10-17 | Proposed |
+| 041 | Web experience: home order, amount at issue, a household view kept in a cookie, phone layout with a bottom bar and 44px targets, browser layout tests | 2026-10-17 | Accepted |
 
 ## Records
 
@@ -275,8 +275,8 @@ PRV-10 (P2, built early because it needs no account): who looked at or changed w
 
 **Consequences.** Record ids name providers and dates, so the log goes with the household when it is deleted (ADR-038); the security log keeps the deletion itself. List pages (visits, providers) aren't logged entry by entry; the visit detail is.
 
-### ADR-041 · Web experience, first build (Proposed)
-Implementation choices for phase 1.5 (UX-01, UX-02, UX-06, UX-10), inside ADR-019 and ADR-023. Proposed by the build session on 2026-10-17. Nothing here is hard to undo; it is recorded because it settles how two test cases are read and adds a cookie and a test dependency.
+### ADR-041 · Web experience, first build (Accepted)
+Implementation choices for phase 1.5 (UX-01, UX-02, UX-06, UX-10), inside ADR-019 and ADR-023. Proposed by the build session on 2026-10-17 and accepted by the owner as written on 2026-10-17. Nothing here is hard to undo; it is recorded because it settles how two test cases are read and adds a cookie and a test dependency.
 
 **Decision.**
 - **Home order (ADR-023).** The summary first: the four tiles and a row of the nine statuses with their counts. Then "Needs your attention", ranked by the dollars on the visit (at stake plus still owed), then oldest first, with the rule printed under it and each item's reason in a plain sentence (the open finding, else the status's help). Then the year's visits as cards, newest first, the first twelve with a link to all of them. HSA, plan limits and where the billed dollars went follow as "The year in detail".
