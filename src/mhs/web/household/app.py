@@ -35,7 +35,7 @@ from mhs.web.household.auth import AccountError, Accounts, Session
 from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.intake import Intake, add_intake
 from mhs.web.household.qr import qr_svg
-from mhs.web.pages import WEB, add_pages, make_templates
+from mhs.web.pages import VIEW_COOKIE, WEB, add_pages, make_templates
 
 HERE = Path(__file__).parent
 COOKIE = "mhs_session"
@@ -58,8 +58,9 @@ class HouseholdHost:
 
     path_import = False
 
-    def __init__(self, app_state, db: Database, keyring: Keyring, objects: ObjectStore):
+    def __init__(self, app_state, db: Database, keyring: Keyring, objects: ObjectStore, cookie_secure: bool):
         self.state, self.db, self.keyring, self.objects = app_state, db, keyring, objects
+        self.cookie_secure = cookie_secure
 
     def session(self, request: Request) -> Session:
         return self.state.member(request)
@@ -219,6 +220,7 @@ def create_app(
         accounts.end_session(request.cookies.get(COOKIE))
         response = RedirectResponse("/signin/mfa", status_code=303)
         set_cookie(response, accounts.start_session(found))
+        response.delete_cookie(VIEW_COOKIE, path="/")  # a new sign-in starts on the family view
         return response
 
     @app.get("/signin/mfa", response_class=HTMLResponse)
@@ -354,6 +356,7 @@ def create_app(
         request.state.session = None
         response = page(request, "deleted.html", household_deleted=last, reference=reference)
         response.delete_cookie(COOKIE, path="/")
+        response.delete_cookie(VIEW_COOKIE, path="/")
         return response
 
     @app.post("/signout")
@@ -364,6 +367,7 @@ def create_app(
             accounts.end_session(request.cookies.get(COOKIE))
         response = RedirectResponse("/signin", status_code=303)
         response.delete_cookie(COOKIE, path="/")
+        response.delete_cookie(VIEW_COOKIE, path="/")  # the household view's member (ADR-041)
         return response
 
     @app.get("/api/visits")
@@ -400,7 +404,7 @@ def create_app(
 
     # --- the Release 0 pages, for the signed-in household ---
 
-    preview_import = add_pages(app, templates, HouseholdHost(app.state, db, keyring, objects))
+    preview_import = add_pages(app, templates, HouseholdHost(app.state, db, keyring, objects, config.cookie_secure))
     add_intake(app, templates, Intake(db, keyring, objects, vault, queue, member, check_csrf, accounts.household_name,
                                       preview_import, get_engine(config.ocr_engine),
                                       scrubber_class(config.scrubber), accounts.ai_extraction))

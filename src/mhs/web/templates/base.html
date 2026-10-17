@@ -17,6 +17,7 @@
     <nav class="nav">
       <a href="/" class="{{ 'active' if path == '/' }}">Home</a>
       <a href="/visits" class="{{ 'active' if path.startswith('/visits') }}">Visits</a>
+      <a href="/household" class="{{ 'active' if path.startswith('/household') }}">Household</a>
       <a href="/providers" class="{{ 'active' if path.startswith('/providers') }}">Providers</a>
       <a href="/import" class="{{ 'active' if path.startswith('/import') }}">Import</a>
       {% if session %}<a href="/uploads" class="{{ 'active' if path.startswith('/uploads') }}">Uploads</a>{% endif %}
@@ -30,8 +31,8 @@
       </a>
       {% if session %}
       <a class="small member-name" href="/account">{{ session.display_name }}</a>
-      <a class="small" href="/data">Your data</a>
-      <form method="post" action="/signout">{{ csrf_input() }}<button class="btn small" type="submit">Sign out</button></form>
+      <a class="small wide-only" href="/data">Your data</a>
+      <form method="post" action="/signout" class="wide-only">{{ csrf_input() }}<button class="btn small" type="submit">Sign out</button></form>
       {% endif %}
     </div>
     {% endif %}
@@ -40,5 +41,16 @@
 <main>
 {% block content %}{% endblock %}
 </main>
+{% if show_nav %}
+{# Phones (UX-10, ADR-041): the pages within thumb reach; Add opens the camera-ready upload page. #}
+{% set add_url = '/uploads' if session else '/import' %}
+<nav class="tabbar" aria-label="Pages">
+  <a href="/" class="{{ 'active' if path == '/' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Home</a>
+  <a href="/visits" class="{{ 'active' if path.startswith('/visits') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>Visits</a>
+  <a href="{{ add_url }}" class="add {{ 'active' if path.startswith(add_url) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Add</a>
+  <a href="/household" class="{{ 'active' if path.startswith('/household') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M15 15.5c.6-.3 1.3-.5 2-.5 2.2 0 4 1.8 4 4"/></svg>Household</a>
+  <a href="/providers" class="{{ 'active' if path.startswith('/providers') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13"/><path d="M10 21v-5h4v5M12 8v4M10 10h4"/></svg>Providers</a>
+</nav>
+{% endif %}
 </body>
 </html>

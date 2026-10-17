@@ -21,9 +21,10 @@ from jinja2 import pass_context
 from markupsafe import Markup, escape
 
 from mhs.core import edits
-from mhs.core.lines import BUCKETS
-from mhs.core.reconcile import (ATTENTION, CHECK_NAMES, FINDING_KINDS, STATUS_HELP, STATUS_LABELS, STATUS_ORDER, Report,
-                                available_years, build_report)
+from mhs.core.household import NOBODY, household_totals, visits_for
+from mhs.core.lines import BUCKETS, LineMatch
+from mhs.core.reconcile import (ATTENTION, CHECK_NAMES, DOCUMENT_LABELS, FINDING_KINDS, STATUS_HELP, STATUS_LABELS,
+                                STATUS_ORDER, Report, VisitResult, available_years, build_report)
 from mhs.data import importer
 from mhs.data.importer import BOOKKEEPING, DocumentFiles, FileSource, UploadedSource
 from mhs.data.money import cents, to_dollars
@@ -47,6 +48,9 @@ HSA_FILTERS = {
     "outside_hsa": ("outside_hsa", "Paid outside the HSA"),
     "unexplained": ("unexplained", "Settled by provider, no matching payment"),
 }
+VIEW_COOKIE = "mhs_view"  # the household view's member (UX-06, ADR-041); absent for the family
+HOME_CARDS = 12
+HOME_ATTENTION = 8
 
 
 # Plain-language help for the checks (UX-05; the statuses' help is STATUS_HELP in core). The Help page lists whatever
@@ -75,6 +79,7 @@ class PagesHost(Protocol):
     """What the pages need from the app that mounts them."""
 
     path_import: bool  # offer import by a path on this computer (Release 0 only)
+    cookie_secure: bool  # the household view's cookie is Secure where the sign-in cookie is
 
     def store(self, request: Request) -> Store:
         """The request's record store. Raises to turn away a visitor who isn't signed in."""
@@ -167,6 +172,79 @@ def lines_of(text: str) -> list[str]:
     return [line.strip() for line in (text or "").splitlines() if line.strip()]
 
 
+def attention_queue(visits: list[VisitResult]) -> list[VisitResult]:
+    """UX-04: visits that need the member, the most dollars first (at stake plus still owed), then the oldest."""
+    return sorted((v for v in visits if v.status in ATTENTION),
+                  key=lambda v: (-(v.at_stake + v.remaining), v.visit["date"], v.id))
+
+
+def line_rows(match: LineMatch | None) -> list[dict]:
+    """TC-UX-02-2: each bill line beside its EOB line, with the difference where they disagree. "asked" is what the
+    statement asks you to pay for the line and "owed" what the EOB says you owe for it, when both print it."""
+    if not match:
+        return []
+
+    def total(lines: list[dict], key: str) -> int | None:
+        values = [l.get(key) for l in lines]
+        return sum(values) if values and all(isinstance(x, int) for x in values) else None
+
+    rows = []
+    for p in match.pairs:
+        asked, owed = total(p.bill, "patient_amount"), total(p.eob, "patient_responsibility")
+        charge_diff = p.charge - p.billed
+        you_diff = asked - owed if asked is not None and owed is not None else 0
+        rows.append({"bill": p.bill, "eob": p.eob, "charge": p.charge, "billed": p.billed, "asked": asked,
+                     "owed": owed, "charge_diff": charge_diff, "you_diff": you_diff, "notes": p.notes,
+                     "disagree": bool(charge_diff or you_diff)})
+    for b in match.bill_only:
+        rows.append({"bill": [b], "eob": [], "charge": b.get("charge"), "billed": None,
+                     "asked": b.get("patient_amount"), "owed": None, "charge_diff": b.get("charge") or 0,
+                     "you_diff": 0, "notes": ["Only on the bill"], "disagree": True})
+    for e in match.eob_only:
+        rows.append({"bill": [], "eob": [e], "charge": None, "billed": e.get("billed"), "asked": None,
+                     "owed": e.get("patient_responsibility"), "charge_diff": -(e.get("billed") or 0),
+                     "you_diff": 0, "notes": ["Only on the EOB"], "disagree": True})
+    return rows
+
+
+def case_history(v: VisitResult, notes: list[dict], accounts: dict[str, dict]) -> list[dict]:
+    """UX-02: one timeline of the visit, newest first, from what its records already hold."""
+    events: list[tuple[str, str, str]] = [(v.visit["date"], "Visit", v.visit.get("description") or "")]
+    for e in v.claims:
+        if e.get("received_date"):
+            events.append((e["received_date"], "The insurer received the claim", e.get("claim_number") or ""))
+        events.append((e["date"], "Insurance decision (EOB)",
+                       f"Claim {e.get('claim_number') or 'without a number'}: you owe "
+                       f"{money_text(e.get('patient_responsibility'))} of {money_text(e.get('billed'))} billed"))
+    for bill, line in reversed(v.bill_lines):
+        balance = f", balance {money_text(line['balance'])}" if line.get("balance") is not None else ""
+        events.append((bill["date"], "Provider statement", f"Asks {money_text(line.get('patient_amount'))}{balance}"))
+    for r in v.receipts:
+        events.append((r["date"], "Receipt", money_text(r.get("total"))))
+    for a in v.allocations:
+        account = accounts.get(a.payment.get("account_id"), {}).get("name", a.payment.get("account_id") or "")
+        what = "Refund" if a.refund else "Payment applied"
+        events.append((a.payment["date"], what, f"{money_text(a.amount)}{' from ' + account if account else ''}"
+                                                f"{' (more than owed)' if a.surplus else ''}"))
+    for kind, choice in (v.visit.get("documents") or {}).items():
+        state = {"expected": "you expect one", "not_applicable": "not needed"}.get(choice.get("state"), "")
+        events.append((choice.get("since") or "", f"{DOCUMENT_LABELS.get(kind, kind)}: {state}", "Set by you"))
+    dispute = v.dispute or {}
+    if dispute.get("opened"):
+        events.append((dispute["opened"], "You opened a dispute", dispute.get("note") or ""))
+    if dispute.get("closed"):
+        events.append((dispute["closed"], "Dispute closed", (dispute.get("outcome") or "").capitalize()))
+    for f in v.visit.get("closed_findings") or []:
+        events.append((f["closed"], f"Finding closed: {CHECK_NAMES.get(f['code'], f['code'])}",
+                       f"{money_text(f['amount'])}, {f.get('how', '')}"))
+    for n in notes:
+        if n.get("visit_id") == v.id:
+            how = " · ".join(humanize(n[k]) for k in ("channel", "direction") if n.get(k))
+            events.append((n["date"], f"Note{' (' + how + ')' if how else ''}", n["text"]))
+    order = sorted(range(len(events)), key=lambda i: (events[i][0], i), reverse=True)
+    return [{"date": events[i][0], "what": events[i][1], "detail": events[i][2]} for i in order]
+
+
 @pass_context
 def csrf_input(ctx) -> Markup:
     """The hidden CSRF field for a post form; empty where the host has no CSRF token (Release 0)."""
@@ -240,18 +318,65 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
     async def form_error(request: Request, exc: FormError):
         return settings_page(request, host.store(request), error=str(exc), status_code=400)
 
+    def view_of(request: Request, store: Store) -> dict | None:
+        """The household member the pages show (UX-06), or None for the whole family."""
+        member_id = request.cookies.get(VIEW_COOKIE) or ""
+        return store.get("member", member_id) if member_id else None
+
+    @app.post("/view")
+    async def set_view(request: Request):
+        """The household view's switch (UX-06): a member, or the family. Kept for the browser session."""
+        store, form = await posted(request)
+        member_id = form.get("member") or ""
+        response = RedirectResponse(safe_next(form.get("next"), "/"), status_code=303)
+        if member_id and store.get("member", member_id):
+            response.set_cookie(VIEW_COOKIE, member_id, httponly=True, samesite="lax",
+                                secure=host.cookie_secure, path="/")
+        else:
+            response.delete_cookie(VIEW_COOKIE, path="/")
+        return response
+
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request, year: int | None = None):
-        report = report_for(host.store(request), year)
-        attention = sorted((v for v in report.visits if v.status in ATTENTION),
-                           key=lambda v: -(v.at_stake + v.remaining))
-        return render(request, "home.html", report=report, attention=attention[:8], totals=report.totals)
+        """ADR-023 and ADR-041: the summary, then the attention queue, then the year's visits as cards."""
+        store = host.store(request)
+        report = report_for(store, year)
+        view = view_of(request, store)
+        visits = visits_for(report.visits, view and view["id"])
+        if view:
+            mine = household_totals(visits, [view], ATTENTION)[1]
+            totals = {**report.totals, "billed": mine.billed, "insurer_paid": mine.insurer_paid, "you_paid": mine.paid,
+                      "at_stake": mine.at_issue}
+            status_counts = mine.status_counts
+            limits = [l for l in report.limits if l.member_id in (None, view["id"])]
+        else:
+            totals, status_counts, limits = report.totals, report.status_counts, report.limits
+        attention = attention_queue(visits)
+        cards = sorted(visits, key=lambda v: (v.visit["date"], v.id), reverse=True)
+        return render(request, "home.html", report=report, totals=totals, status_counts=status_counts, limits=limits,
+                      visits=visits, attention=attention[:HOME_ATTENTION], attention_more=len(attention) - HOME_ATTENTION,
+                      cards=cards[:HOME_CARDS], view=view, members=store.all("member"))
+
+    @app.get("/household", response_class=HTMLResponse)
+    def household(request: Request, year: int | None = None):
+        """UX-06: each member's totals for the plan year and the family's."""
+        store = host.store(request)
+        report = report_for(store, year)
+        members = store.all("member")
+        people, family = household_totals(report.visits, members, ATTENTION)
+        limits = {p.member_id: [l for l in report.limits if l.member_id == p.member_id] for p in people}
+        return render(request, "household.html", report=report, people=people, family=family, limits=limits,
+                      family_limits=[l for l in report.limits if l.member_id is None], members=members,
+                      view=view_of(request, store), NOBODY=NOBODY)
 
     @app.get("/visits", response_class=HTMLResponse)
-    def visits(request: Request, year: int | None = None, status: str = "", member: str = "",
+    def visits(request: Request, year: int | None = None, status: str = "", member: str | None = None,
                provider: str = "", category: str = "", flagged: str = "", hsa: str = ""):
         store = host.store(request)
         report = report_for(store, year)
+        if member is None:  # no filter chosen: the household view's member, if any (UX-06)
+            view = view_of(request, store)
+            member = view["id"] if view else ""
         rows = report.visits
         if hsa in HSA_FILTERS:  # matches the home page's HSA totals, so carry-in visits are included
             rows = [v for v in report.ledger_visits if getattr(v, HSA_FILTERS[hsa][0])]
@@ -259,7 +384,10 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
             rows = [v for v in rows if v.status == status]
         if flagged:
             rows = [v for v in rows if v.status in ATTENTION or v.hsa_flags]
-        if member:
+        if member == "none":  # the Household page's "not assigned" row: no member, or one no longer in Settings
+            known = {m["id"] for m in store.all("member")}
+            rows = [v for v in rows if v.visit.get("member_id") not in known]
+        elif member:
             rows = [v for v in rows if v.visit.get("member_id") == member]
         if provider:
             rows = [v for v in rows if v.group_id == provider]
@@ -279,11 +407,12 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         report = report_for(store, int(visit["date"][:4]))
         vr = report.visit(visit_id)
         group = report.group(vr.group_id)
+        notes = notes_for(store, (p["id"] for p in group.providers))
+        accounts = {a["id"]: a for a in store.all("account")}
         return render(request, "visit.html", status_code=status_code, report=report, v=vr, group=group, error=error,
-                      notes=notes_for(store, (p["id"] for p in group.providers)),
-                      plan=store.get("plan", visit.get("plan_id", "")),
-                      accounts={a["id"]: a for a in store.all("account")},
-                      others=[o for o in group.visits if o.id != visit_id])
+                      notes=notes, plan=store.get("plan", visit.get("plan_id", "")), accounts=accounts,
+                      others=[o for o in group.visits if o.id != visit_id], lines=line_rows(vr.line_match),
+                      history=case_history(vr, notes, accounts))
 
     @app.get("/visits/{visit_id}", response_class=HTMLResponse)
     def visit_detail(request: Request, visit_id: str):

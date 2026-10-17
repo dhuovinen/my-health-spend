@@ -234,7 +234,7 @@ def test_demo_story(make_household, app_db, worker_db):
     assert "Missed adjustment" in riverbend and "doesn&#39;t apply the plan&#39;s $180.00 discount" in riverbend
     # REC-03: the HSA payment covered the $480.00 bill, so $180.00 of it is an overpayment shown on the visit.
     assert "You paid $180.00 more than you owe for this visit" in riverbend and "HSA" in riverbend
-    assert "Bill lines and EOB lines" in riverbend and "2 of 2 bill lines paired with the EOB" in riverbend
+    assert "Line by line" in riverbend and "2 of 2 bill lines paired with the EOB" in riverbend
     lakeside = m.client.get("/visits/v-2026-09-22-lakeside-imaging").text
     assert "Balance outstanding" in lakeside and "$800.00 unpaid per insurer" in lakeside
     home = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m.client.get("/?year=2026").text))

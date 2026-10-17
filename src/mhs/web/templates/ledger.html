@@ -2,7 +2,7 @@
 {% from "_macros.html" import badge, year_select, note_fields, note_meta %}
 {% block title %}{{ g.name }} ledger{% endblock %}
 {% block content %}
-<p class="small"><a href="/providers?year={{ report.year }}">← Providers</a></p>
+<p class="small"><a class="back" href="/providers?year={{ report.year }}">← Providers</a></p>
 <div class="page-head"><h1>{{ g.name }}</h1>{{ year_select(report, "/providers/" ~ g.id) }}</div>
 
 <div class="grid tiles">

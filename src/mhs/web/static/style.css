@@ -207,3 +207,141 @@ form.stack .btn { align-self: flex-start; }
 .help-toc { line-height: 2; }
 .status-list li .small { display: block; color: var(--muted); }
 .topbar .icons { gap: .7rem; }
+
+/* Phase 1.5 web experience (UX-01, UX-02, UX-06, UX-10; ADR-041) */
+[id] { scroll-margin-top: 72px; }  /* jump links land below the sticky header */
+.tabbar { display: none; }
+.status-strip { list-style: none; padding: 0; margin: 0 0 1rem; display: flex; flex-wrap: wrap; gap: .4rem; }
+.status-strip a { display: inline-flex; align-items: center; gap: .45rem; padding: .25rem .5rem .25rem .3rem; border: 1px solid var(--border);
+  border-radius: 999px; background: var(--surface); color: var(--text); }
+.status-strip a:hover { text-decoration: none; border-color: var(--accent); }
+.status-strip li.zero { opacity: .55; }
+.status-strip.compact { margin: .25rem 0 .75rem; }
+.view-note { margin: 0 0 .75rem; }
+.flush-head { margin-bottom: .6rem; align-items: baseline; }
+.year-detail { margin-top: 2rem; }
+.actions.center { justify-content: center; }
+.rule { margin: -.25rem 0 .25rem; }
+/* attention queue */
+.queue { list-style: none; padding: 0; margin: 0; }
+.queue li { border-bottom: 1px solid var(--border); }
+.queue li:last-child { border-bottom: 0; }
+.queue a { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .15rem 1rem; padding: .7rem 0; color: var(--text); }
+.queue a:hover { text-decoration: none; }
+.queue a:hover .provider { color: var(--accent); }
+.queue .q-head { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; font-weight: 600; }
+.queue .q-meta, .queue .q-why { grid-column: 1; }
+.queue .q-amount { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+/* visit cards: the left edge says the status group, the badge says the status */
+.visit-card { border-left-width: 4px; }
+.s-edge-in_dispute { border-left-color: var(--info); }
+.s-edge-discrepancy { border-left-color: var(--bad); }
+.s-edge-needs_review, .s-edge-balance_outstanding { border-left-color: var(--warn); }
+.s-edge-resolved, .s-edge-complete { border-left-color: var(--good); }
+.visit-card .money { flex-wrap: wrap; }
+.visit-card .money div .none { display: inline; font-size: inherit; color: var(--muted); }
+.visit-card .reason { margin: .5rem 0 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.visit-card .docs { display: flex; flex-wrap: wrap; gap: .1rem .7rem; }
+.visit-card .doc-count { font-weight: 600; }
+/* visit detail */
+.jump { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 1rem; }
+.jump a { display: inline-flex; align-items: center; padding: .25rem .75rem; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); font-size: .85rem; }
+.line-compare tr.disagree td { background: var(--bad-soft); }
+.line-compare td.diff { font-weight: 600; }
+.timeline { list-style: none; padding: 0; margin: 0; }
+.timeline li { display: grid; grid-template-columns: 7rem 1fr; gap: .1rem .75rem; padding: .45rem 0; border-bottom: 1px solid var(--border); }
+.timeline li:last-child { border-bottom: 0; }
+.timeline .when { grid-row: 1 / span 2; }
+.timeline .detail { grid-column: 2; }
+/* household */
+.people tfoot td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: 0; }
+.people tr.viewing td { background: var(--accent-soft); }
+.view-switch { margin: 0; }
+
+@media (max-width: 860px) {
+  /* Phones and small tablets (UX-10): pages in a bottom bar within thumb reach, every control at least 44px tall. */
+  .topbar .nav, .wide-only { display: none; }
+  .tabbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface);
+    border-top: 1px solid var(--border); padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .tabbar a { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    min-height: 56px; font-size: .72rem; font-weight: 500; color: var(--muted); }
+  .tabbar a.active { color: var(--accent); }
+  .tabbar a:hover { text-decoration: none; }
+  .tabbar svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .tabbar a.add { color: var(--accent); font-weight: 700; }
+  .tabbar a.add svg { width: 30px; height: 30px; }
+  main { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .btn, select, input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, .jump a, .status-strip a,
+  .topbar .member-name, .check-label, .brand { min-height: 44px; }
+  .icon-btn { width: 44px; height: 44px; }
+  .topbar .member-name { display: inline-flex; align-items: center; }
+  .topbar .icons { align-items: center; }
+  .btn.small { padding: .45rem .8rem; font-size: .9rem; }
+  summary { min-height: 44px; padding: .55rem 0; }
+  input[type=checkbox], input[type=radio] { width: 22px; height: 22px; }
+  /* links standing on their own (not inside a sentence) are tap targets too */
+  a.back, .page-head a, .toc a, td > a, .kv a, .person-card h2 a {
+    display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
+  input[type=file] { min-height: 44px; max-width: 100%; }
+  main .queue li > a { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .queue .q-amount { grid-column: 1; grid-row: auto; text-align: left; white-space: normal; }
+  .queue .q-why { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .topbar .inner { flex-wrap: nowrap; gap: .5rem; }
+  .topbar .icons { gap: .25rem; }
+  .status-strip li.zero { display: none; }  /* the phone shows the statuses that have visits; all nine on wider screens */
+  /* the line comparison as one block per line: the bill's side, the EOB's side, then the difference */
+  table.line-compare thead { display: none; }
+  table.line-compare, table.line-compare tbody { display: block; }
+  table.line-compare tr { display: grid; grid-template-columns: 1fr 1fr; gap: .1rem .75rem; padding: .55rem .4rem;
+    border-bottom: 1px solid var(--border); }
+  table.line-compare td { border: 0; padding: 0; text-align: left; }
+  table.line-compare td::before { content: attr(data-label); display: block; font-size: .72rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .03em; }
+  table.line-compare td:nth-child(1), table.line-compare td:nth-child(4), table.line-compare td:nth-child(7),
+  table.line-compare td:nth-child(8) { grid-column: 1 / -1; }
+  table.line-compare td:nth-child(4) { margin-top: .3rem; }
+  table.line-compare td:nth-child(7)::before { display: inline; margin-right: .5rem; }
+  table.line-compare td.empty { display: none; }
+  table.line-compare tr.disagree { background: var(--bad-soft); border-radius: 8px; }
+  table.line-compare tr.disagree td { background: transparent; }
+  /* the document checklist: the document and its state on one row, the choice below */
+  #checklist table, #checklist tbody { display: block; }
+  #checklist tr { display: grid; grid-template-columns: 1fr auto; gap: .35rem .75rem; padding: .5rem 0; border-bottom: 1px solid var(--border); }
+  #checklist td { border: 0; padding: 0; }
+  #checklist td:nth-child(3):empty { display: none; }
+  #checklist td:nth-child(3) { grid-column: 1 / -1; }
+  #checklist form.inline { flex-wrap: nowrap; }
+  .timeline li { grid-template-columns: 1fr; }
+  .timeline .when { grid-row: auto; }
+  .timeline .detail { grid-column: 1; }
+  /* household table as one card per person */
+  table.people thead { display: none; }
+  table.people, table.people tbody, table.people tfoot, table.people tr, table.people td { display: block; width: 100%; }
+  table.people tr { padding: .5rem 0; border-bottom: 1px solid var(--border); }
+  table.people td { display: flex; justify-content: space-between; gap: 1rem; border: 0; padding: .15rem 0; text-align: right; }
+  table.people td::before { content: attr(data-label); color: var(--muted); font-weight: 400; text-align: left; }
+  table.people td:first-child { font-size: 1.05rem; font-weight: 600; }
+  table.people td:first-child::before { content: none; }
+}
+@media (max-width: 480px) {
+  /* the brand is in the header and Add in the bottom bar: the hero keeps the year, the view and the flagged list */
+  .hero { padding: .9rem; gap: .5rem; border-radius: 12px; margin-bottom: 1rem; }
+  .hero > div:first-child { display: none; }
+  .hero .actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .hero .actions > * { min-width: 0; }
+  .hero .actions .btn { justify-content: center; text-align: center; }
+  .hero .actions .btn.primary { display: none; }
+  .hero .actions form, .hero .actions label, .hero select { width: 100%; }
+  .hero .actions .btn.secondary { grid-column: 1 / -1; }
+  .brand { font-size: .95rem; white-space: nowrap; }
+}
+/* the camera button on Uploads: only where there is a touch screen to take the photo with */
+.uploads form.camera { display: none; margin-bottom: 1rem; }
+.btn.big { min-height: 56px; width: 100%; justify-content: center; font-size: 1.05rem; }
+.camera-btn svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
+@media (pointer: coarse) { .uploads form.camera { display: block; } }
+@media (max-width: 860px) {
+  .uploads input[type=file] { min-height: 44px; width: 100%; }
+}
