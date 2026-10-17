@@ -42,6 +42,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 032 | Release 0 pages shared by both apps; Release 1 imports by upload only, files encrypted, edits and history per household | 2026-10-16 | Accepted |
 | 033 | Upload pipeline: exports parsed in the app tier; documents read and scrubbed in the app tier, extracted by the worker, confirmed by the member | 2026-10-16 | Accepted |
 | 034 | Ingestion engines: Tesseract OCR and Presidio in the app tier; Claude extraction per household, off by default, through a worker that only it routes out of | 2026-10-16 | Accepted with a condition |
+| 038 | Export and delete: a re-importable ZIP; deleting the last member deletes the household at once, a security log line stays a year | 2026-10-16 | Proposed |
 
 ## Records
 
@@ -201,3 +202,14 @@ Implementation choices for the rest of phase 1.3, inside ADR-028, ADR-029 and AD
 **Consequences.** The image grows from about 460 MB to 1.15 GB (Tesseract, spaCy with its model, numpy, the Anthropic SDK); `UV_NO_CACHE` keeps uv's download cache out of the layers. OCR runs in the upload request, about a quarter of a second per page; long scans make the upload slow until OCR moves to a background task in the app tier. PRV-05 date shifting for AI payloads (ADR-022, P2) is not built: AI requests carry real service dates. A production deployment needs an egress path for the AI worker (a proxy or a NAT rule for the Anthropic API only) and the API key as a secret. The extraction corpus run (PLT-02) has not measured either extractor yet.
 
 **Condition met (2026-10-16).** PRV-05 date shifting is built for AI requests: the worker shifts every date in the scrubbed text by a random per-person offset (30 to 365 days either way, kept in the household's records, never sent) just before the call, and shifts the dates in the answer back, so stored records keep real dates (TC-PRV-05-1, TC-PRV-05-2). Real household data still waits for the production project and the data-processing agreement (ADR-028).
+
+### ADR-038 · Export and delete (Proposed)
+How PRV-09 and ADR-025's deletion rule are built, ahead of the launch gate. Proposed by the build session on 2026-10-16.
+
+**Decision.**
+- **Export** is a ZIP any member can download from "Your data" after typing their password: the household's records as an ingest file with the attached files beside it (so it imports again), the uploads with what was read from them and the member's corrections, the identifiers behind the tokens (from the vault), and a manifest with counts and a SHA-256 per file.
+- **Deleting an account** needs the password, a current authenticator code and typing DELETE. If other members remain, only that member's account goes. If it is the last member, the household goes at once: the vault deletes its entries and its data key first (if the vault can't be reached nothing is deleted, so the member can try again), then the stored files, then every record and the app's household data key with the household row. Deleting the data keys makes anything left behind (a stray copy, a backup) unreadable.
+- **The security log** (`app.security_log`) records exports and deletions with the household and member ids, the event and the time, and nothing else; it has no foreign key, so the record of a deletion survives the household, and lines older than a year are removed.
+
+**Consequences.** One member can delete the household only as its last member, so a household with two adults needs both to leave. Database backups and vault backup files keep the data until they rotate out (within 35 days in production, DEPLOYMENT.md); local vault backup files are not rotated automatically.
+

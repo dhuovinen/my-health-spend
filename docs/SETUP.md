@@ -132,6 +132,10 @@ docker compose exec app mhs-admin import --household <household-id> /srv/mhs/sam
 
 Without `--yes` it only previews (counts, warnings, member edits it would keep); add `--yes` to save, and `--replace-edits` to let the file overwrite edits made in the app. For a file on your machine, copy its folder in first with `docker compose cp <folder> app:/tmp/import`. The local stack is for synthetic data only (ARCHITECTURE.md "Environments"). Settings has a "Download settings.json" link for `tools/build_ingest.py`.
 
+### Export and delete your data (PRV-09)
+
+"Your data" in the header: download everything as a ZIP (records as an ingest file with its files, uploads, identifiers, a manifest), or delete your account. Deleting the last member's account deletes the household's records, files and identifiers at once (ADR-038).
+
 ### Back up and restore the vault (PRV-07)
 
 ```bash
