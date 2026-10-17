@@ -356,6 +356,99 @@
         },
         "extensions": {
           "$ref": "#/$defs/extensions"
+        },
+        "payment_path": {
+          "enum": [
+            "insurance",
+            "self_pay"
+          ],
+          "description": "Whether the visit goes through insurance. Default: insurance for provider visits and services, none for supplements, equipment and prescriptions (REC-05, ADR-017)."
+        },
+        "dispute": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "A dispute the member opened about this visit (REC-11 In dispute).",
+          "required": [
+            "status",
+            "opened"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            },
+            "opened": {
+              "$ref": "#/$defs/date"
+            },
+            "closed": {
+              "$ref": "#/$defs/date"
+            },
+            "note": {
+              "type": "string"
+            },
+            "outcome": {
+              "type": "string"
+            }
+          }
+        },
+        "closed_findings": {
+          "type": "array",
+          "description": "Findings the member closed (dealt with, or accepted when closing a dispute).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "amount"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "amount": {
+                "$ref": "#/$defs/money"
+              },
+              "closed": {
+                "$ref": "#/$defs/date"
+              },
+              "how": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "documents": {
+          "type": "object",
+          "description": "The member's choices for the document checklist (MAT-10): a document kind marked expected or not applicable.",
+          "propertyNames": {
+            "enum": [
+              "bill",
+              "itemized_bill",
+              "eob",
+              "receipt",
+              "payment"
+            ]
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state"
+            ],
+            "properties": {
+              "state": {
+                "enum": [
+                  "expected",
+                  "not_applicable"
+                ]
+              },
+              "since": {
+                "$ref": "#/$defs/date"
+              }
+            }
+          }
         }
       }
     },
@@ -385,6 +478,9 @@
         },
         "extensions": {
           "$ref": "#/$defs/extensions"
+        },
+        "match": {
+          "$ref": "#/$defs/match"
         }
       }
     },
@@ -503,9 +599,34 @@
                     },
                     "balance": {
                       "$ref": "#/$defs/money"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "CPT/HCPCS code with any modifier, e.g. 99214-25."
+                    },
+                    "service_date": {
+                      "$ref": "#/$defs/date"
+                    },
+                    "units": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "write_off": {
+                      "$ref": "#/$defs/money"
                     }
                   }
                 }
+              },
+              "write_off": {
+                "$ref": "#/$defs/money",
+                "description": "Provider write-off after adjudication: prompt-pay discount, financial assistance, small balance (identity 3)."
+              },
+              "self_pay_discount": {
+                "$ref": "#/$defs/money",
+                "description": "Self-pay visits: the discount from the billed charge."
+              },
+              "match": {
+                "$ref": "#/$defs/match"
               }
             }
           }
@@ -612,7 +733,7 @@
         },
         "lines": {
           "type": "array",
-          "description": "Optional service lines. Not reconciled in the MVP; captured for later.",
+          "description": "Service lines. Paired with the bill's lines and checked against the claim (MAT-06, REC-01).",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -638,9 +759,45 @@
               },
               "patient_responsibility": {
                 "$ref": "#/$defs/money"
+              },
+              "adjustment": {
+                "$ref": "#/$defs/money"
+              },
+              "additional_savings": {
+                "$ref": "#/$defs/money"
+              },
+              "secondary_paid": {
+                "$ref": "#/$defs/money"
+              },
+              "deductible": {
+                "$ref": "#/$defs/money"
+              },
+              "copay": {
+                "$ref": "#/$defs/money"
+              },
+              "coinsurance": {
+                "$ref": "#/$defs/money"
+              },
+              "not_covered": {
+                "$ref": "#/$defs/money"
+              },
+              "units": {
+                "type": "number",
+                "minimum": 0
+              },
+              "remark_codes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Adjustment and remark codes printed on the line, e.g. CO-97 (bundled)."
               }
             }
           }
+        },
+        "secondary_paid": {
+          "$ref": "#/$defs/money",
+          "description": "Paid by a second plan under coordination of benefits (ALC-05). Zero with one plan."
         }
       },
       "unevaluatedProperties": false
@@ -690,6 +847,32 @@
         "account_balance_after": {
           "$ref": "#/$defs/money",
           "description": "Account balance after this transaction, if the statement shows it."
+        },
+        "allocations": {
+          "type": "array",
+          "description": "How this payment is split across visits, when the member set it (ALC-04, MAT-07). Must add up to the amount.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "visit_id",
+              "amount"
+            ],
+            "properties": {
+              "visit_id": {
+                "$ref": "#/$defs/id"
+              },
+              "amount": {
+                "$ref": "#/$defs/money"
+              }
+            }
+          }
+        },
+        "allocation_source": {
+          "enum": [
+            "member",
+            "statement"
+          ]
         }
       },
       "unevaluatedProperties": false
@@ -996,6 +1179,37 @@
         },
         "extensions": {
           "$ref": "#/$defs/extensions"
+        }
+      }
+    },
+    "match": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How a document (or a statement line) was linked to its visit (MAT-05). status: auto (score 0.9 or more), proposed (0.6 to 0.9, the member confirms), confirmed (the member chose it). rejected lists visits the member said it isn't for; matching never proposes them again.",
+      "properties": {
+        "status": {
+          "enum": [
+            "auto",
+            "proposed",
+            "confirmed"
+          ]
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rejected": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
         }
       }
     }

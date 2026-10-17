@@ -13,11 +13,12 @@
   <div class="card tile {{ 'accent' if g.overpaid or g.gap }}"><div class="label">Difference (insurer − paid)</div><div class="value">{{ (g.should_owe - g.paid)|money }}</div></div>
 </div>
 
-{% if g.overpaid or g.unpaid or g.gap or g.no_claim_payments or g.duplicates or g.unconfirmed or g.paid_outside_hsa %}
+{% if g.overpaid or g.unpaid or g.gap or g.no_claim_payments or g.duplicates or g.unconfirmed or g.paid_outside_hsa or 'tolerance' in g.flags %}
 <div class="card">
   <h2>Findings</h2>
   <ul>
-    {% if g.overpaid %}<li><strong>Overpaid {{ g.overpaid|money }}.</strong> You paid more than the insurer says you owe this provider. Ask for a refund or a credit.</li>{% endif %}
+    {% if g.overpaid %}<li><strong>Overpaid {{ g.overpaid|money }}: a credit due to you.</strong> You paid more than the insurer says you owe this provider. Ask for a refund or a credit.</li>{% endif %}
+    {% if 'tolerance' in g.flags %}<li><strong>Small differences add up to {{ g.cleared_total|money }} this year.</strong> Each was under $1.00 and cleared on its own, but together they pass $5.00. Check the visits' "cleared within tolerance" lists.</li>{% endif %}
     {% if g.unpaid %}<li><strong>Unpaid {{ g.unpaid|money }}.</strong> Still owed on the provider's latest statement or per the insurer. Pay from the HSA.
       <ul>{% for v in g.visits if v.remaining %}<li class="small"><a href="/visits/{{ v.id }}">{{ v.visit.date|nice_date }}</a>: {{ v.remaining|money }}{% if v.balance_age is not none %}, first billed {{ v.balance_age }} days ago{% endif %}{% if v.notices >= 2 %} <span class="chip bad">On {{ v.notices }} statements</span>{% endif %}{% if v.notice_label %} <span class="chip bad">{{ v.notice_label }}</span>{% endif %}</li>{% endfor %}</ul></li>{% endif %}
     {% if g.gap %}<li><strong>{{ g.gap|money }} the insurer says you owe, but the provider hasn't billed it and no payment covers it.</strong> Ask the provider whether it will be billed, and the insurer whether it is correct. If it was paid another way, submit an HSA reimbursement claim.</li>{% endif %}
@@ -27,6 +28,49 @@
     {% for r in g.unconfirmed %}<li><strong>Unconfirmed match ({{ r.relationship|humanize }}).</strong> {{ r.evidence }} <a href="/settings#relationships">Confirm or reject</a></li>{% endfor %}
   </ul>
 </div>
+{% endif %}
+
+{% set st = g.settlement %}
+<div class="card section" id="settlement">
+  <h2>Where your share stands with this provider</h2>
+  <p class="muted small">Every dollar you owe per the EOBs is paid, refunded, written off or still owed. The figures add up the visits below.</p>
+  <ul class="kv">
+    <li><span>You owe</span><span class="num">{{ st.responsibility|money }}</span></li>
+    <li><span>Paid</span><span class="num">{{ st.paid|money }}</span></li>
+    {% if st.refunds %}<li><span>Refunded to you</span><span class="num">{{ st.refunds|money }}</span></li>{% endif %}
+    {% if st.write_offs %}<li><span>Written off by the provider</span><span class="num">{{ st.write_offs|money }}</span></li>{% endif %}
+    {% if st.still_owed >= 0 %}<li><strong>Still owed</strong><strong class="num">{{ st.still_owed|money }}</strong></li>
+    {% else %}<li><strong>Credit due to you</strong><strong class="num">{{ (-st.still_owed)|money }}</strong></li>{% endif %}
+    {% if st.unexplained %}<li><span class="bad-ink">Of which not explained</span><span class="num bad-ink">{{ st.unexplained|money }}</span></li>{% endif %}
+  </ul>
+</div>
+
+{% set payments = g.payments|rejectattr('kind', 'equalto', 'refund')|list %}
+{% if payments and g.visits %}
+<section id="payments" class="section">
+  <h2>Payments and how they're split</h2>
+  <p class="muted small">A payment goes to the provider. It is split the way you set it here, else the way the provider's statement shows, else to the oldest visit first.</p>
+  {% for p in payments %}
+  <div class="card section" id="pay-{{ p.id }}">
+    <div class="row"><strong>{{ p.date|nice_date }} · {{ p.amount|money }}</strong>{% if p.allocation_source == 'member' %} <span class="chip idle">split by you</span>{% endif %}</div>
+    {% if split_error.get(p.id) %}<div class="alert bad">{{ split_error[p.id] }}</div>{% endif %}
+    <details {{ 'open' if split_error.get(p.id) }}>
+      <summary class="small">Change the split</summary>
+      <form method="post" action="/payments/{{ p.id }}/split" class="inline section">{{ csrf_input() }}
+        {% for v in g.visits %}
+        <label>{{ v.visit.date|nice_date }}{% if g.providers|length > 1 %} · {{ v.provider.name }}{% endif %} (owes {{ (v.responsibility - v.write_off)|money }})
+          <input name="split-{{ v.id }}" inputmode="decimal" class="w-6" value="{{ '%.2f'|format(split.get(p.id, {}).get(v.id, 0) / 100) if split.get(p.id, {}).get(v.id) else '' }}"></label>
+        {% endfor %}
+        <button class="btn small primary">Save split</button>
+      </form>
+      {% if p.allocation_source == 'member' %}
+      <form method="post" action="/payments/{{ p.id }}/split" class="section">{{ csrf_input() }}
+        <input type="hidden" name="action" value="reset"><button class="btn small">Go back to the usual split</button>
+      </form>{% endif %}
+    </details>
+  </div>
+  {% endfor %}
+</section>
 {% endif %}
 
 {% set here = request.url.path ~ '?year=' ~ report.year %}

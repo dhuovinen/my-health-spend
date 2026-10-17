@@ -49,6 +49,7 @@
         {% for v in visits %}<option value="{{ v.id }}" {{ 'selected' if v.id == visit_id }}>{{ v.date }} · {{ v.description or v.id }}</option>{% endfor %}
       </select>
     </label>
+    {% if match %}<p class="small muted">{{ 'Matched automatically' if match.decision == 'link' else 'Proposed, check it' }} ({{ (match.score * 100)|round|int }}%): {{ match.reasons|join(', ') }}.</p>{% endif %}
     {% endif %}
   </div>
 

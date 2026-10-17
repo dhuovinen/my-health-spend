@@ -74,6 +74,14 @@ main { max-width: 1180px; margin: 0 auto; padding: 1.5rem 16px 4rem; }
 .s-missing_documents { background: var(--info-soft); color: var(--info); }
 .s-waiting { background: var(--idle-soft); color: var(--idle); }
 .s-matched { background: var(--good-soft); color: var(--good); }
+/* the nine REC-11 statuses; the label always says the status, colour only groups them */
+.s-in_dispute { background: var(--info-soft); color: var(--info); border: 1px solid var(--info); }
+.s-needs_review { background: var(--warn-soft); color: var(--warn); border: 1px dashed var(--warn); }
+.s-awaiting_eob, .s-awaiting_documents { background: var(--idle-soft); color: var(--idle); }
+.s-resolved, .s-complete { background: var(--good-soft); color: var(--good); }
+.s-na { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.chip.good { background: var(--good-soft); color: var(--good); }
+.status-help { margin: -.25rem 0 1rem; color: var(--muted); }
 .chip { display: inline-block; padding: .1rem .5rem; border-radius: 6px; font-size: .78rem; background: var(--warn-soft); color: var(--warn); margin: .15rem .25rem 0 0; }
 .chip.info { background: var(--info-soft); color: var(--info); }
 .chip.bad { background: var(--bad-soft); color: var(--bad); }
@@ -112,6 +120,10 @@ tr.dim td { color: var(--muted); }
 .check:last-child { border-bottom: 0; }
 .check .mark { font-weight: 700; text-align: center; }
 .check.pass .mark { color: var(--good); } .check.fail .mark { color: var(--bad); } .check.na .mark { color: var(--muted); }
+.check.closed .mark, .check.cleared .mark { color: var(--good); } .check.info .mark { color: var(--info); }
+.check form { margin-top: .35rem; }
+details.move { margin-top: .5rem; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-start; }
 
 /* forms */
 form.inline { display: flex; gap: .5rem; flex-wrap: wrap; align-items: flex-end; }
@@ -170,6 +182,8 @@ label.grow textarea { width: 100%; }
 /* utilities that replace inline styles, so pages work under the Content Security Policy */
 .bad-ink { color: var(--bad); }
 .warn-ink { color: var(--warn); }
+.good-ink { color: var(--good); }
+.visit-card .docs { margin-top: .35rem; }
 .flush { margin: 0; }
 .grow-wide { flex: 1 1 320px; }
 .w-6 { width: 6rem; }

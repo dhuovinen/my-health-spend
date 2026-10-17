@@ -1,20 +1,67 @@
 {% extends "base.html" %}
 {% from "_macros.html" import badge, note_meta %}
 {% block title %}{{ v.provider.name }} {{ v.visit.date }}{% endblock %}
+{% macro move_form(doc, label, items=None, reject=False) %}
+<details class="small move">
+  <summary>{{ label }}</summary>
+  <form method="post" action="/visits/{{ v.id }}/documents/{{ doc.id }}/move" class="inline section">{{ csrf_input() }}
+    {% if items %}
+    <div class="grow"><div class="muted small">Lines to move</div>
+      {% for it in items %}<label class="check-label"><input type="checkbox" name="items" value="{{ loop.index0 }}"> {{ it.code or '' }} {{ it.description or '' }} {{ it.charge|money }}</label>{% endfor %}
+    </div>
+    {% endif %}
+    <label>Belongs to<select name="target" required>
+      <option value="new">A new visit</option>
+      {% for o in others %}<option value="{{ o.id }}">{{ o.visit.date|nice_date }} · {{ o.provider.name }}{% if o.member %} · {{ o.member.name }}{% endif %}</option>{% endfor %}
+    </select></label>
+    <label class="check-label"><input type="checkbox" name="reject" value="1" {{ 'checked' if reject }}> Never match it to this visit again</label>
+    <button class="btn small">Move</button>
+  </form>
+</details>
+{% endmacro %}
 {% block content %}
 <p class="small"><a href="/visits?year={{ v.visit.date[:4] }}">← Visits</a></p>
 <div class="page-head">
   <div>
     <h1>{{ v.provider.name }}</h1>
-    <div class="muted">{{ v.visit.date|nice_date }} · {{ v.visit.category|humanize }}{% if v.member %} · {{ v.member.name }}{% endif %}{% if plan %} · {{ plan.insurer }} {{ plan.plan_name }} {{ plan.plan_year }}{% endif %}</div>
+    <div class="muted">{{ v.visit.date|nice_date }} · {{ v.visit.category|humanize }}{% if not v.insured %} · no insurance claim{% endif %}{% if v.member %} · {{ v.member.name }}{% endif %}{% if plan %} · {{ plan.insurer }} {{ plan.plan_name }} {{ plan.plan_year }}{% endif %}</div>
     {% if v.visit.description %}<div class="small">{{ v.visit.description }}</div>{% endif %}
   </div>
   {{ badge(v.status) }}
 </div>
+<p class="status-help">{{ v.status_help }}</p>
+
+{% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
 
 {% if group.unconfirmed %}
 <div class="alert warn">This provider is reconciled together with {{ group.providers|rejectattr('id', 'equalto', v.provider.id)|map(attribute='name')|join(', ') }} based on an unconfirmed match. <a href="/settings#relationships">Confirm or reject it</a>.</div>
 {% endif %}
+
+{% if v.dispute and v.dispute.status == 'open' %}
+<div class="alert warn" id="dispute">
+  <strong>In dispute since {{ v.dispute.opened|nice_date }}.</strong>{% if v.dispute.note %} {{ v.dispute.note }}{% endif %}
+  <form method="post" action="/visits/{{ v.id }}/dispute" class="inline section">{{ csrf_input() }}
+    <input type="hidden" name="action" value="close">
+    <label class="check-label"><input type="radio" name="outcome" value="fixed" checked> The provider or insurer fixed it</label>
+    <label class="check-label"><input type="radio" name="outcome" value="accepted"> I accept it as it is</label>
+    <button class="btn small">Close the dispute</button>
+  </form>
+</div>
+{% endif %}
+
+{% for r in v.review %}
+<div class="alert warn" id="review">
+  <strong>Is this the right visit?</strong>
+  {{ 'The insurance decision (EOB)' if r.doc.type == 'eob' else 'The statement of ' ~ (r.doc.date|nice_date) if r.doc.type == 'provider_bill' else 'The receipt' }}
+  was matched to this visit with a score of {{ (r.match.score * 100)|round|int }}%: {{ r.match.reasons|join(', ') }}.
+  <div class="actions section">
+    <form method="post" action="/visits/{{ v.id }}/documents/{{ r.doc.id }}/confirm" class="inline">{{ csrf_input() }}
+      <button class="btn small primary">Yes, it's this visit</button>
+    </form>
+    {{ move_form(r.doc, 'No, it belongs elsewhere', reject=True) }}
+  </div>
+</div>
+{% endfor %}
 
 <div class="grid tiles">
   <div class="card tile"><div class="label">Billed to insurer</div><div class="value">{{ v.total_billed|money }}</div></div>
@@ -24,16 +71,54 @@
 </div>
 
 <div class="grid two">
-  <div class="card">
+  <div class="card" id="findings">
     <h2>Reconciliation checks</h2>
-    {% for c in v.checks %}
+    {% for c in v.checks if c.result in ('fail', 'closed', 'info') %}
     <div class="check {{ c.result }}">
-      <div class="mark">{{ {'pass': '✓', 'fail': '✕', 'na': '–'}[c.result] }}</div>
-      <div><strong>{{ c.name }}</strong><div class="small muted">{{ c.detail }}</div></div>
-      <div class="num">{% if c.result == 'fail' and c.amount %}{{ c.amount|money }}{% endif %}</div>
+      <div class="mark">{{ {'fail': '✕', 'closed': '✓', 'info': 'i'}[c.result] }}</div>
+      <div><strong>{{ c.name }}</strong>{% if c.kind_label %} <span class="chip {{ 'bad' if c.result == 'fail' else 'idle' }}">{{ c.kind_label }}</span>{% endif %}
+        <div class="small muted">{{ c.detail[:1]|upper }}{{ c.detail[1:] }}</div>
+        {% if c.result == 'closed' %}
+        <form method="post" action="/visits/{{ v.id }}/findings" class="inline small">{{ csrf_input() }}
+          <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}"><input type="hidden" name="action" value="reopen">
+          <span class="muted">Closed by you on {{ c.closed.closed|nice_date }} ({{ c.closed.how }}).</span> <button class="btn small">Reopen</button>
+        </form>
+        {% elif c.result == 'fail' and c.code not in ('C6', 'claim_filed') %}
+        <form method="post" action="/visits/{{ v.id }}/findings" class="inline small">{{ csrf_input() }}
+          <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}">
+          <button class="btn small">I've dealt with this</button>
+        </form>
+        {% endif %}
+      </div>
+      <div class="num">{% if c.result in ('fail', 'closed') and c.amount %}{{ c.amount|money }}{% endif %}</div>
     </div>
     {% endfor %}
+    {% set passed = v.checks|selectattr('result', 'in', ['pass', 'na'])|list %}
+    <details class="small section">
+      <summary>{{ passed|selectattr('result', 'equalto', 'pass')|list|length }} checks passed{% if passed|selectattr('result', 'equalto', 'na')|list %}, {{ passed|selectattr('result', 'equalto', 'na')|list|length }} not applicable{% endif %}</summary>
+      {% for c in passed %}
+      <div class="check {{ c.result }}"><div class="mark">{{ '✓' if c.result == 'pass' else '–' }}</div>
+        <div><strong>{{ c.name }}</strong><div class="small muted">{{ c.detail }}</div></div><div></div></div>
+      {% endfor %}
+    </details>
+    {% if v.cleared %}
+    <details class="small" id="cleared">
+      <summary>{{ v.cleared|length }} small difference{{ 's' if v.cleared|length != 1 }} cleared within tolerance</summary>
+      <p class="muted">Differences under $1.00 are cleared and recorded here. They add up per provider each year, and the provider is flagged once they pass $5.00.</p>
+      {% for c in v.cleared %}<div class="check cleared"><div class="mark">≈</div><div><strong>{{ c.name }}</strong><div class="muted">{{ c.detail }}</div></div><div class="num">{{ c.amount|money }}</div></div>{% endfor %}
+    </details>
+    {% endif %}
     {% if v.missing %}<p class="small">Missing: {{ v.missing|join(', ') }}</p>{% endif %}
+    {% if v.findings and not (v.dispute and v.dispute.status == 'open') %}
+    <details class="small section">
+      <summary>Open a dispute</summary>
+      <form method="post" action="/visits/{{ v.id }}/dispute" class="inline section">{{ csrf_input() }}
+        <input type="hidden" name="action" value="open">
+        <label class="grow">What you did (optional)<input name="note" placeholder="Called billing, asked for a corrected bill"></label>
+        <button class="btn small">Mark as in dispute</button>
+      </form>
+    </details>
+    {% endif %}
     {% if v.hsa_flags %}
     <h3 class="section">HSA</h3>
     {% for f in v.hsa_flags %}<span class="chip">{{ f }}</span>{% endfor %}
@@ -48,20 +133,88 @@
       <tr><th>Date</th><th>Account</th><th class="num">Applied</th></tr>
       {% for a in v.allocations %}
       <tr><td>{{ a.payment.date|nice_date }}</td>
-          <td>{{ accounts.get(a.payment.account_id, {}).get('name', a.payment.account_id) }}{% if a.surplus %} <span class="chip bad">more than owed</span>{% endif %}</td>
-          <td class="num">{{ a.amount|money }}</td></tr>
+          <td>{{ accounts.get(a.payment.account_id, {}).get('name', a.payment.account_id) }}{% if a.refund %} <span class="chip good">refund</span>{% endif %}{% if a.surplus %} <span class="chip bad">more than owed</span>{% endif %}{% if a.source == 'member' %} <span class="chip idle">split by you</span>{% elif a.source == 'statement' %} <span class="chip idle">split per statement</span>{% endif %}</td>
+          <td class="num">{{ (-a.amount if a.refund else a.amount)|money }}</td></tr>
       {% endfor %}
     </table>
     {% else %}<p class="muted">No payments applied to this visit.</p>{% endif %}
-    <p class="muted small">Payments go to the provider, not one visit. They are applied oldest visit first; see the <a href="/providers/{{ v.group_id }}?year={{ v.visit.date[:4] }}">provider ledger</a> for the full picture.</p>
+    <p class="muted small">Payments go to the provider, not one visit. They are split the way you set, else the way the provider's statement shows, else oldest visit first. To change a split, use the <a href="/providers/{{ v.group_id }}?year={{ v.visit.date[:4] }}#payments">provider ledger</a>.</p>
+    {% set s = v.settlement %}
+    <h3 class="section">Where your share stands</h3>
+    <ul class="kv">
+      <li><span>You owe{{ ' (per EOB)' if v.insurer_owed is not none }}</span><span class="num">{{ s.responsibility|money }}</span></li>
+      <li><span>Paid{% if s.paid_hsa and s.paid_other %} (HSA {{ s.paid_hsa|money }}, other {{ s.paid_other|money }}){% elif s.paid_hsa %} (HSA){% endif %}</span><span class="num">{{ s.paid|money }}</span></li>
+      {% if s.refunds %}<li><span>Refunded to you</span><span class="num">{{ s.refunds|money }}</span></li>{% endif %}
+      {% if s.write_offs %}<li><span>Written off by the provider</span><span class="num">{{ s.write_offs|money }}</span></li>{% endif %}
+      {% if s.still_owed >= 0 %}<li><strong>Still owed</strong><strong class="num">{{ s.still_owed|money }}</strong></li>
+      {% else %}<li><strong>Credit due to you</strong><strong class="num">{{ (-s.still_owed)|money }}</strong></li>{% endif %}
+      {% if s.unexplained %}<li><span class="bad-ink">Of which not explained</span><span class="num bad-ink">{{ s.unexplained|money }}</span></li>{% endif %}
+    </ul>
   </div>
 </div>
 
+{% if v.buckets %}
+<div class="grid two section">
+  <div class="card" id="buckets">
+    <h2>Where the billed amount went</h2>
+    <ul class="kv">
+      {% for k, label in BUCKETS.items() if v.buckets.get(k) %}
+      <li><span>{{ label }}</span><span class="num {{ 'bad-ink' if k == 'unexplained' }}">{{ v.buckets[k]|money }}</span></li>
+      {% endfor %}
+      <li><strong>Billed</strong><strong class="num">{{ v.buckets.values()|sum|money }}</strong></li>
+    </ul>
+    {% if v.line_buckets|length > 1 %}
+    <details class="small"><summary>By line</summary>
+      <div class="table-wrap"><table>
+        <tr><th>Line</th>{% for k, label in BUCKETS.items() if v.buckets.get(k) %}<th class="num">{{ label }}</th>{% endfor %}</tr>
+        {% for name, b in v.line_buckets %}<tr><td>{{ name }}</td>{% for k, label in BUCKETS.items() if v.buckets.get(k) %}<td class="num">{{ b.get(k, 0)|money }}</td>{% endfor %}</tr>{% endfor %}
+      </table></div>
+    </details>
+    {% endif %}
+  </div>
+  {% if v.line_match %}
+  <div class="card" id="lines">
+    <h2>Bill lines and EOB lines</h2>
+    <div class="table-wrap"><table class="small">
+      <tr><th>On the bill</th><th>On the EOB</th><th>Note</th></tr>
+      {% for p in v.line_match.pairs %}
+      <tr><td>{% for b in p.bill %}{{ b.code or b.description }} {{ b.charge|money }}{{ '; ' if not loop.last }}{% endfor %}</td>
+          <td>{% for e in p.eob %}{{ e.code or e.description }} {{ e.billed|money }}{{ '; ' if not loop.last }}{% endfor %}</td>
+          <td class="muted">{{ p.notes|join('; ') }}</td></tr>
+      {% endfor %}
+      {% for b in v.line_match.bill_only %}<tr><td>{{ b.code or b.description }} {{ b.charge|money }}</td><td class="warn-ink">not on the EOB</td><td></td></tr>{% endfor %}
+      {% for e in v.line_match.eob_only %}<tr><td class="warn-ink">not on the bill</td><td>{{ e.code or e.description }} {{ e.billed|money }}</td><td></td></tr>{% endfor %}
+    </table></div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 <h2 class="section">Documents</h2>
-<div class="grid two">
+<div class="card" id="checklist">
+  <h3>What this visit needs</h3>
+  <div class="table-wrap"><table class="small">
+    {% for d in v.documents %}
+    <tr><td>{{ d.label }}</td>
+        <td><span class="badge {{ {'present': 's-complete', 'expected': 's-awaiting_documents', 'not_applicable': 's-na'}[d.state] }}">{{ {'present': 'Received', 'expected': 'Expected', 'not_applicable': 'Not needed'}[d.state] }}</span>{% if d.note %} <span class="muted">{{ d.note }}</span>{% endif %}</td>
+        <td>{% if d.state != 'present' %}
+          <form method="post" action="/visits/{{ v.id }}/expected" class="inline">{{ csrf_input() }}
+            <input type="hidden" name="kind" value="{{ d.kind }}">
+            <select name="state" aria-label="{{ d.label }}">
+              <option value="default">As usual</option>
+              <option value="expected" {{ 'selected' if (v.visit.documents or {}).get(d.kind, {}).get('state') == 'expected' }}>I expect one</option>
+              <option value="not_applicable" {{ 'selected' if (v.visit.documents or {}).get(d.kind, {}).get('state') == 'not_applicable' }}>Not needed</option>
+            </select>
+            <button class="btn small">Set</button>
+          </form>{% endif %}</td></tr>
+    {% endfor %}
+  </table></div>
+</div>
+<div class="grid two section">
   <div class="card">
-    <h3>Insurance decision (EOB) {% if v.eob %}<span class="badge s-matched">Received</span>{% else %}<span class="badge s-missing_documents">Missing</span>{% endif %}</h3>
-    {% if v.eob %}{% set e = v.eob %}
+    <h3>Insurance decision (EOB) {% if v.claims %}<span class="badge s-complete">{{ v.claims|length }} claim{{ 's' if v.claims|length != 1 }}</span>{% elif v.insured %}<span class="badge s-missing_documents">Missing</span>{% else %}<span class="badge s-na">Not needed</span>{% endif %}</h3>
+    {% for e in v.claims %}
+    {% if v.claims|length > 1 %}<h4>Claim {{ e.claim_number or loop.index }}</h4>{% endif %}
     <ul class="kv">
       <li><span>Claim</span><span>{{ e.claim_number or '—' }} · {{ e.claim_status|humanize }}</span></li>
       <li><span>Received / processed</span><span>{{ e.received_date|nice_date }} / {{ e.date|nice_date }}</span></li>
@@ -70,17 +223,20 @@
       <li><span>Plan discount</span><span class="num">{{ e.adjustment|money }}</span></li>
       <li><span>Allowed (agreed rate)</span><span class="num">{{ e.allowed|money }}</span></li>
       <li><span>Insurer paid</span><span class="num">{{ e.insurer_paid|money }}</span></li>
+      {% if e.secondary_paid %}<li><span>Second insurer paid</span><span class="num">{{ e.secondary_paid|money }}</span></li>{% endif %}
       {% if e.additional_savings %}<li><span>Additional savings</span><span class="num">{{ e.additional_savings|money }}</span></li>{% endif %}
       <li><span>Deductible / copay / coinsurance</span><span class="num">{{ e.deductible|money }} / {{ e.copay|money }} / {{ e.coinsurance|money }}</span></li>
       <li><span>Not covered</span><span class="num">{{ e.not_covered|money }}</span></li>
       <li><strong>Your cost</strong><strong class="num">{{ e.patient_responsibility|money }}</strong></li>
     </ul>
+    {% if e.match and e.match.status in ('auto', 'proposed') %}<p class="small muted">Matched to this visit automatically ({{ (e.match.score * 100)|round|int }}%: {{ e.match.reasons|join(', ') }}).</p>{% endif %}
     {% if e.stored_file %}<p><a href="/files/{{ e.id }}" target="_blank">Open document</a></p>{% endif %}
-    {% endif %}
+    {{ move_form(e, 'Not this visit', reject=True) }}
+    {% endfor %}
   </div>
 
   <div class="card">
-    <h3>Provider statements {% if v.bill_lines %}<span class="badge s-matched">{{ v.bill_lines|length }} received</span>{% else %}<span class="badge s-waiting">None</span>{% endif %}</h3>
+    <h3>Provider statements {% if v.bill_lines %}<span class="badge s-complete">{{ v.bill_lines|length }} received</span>{% else %}<span class="badge s-na">None</span>{% endif %}</h3>
     {% for bill, line in v.bill_lines %}
     <details {{ 'open' if loop.first }}>
       <summary>{{ bill.date|nice_date }} — asks {{ line.patient_amount|money }}, balance {{ line.balance|money }}{% if loop.first %} (latest){% endif %}</summary>
@@ -88,21 +244,46 @@
       <div class="table-wrap"><table class="small">
         <tr><th>Service</th><th class="num">Charge</th><th class="num">Adj.</th><th class="num">You</th><th class="num">Paid</th><th class="num">Balance</th></tr>
         {% for it in line.get('items', []) %}
-        <tr><td>{{ it.description }}{% if it.patient_amount_type %}<div class="muted">{{ it.patient_amount_type }}</div>{% endif %}</td>
+        <tr><td>{% if it.code %}{{ it.code }} {% endif %}{{ it.description }}{% if it.patient_amount_type %}<div class="muted">{{ it.patient_amount_type }}</div>{% endif %}</td>
             <td class="num">{{ it.charge|money }}</td><td class="num">{{ it.adjustment|money }}</td>
             <td class="num">{{ it.patient_amount|money }}</td><td class="num">{{ it.patient_paid|money }}</td><td class="num">{{ it.balance|money }}</td></tr>
         {% endfor %}
       </table></div>
       {% endif %}
+      {% if line.write_off %}<p class="small">Written off by the provider: {{ line.write_off|money }}</p>{% endif %}
       {% if bill.stored_file %}<p class="small"><a href="/files/{{ bill.id }}" target="_blank">Open statement</a></p>{% endif %}
+      {% if loop.first %}{{ move_form(bill, 'Some or all of these lines are for another visit', line.get('items')) }}{% endif %}
     </details>
     {% else %}<p class="muted">No provider statement imported for this visit.</p>{% endfor %}
     {% if v.receipts %}
     <h3 class="section">Receipts</h3>
-    {% for r in v.receipts %}<p>{{ r.date|nice_date }} — {{ r.total|money }}{% if r.stored_file %} · <a href="/files/{{ r.id }}" target="_blank">Open</a>{% endif %}</p>{% endfor %}
+    {% for r in v.receipts %}<p>{{ r.date|nice_date }} — {{ r.total|money }}{% if r.stored_file %} · <a href="/files/{{ r.id }}" target="_blank">Open</a>{% endif %}</p>{{ move_form(r, 'Not this visit') }}{% endfor %}
     {% endif %}
   </div>
 </div>
+
+<details class="card section" id="visit-actions">
+  <summary><strong>Change this visit</strong></summary>
+  <form method="post" action="/visits/{{ v.id }}/payment-path" class="inline section">{{ csrf_input() }}
+    <span class="muted small">Paid through</span>
+    <label class="check-label"><input type="radio" name="path" value="default" {{ 'checked' if not v.visit.payment_path }}> As usual for {{ v.visit.category|humanize|lower }}</label>
+    <label class="check-label"><input type="radio" name="path" value="insurance" {{ 'checked' if v.visit.payment_path == 'insurance' }}> Insurance</label>
+    <label class="check-label"><input type="radio" name="path" value="self_pay" {{ 'checked' if v.visit.payment_path == 'self_pay' }}> Self-pay (no claim)</label>
+    <button class="btn small">Save</button>
+  </form>
+  {% if others %}
+  <form method="post" action="/visits/{{ v.id }}/merge" class="inline section" data-confirm="Move everything on that visit here and delete it?">{{ csrf_input() }}
+    <label>Merge another visit into this one<select name="other" required>
+      {% for o in others %}<option value="{{ o.id }}">{{ o.visit.date|nice_date }} · {{ o.provider.name }}{% if o.member %} · {{ o.member.name }}{% endif %}</option>{% endfor %}
+    </select></label>
+    <button class="btn small">Merge</button>
+  </form>
+  {% endif %}
+  <form method="post" action="/visits/{{ v.id }}/delete" class="section" data-confirm="Delete this visit?">{{ csrf_input() }}
+    <button class="btn small danger">Delete this visit</button> <span class="muted small">Only a visit with no documents, payments or notes can be deleted.</span>
+  </form>
+</details>
+
 <div class="card section" id="notes">
   <h3>Notes on {{ group.name }}</h3>
   {% set providers_by_id = {} %}{% for p in group.providers %}{% set _ = providers_by_id.update({p.id: p.name}) %}{% endfor %}
