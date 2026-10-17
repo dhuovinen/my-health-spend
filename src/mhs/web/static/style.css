@@ -189,3 +189,4 @@ form.stack .btn { align-self: flex-start; }
 .review .grid.two { gap: .8rem 1.2rem; }
 .recovery-codes ul.codes { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: .4rem; }
 .recovery-codes code { font-size: 1rem; letter-spacing: .05em; }
+.doc-preview img { display: block; max-width: 100%; height: auto; margin-top: .6rem; border: 1px solid var(--border); border-radius: 6px; }

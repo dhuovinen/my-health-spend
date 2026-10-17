@@ -30,6 +30,7 @@
             {% if d.status == 'review' %}<a class="btn small primary" href="/uploads/{{ d.id }}/review">Review</a>
             {% elif d.status == 'confirmed' %}<span class="badge s-matched">Confirmed</span>{% for v in d.visit_ids %} <a class="small" href="/visits/{{ v }}">visit</a>{% endfor %}
             {% elif d.status == 'filed' %}<span class="badge s-waiting">Kept</span>
+            {% elif d.status == 'failed' %}<a class="btn small" href="/uploads/{{ d.id }}/review">Couldn't read: try again</a>
             {% elif d.status == 'export' %}<span class="muted small">Export: checked on the import preview</span>
             {% else %}<span class="muted small">Reading…</span>{% endif %}
           </td>
