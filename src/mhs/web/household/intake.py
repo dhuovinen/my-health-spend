@@ -23,6 +23,7 @@ from mhs.data.db import Database
 from mhs.data.household_store import HouseholdStore
 from mhs.data.importer import UploadedSource
 from mhs.data.keys import Keyring
+from mhs.data.money import to_dollars
 from mhs.data.objects import ObjectStore
 from mhs.data.queue import JobQueue
 from mhs.ingest import claims, hsa
@@ -455,6 +456,14 @@ def build_records(store: HouseholdStore, form, ext: dict, rec: dict, upload_id: 
             raise ValueError(f"Choose the plan that processed this claim (add the {start[:4]} plan in Settings first "
                              "if it isn't listed).")
         visit_id = visit_for(start, form.get("visit_id") or "", plan_id)
+        if (visit := existing_visits.get(visit_id)) and not visit.get("plan_id"):
+            # A visit first seen on a statement learns its plan (and patient) from the EOB, so the claim
+            # counts toward the plan's deductible and out-of-pocket limits.
+            visit = {**visit, "plan_id": plan_id}
+            if member_id and not visit.get("member_id"):
+                visit["member_id"] = member_id
+            data["visits"].append(to_dollars(visit))
+            created.append(("visit", visit_id))  # marked as the member's edit, like the records it creates
         claim = (form.get("claim_number") or "").strip()
         doc_id = f"eob-{slug(claim)}" if claim else f"eob-{upload_id}"
         doc = {"id": doc_id, "type": "eob", "date": _date(form, "processed_date") or start, "file": filename,

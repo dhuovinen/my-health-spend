@@ -43,7 +43,7 @@
 
     <h3 class="section">Deductibles and out-of-pocket maximums</h3>
     {% if p.limits %}
-    <table>
+    <div class="table-wrap"><table>
       <tr><th>Type</th><th>Network</th><th>Level</th><th>Member</th><th class="num">Amount</th><th></th></tr>
       {% for l in p.limits %}
       <tr><td>{{ l.type|humanize }}</td><td>{{ l.network|humanize }}</td><td>{{ l.level|humanize }}</td>
@@ -51,7 +51,7 @@
         <td class="num">{{ l.amount|money }}</td>
         <td class="num"><form method="post" action="/settings/plans/{{ p.id }}/limits/{{ loop.index0 }}/delete">{{ csrf_input() }}<button class="btn small danger">Remove</button></form></td></tr>
       {% endfor %}
-    </table>
+    </table></div>
     {% else %}<p class="muted small">No limits yet.</p>{% endif %}
     <form method="post" action="/settings/plans/{{ p.id }}/limits" class="inline section">{{ csrf_input() }}
       <label>Type<select name="type">{{ options(opts.limit_types, 'deductible') }}</select></label>

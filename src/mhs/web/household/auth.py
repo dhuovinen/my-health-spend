@@ -21,6 +21,7 @@ MIN_PASSWORD = 12
 MAX_FAILED = 5
 LOCK_MINUTES = 15
 TOTP_ISSUER = "My Health Spend"
+ENROLMENT_LINK_MINUTES = 15
 
 _hasher = PasswordHasher()
 # Verified against when the email is unknown, so a wrong email takes as long as a wrong password.
@@ -72,6 +73,13 @@ class Accounts:
             c.execute("INSERT INTO app.households (id, name) VALUES (%s, %s)", (hid, name.strip()))
         self.keyring.data_key(hid)  # create the household's data key now
         return hid
+
+    def find_household(self, name: str) -> str | None:
+        """The oldest household with this name, if any."""
+        with self.db.tx() as c:
+            row = c.execute("SELECT id FROM app.households WHERE name = %s ORDER BY created_at LIMIT 1",
+                            (name.strip(),)).fetchone()
+        return str(row["id"]) if row else None
 
     def household_name(self, household_id: str) -> str | None:
         with self.db.tx() as c:
@@ -126,7 +134,56 @@ class Accounts:
                 (sealed, row["id"]),
             )
             c.execute("DELETE FROM app.sessions WHERE member_id = %s", (row["id"],))
+            c.execute("DELETE FROM app.enrolment_links WHERE member_id = %s", (row["id"],))
         return totp_secret
+
+    def set_password(self, email: str, password: str) -> None:
+        """Give a member a new password, unlock the account and end their sessions (admin)."""
+        if len(password) < MIN_PASSWORD:
+            raise AccountError(f"The password must be at least {MIN_PASSWORD} characters.")
+        row = self._member_row(email)
+        if row is None:
+            raise AccountError("No such member.")
+        with self.db.tx() as c:
+            c.execute("UPDATE app.members SET password_hash = %s, failed_attempts = 0, locked_until = NULL "
+                      "WHERE id = %s", (_hasher.hash(password), row["id"]))
+            c.execute("DELETE FROM app.sessions WHERE member_id = %s", (row["id"],))
+
+    def member_household(self, email: str) -> str | None:
+        row = self._member_row(email)
+        return str(row["household_id"]) if row else None
+
+    # --- enrolment links: the authenticator QR code, shown once ---
+
+    def create_enrolment_link(self, email: str, minutes: int = ENROLMENT_LINK_MINUTES) -> str:
+        """A single-use token for /enrol/<token>, which shows the member's current TOTP secret as a QR code.
+        Only its hash is stored; it expires after `minutes`, and a new secret (reset_mfa) cancels it."""
+        row = self._member_row(email)
+        if row is None:
+            raise AccountError("No such member.")
+        token = secrets.token_urlsafe(32)
+        with self.db.tx() as c:
+            c.execute("DELETE FROM app.enrolment_links WHERE expires_at <= now()")
+            c.execute("INSERT INTO app.enrolment_links (token_hash, member_id, expires_at) "
+                      "VALUES (%s, %s, now() + make_interval(mins => %s))", (_hash_token(token), row["id"], minutes))
+        return token
+
+    def enrolment_link_valid(self, token: str) -> bool:
+        with self.db.tx() as c:
+            return c.execute("SELECT 1 FROM app.enrolment_links WHERE token_hash = %s AND expires_at > now()",
+                             (_hash_token(token),)).fetchone() is not None
+
+    def redeem_enrolment_link(self, token: str) -> tuple[str, str] | None:
+        """Use a link: it is deleted whether or not it was still valid. Returns the member's email and TOTP
+        secret, or None for an unknown, used or expired link."""
+        with self.db.tx() as c:
+            link = c.execute("DELETE FROM app.enrolment_links WHERE token_hash = %s RETURNING member_id, "
+                             "expires_at > now() AS valid", (_hash_token(token),)).fetchone()
+            if link is None or not link["valid"]:
+                return None
+            row = c.execute("SELECT * FROM app.members WHERE id = %s", (link["member_id"],)).fetchone()
+        secret = self.keyring.decrypt(str(row["household_id"]), bytes(row["totp_secret"]), f"totp:{row['id']}")
+        return row["email"], secret.decode()
 
     @staticmethod
     def provisioning_uri(email: str, totp_secret: str) -> str:

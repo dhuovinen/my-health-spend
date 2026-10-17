@@ -15,6 +15,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
+from markupsafe import Markup
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from mhs.data.db import Database
@@ -31,11 +32,13 @@ from mhs.web.household import security
 from mhs.web.household.auth import Accounts, Session
 from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.intake import Intake, add_intake
+from mhs.web.household.qr import qr_svg
 from mhs.web.pages import WEB, add_pages, make_templates
 
 HERE = Path(__file__).parent
 COOKIE = "mhs_session"
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+LINK_PATTERN = re.compile(r"^[A-Za-z0-9_-]{20,100}$")
 
 
 class SignInRequired(Exception):
@@ -213,6 +216,23 @@ def create_app(
         response = RedirectResponse("/", status_code=303)
         set_cookie(response, accounts.pass_mfa(session))
         return response
+
+    # Enrolment links (mhs-admin prints them): the authenticator QR code, shown once. Opening the link only
+    # offers a button, so a link preview doesn't use it up; the post shows the code and deletes the link.
+    @app.get("/enrol/{token}", response_class=HTMLResponse)
+    def enrol_form(request: Request, token: str):
+        if not (LINK_PATTERN.match(token) and accounts.enrolment_link_valid(token)):
+            return page(request, "enrol.html", 404, gone=True)
+        return page(request, "enrol.html", token=token)
+
+    @app.post("/enrol/{token}", response_class=HTMLResponse)
+    def enrol(request: Request, token: str):
+        found = accounts.redeem_enrolment_link(token) if LINK_PATTERN.match(token) else None
+        if found is None:
+            return page(request, "enrol.html", 404, gone=True)
+        email, totp_secret = found
+        return page(request, "enrol.html", email=email, qr=Markup(qr_svg(accounts.provisioning_uri(email, totp_secret))),
+                    key=" ".join(totp_secret[i:i + 4] for i in range(0, len(totp_secret), 4)))
 
     @app.post("/signout")
     def signout(request: Request, csrf_token: str = Form("")):
