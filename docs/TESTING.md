@@ -22,7 +22,7 @@ uv run --with pytest-cov pytest --cov=mhs
 
 | Measure | Value |
 | --- | --- |
-| Automated tests | 449 on the compose stack (none skipped); `uv run pytest` 433 with 16 skipped (stack tests and the ones that need the tesseract binary or Chromium), 2026-10-18 on `feat/r2-hsa-tax`. They include false-positive tracking (`test_false_positives.py`, TC-PLT-02-2), the HSA and tax tests (`test_tax.py`, `test_tax_pages.py`), phase 1.5's page and layout tests (`test_ux.py`, `test_ux_layout.py`), the 55 Release 0 tests (22 run a second time against Release 1), phase 1.4's core and page tests (`test_r1_reconcile.py`, `test_r1_reconcile_pages.py`), the other Release 1 tests in `tests/test_r1_*.py` and the stack tests in `tests/stack/` |
+| Automated tests | 502 on the compose stack (none skipped); `uv run pytest` 486 with 16 skipped (stack tests and the ones that need the tesseract binary or Chromium), 2026-10-18 on `main` after the three merges. They include false-positive tracking (`test_false_positives.py`, TC-PLT-02-2), the HSA and tax tests (`test_tax.py`, `test_tax_pages.py`), phase 1.5's page and layout tests (`test_ux.py`, `test_ux_layout.py`), the 55 Release 0 tests (22 run a second time against Release 1), phase 1.4's core and page tests (`test_r1_reconcile.py`, `test_r1_reconcile_pages.py`), the other Release 1 tests in `tests/test_r1_*.py` and the stack tests in `tests/stack/` |
 | Coverage, `core/` | 92 to 99% per module: `tax.py` 99%, `reconcile.py` 97%, `lines.py` 94%, `matching.py` 99%, `edits.py` 92%, `accuracy.py` 100% (target ≥ 80%) |
 | Coverage, `data/` | 89 to 100% per module |
 | Coverage, `web/pages.py` (shared pages), `web/household/app.py`, `auth.py` | 92%, 95%, 98% |
