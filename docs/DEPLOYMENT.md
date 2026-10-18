@@ -1,6 +1,6 @@
 # Deployment (Google Cloud, staging first)
 
-The plan for the staging project (phase 1.3) and production (phase 1.6), ADR-030 and ADR-036. The code is ready for it: the four adapters switch by environment variable and were tested against emulators and fakes. Nothing below has been run against a real project yet.
+The plan for the staging project (phase 1.3) and production (phase 1.6), ADR-030 and ADR-036. The code is ready for it: the four adapters switch by environment variable and were tested against emulators and fakes. Nothing below has been run against a real project yet. The runnable steps and scripts are in [GCP_SETUP.md](GCP_SETUP.md) (`tools/gcp/`).
 
 ## What the owner sets up first
 
@@ -18,7 +18,7 @@ These need your Google account and decisions; nothing in the repository can do t
 | --- | --- | --- |
 | `app` | Cloud Run service, public over HTTPS, `MHS_COOKIE_SECURE=1`, `MHS_PUBLIC_URL=https://…` | The only public entry point |
 | `vault` | Cloud Run service, internal ingress only, reachable from `app` | Own service account and KMS key |
-| `worker` | Cloud Run worker pool (or a job on a schedule) with no egress | Rules extraction |
+| `worker` | Cloud Run worker pool with no egress beyond Cloud SQL | Rules extraction |
 | `worker-ai` | Cloud Run worker pool whose only egress is the Anthropic API (a proxy or a NAT rule) | Only if AI extraction is on (ADR-034) |
 | `migrate` | Cloud Run job, run before each deploy | Holds the admin password; nothing else does |
 | `setup` | Not used | Secret Manager and KMS replace the generated secrets volume |
@@ -39,7 +39,7 @@ Forwarded bills need an inbound-mail service (for example a mail provider's inbo
 | `mhs-vault` | Cloud SQL client; encrypt and decrypt with the `vault` key; read its secrets |
 | `mhs-worker` | Cloud SQL client only (no bucket, no keys: TC-PRV-06-3) |
 | `mhs-worker-ai` | As `mhs-worker`, plus read the Anthropic key secret |
-| `mhs-migrate` | Cloud SQL client; read the admin password secret |
+| `mhs-migrate` | Cloud SQL client; read the admin password and the three role passwords (it sets them) |
 
 ## Secrets (Secret Manager)
 
@@ -49,14 +49,19 @@ Database passwords for each role and the admin, the vault service token, and the
 
 | Variable | app | vault | worker | worker-ai |
 | --- | --- | --- | --- | --- |
-| `MHS_DB_HOST`, `MHS_DB_NAME`, `MHS_DB_USER`, `MHS_DB_PASSWORD_FILE` | yes | yes | yes | yes |
+| `MHS_DB_HOST` (Cloud SQL private IP), `MHS_DB_NAME`, `MHS_DB_USER`, `MHS_DB_PASSWORD_FILE` | yes | yes | yes | yes |
+| `MHS_HOST=0.0.0.0` and the port (`MHS_APP_PORT` 3063, `MHS_VAULT_PORT` 8100) | yes | yes | | |
 | `MHS_OBJECT_STORE=gcs`, `MHS_GCS_BUCKET` | yes | | | |
 | `MHS_KEYS=kms`, `MHS_KMS_KEY` | `…/cryptoKeys/app` | `…/cryptoKeys/vault` | | |
 | `MHS_OCR_ENGINE=documentai`, `MHS_DOCAI_PROCESSOR` | yes | | | |
 | `MHS_SCRUBBER=presidio` | yes | | | |
-| `MHS_VAULT_URL`, `MHS_VAULT_TOKEN_FILE` | yes | yes | | |
-| `MHS_EXTRACTOR=claude`, `MHS_ANTHROPIC_API_KEY_FILE`, `MHS_AI_PROXY` | | | | yes |
+| `MHS_VAULT_URL` | yes | | | |
+| `MHS_VAULT_TOKEN_FILE` | yes | yes | | |
+| `MHS_EXTRACTOR` | | | `rules` | `claude` |
+| `MHS_ANTHROPIC_API_KEY_FILE`, `MHS_AI_PROXY` | | | | yes |
 | `MHS_COOKIE_SECURE=1`, `MHS_PUBLIC_URL` | yes | | | |
+
+The migrate job takes `MHS_DB_HOST`, `MHS_DB_NAME`, `MHS_DB_ADMIN_USER` (`postgres` on Cloud SQL) and `MHS_DB_ADMIN_PASSWORD_FILE`, `MHS_DB_APP_PASSWORD_FILE`, `MHS_DB_WORKER_PASSWORD_FILE`, `MHS_DB_VAULT_PASSWORD_FILE`. Cloud Run mounts each secret in its own folder, so the file paths differ from compose (GCP_SETUP.md).
 
 ## Moving the key files to KMS
 
