@@ -1,0 +1,32 @@
+{# The visit page's HSA and tax section (TAX-01, TAX-03, TAX-04, TAX-07, TAX-09; ADR-042). #}
+{% from "_macros.html" import tax_tag %}
+{% if tax and tax.tag %}{% set t = tax.tag %}
+<div class="card section" id="tax">
+  <h2>HSA and tax</h2>
+  <p>{{ tax_tag(t) }}
+    <span class="small">{{ t.category.name }}, citing {{ t.cite }}{% if t.source == 'member' %} (your choice){% endif %}.</span></p>
+  {% if t.needs_letter %}<p class="small warn-ink">Needs {{ t.category.documentation }}.</p>{% endif %}
+  {% if t.category.note %}<p class="small muted">{{ t.category.note }}</p>{% endif %}
+  {% for f in tax.flags %}
+  <div class="alert {{ 'bad' if f.kind != 'documentation' else 'warn' }} tax-flag">{{ f.text }}{% if f.guidance %}<p class="guidance flush">{{ f.guidance }}</p>{% endif %}</div>
+  {% endfor %}
+  {% if tax.recommendation and v.remaining %}
+  <p class="recommendation"><strong>Which account pays the {{ v.remaining|money }} still owed:</strong> {{ tax.recommendation.text }}{% if tax.recommendation.alternative %} {{ tax.recommendation.alternative }}{% endif %}</p>
+  {% if tax.recommendation.letter %}<p class="small warn-ink">{{ tax.recommendation.letter }}</p>{% endif %}
+  {% endif %}
+  {% for e in tax.vault %}
+  <p class="small">{{ e.amount|money }} paid {{ e.payment.date|nice_date }} outside the HSA:
+    {% if e.open %}{{ e.outstanding()|money }} in the <a href="/tax?year={{ v.visit.date[:4] }}#vault">receipt vault</a> ({{ 'banked for later' if tax.strategy == 'save_for_later' else 'reimbursement opportunity' }}).{% else %}paid back from {{ accounts.get(e.reimbursement.from_account_id, {}).get('name', 'another account') }} on {{ e.reimbursement.date|nice_date }}.{% endif %}</p>
+  {% endfor %}
+  <form method="post" action="/visits/{{ v.id }}/tax" class="inline section">{{ csrf_input() }}
+    <label>Category<select name="category">
+      <option value="">Let the app decide</option>
+      {% for c in tax.categories %}<option value="{{ c.id }}" {{ 'selected' if tax.choice.category == c.id }}>{{ c.name }} ({{ c.cite }})</option>{% endfor %}
+    </select></label>
+    <label class="check-label"><input type="checkbox" name="documentation" {{ 'checked' if tax.choice.documentation }}> Letter of medical necessity on file</label>
+    <label class="check-label"><input type="checkbox" name="mistake" {{ 'checked' if tax.choice.mistake }}> An HSA payment for this was a mistake</label>
+    <button class="btn small">Save</button>
+  </form>
+  <p class="disclaimer small">{{ tax.disclaimer }}</p>
+</div>
+{% endif %}

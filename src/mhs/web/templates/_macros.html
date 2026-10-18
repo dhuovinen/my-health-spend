@@ -1,5 +1,6 @@
 {% macro badge(status) %}<span class="badge s-{{ status }}">{{ STATUS_LABELS[status] }}</span>{% endmacro %}
 
+{% macro tax_tag(tag) %}<span class="chip {{ {'likely_qualified': 'good', 'likely_not_qualified': 'bad', 'needs_documentation': 'good' if tag.documented else ''}[tag.tag] }}">{{ tag.label }}</span>{% endmacro %}
 {% macro year_select(report, action, extra={}) %}
 <form method="get" action="{{ action }}" class="inline">
   {% for k, v in extra.items() if v %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}

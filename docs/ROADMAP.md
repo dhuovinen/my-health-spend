@@ -38,7 +38,7 @@ The 47 P2 requirements, grouped:
 | --- | --- |
 | Accuracy and trust | MAT-08 claim versions, REC-06 cost-sharing checks, REC-09 denial codes, REC-10 tolerance, PLT-01 reference tables, PLT-02 accuracy targets, PLT-03 traceability, ING-06 learning from corrections |
 | Money detail | ALC-02 payment sources, ALC-05 secondary insurance, ALC-07 visual breakdown, ALC-08 refunds, REC-12 self-pay vs negotiated |
-| HSA and tax | TAX-01, TAX-02, TAX-03, TAX-06 to TAX-10 |
+| HSA and tax | TAX-01, TAX-02, TAX-03, TAX-06 to TAX-10. **Built 2026-10-18 on `feat/r2-hsa-tax` (ADR-042 proposed), with TAX-04's vault finished and B-17 fee flags:** "likely" tags per visit citing Publication 502, account rules (HSA, health FSA, LPFSA, HRA: grace period, carryover, run-out, who each may pay for), which account should pay, the receipt vault with reimbursement, contributions against the IRS limit by month (catch-up, last-month rule, FSA and Medicare conflicts), HSA payments to check with mistaken-distribution guidance, and a year-end summary per person; IRS limits and categories as dated tables (part of PLT-01); one HSA and tax page on both apps. All 35 cases for these requirements and TAX-04 automated (TESTING.md). Open: spouses' HSAs sharing one family limit; premiums and other deductible costs |
 | Disputes | DSP-01, DSP-02, DSP-04, DSP-05, DSP-07 |
 | Pre-visit strategy | PRE-01, PRE-02, PRE-04 to PRE-07 |
 | Experience | UX-07 dashboard, UX-08 export, UX-09 onboarding |

@@ -1,0 +1,25 @@
+{
+  "description": "IRS limits by tax year, in dollars (PLT-01, ADR-042). Add a row in the yearly review (CMP-06); the app says a year without a row has no limits table.",
+  "years": [
+    {
+      "year": 2025,
+      "hsa_self_only": 4300,
+      "hsa_family": 8550,
+      "hsa_catch_up": 1000,
+      "fsa": 3300,
+      "fsa_carryover": 660,
+      "source": "IRS Rev. Proc. 2024-25 (HSA) and Rev. Proc. 2024-40 (health FSA)",
+      "reviewed": "2026-10-18"
+    },
+    {
+      "year": 2026,
+      "hsa_self_only": 4400,
+      "hsa_family": 8750,
+      "hsa_catch_up": 1000,
+      "fsa": 3400,
+      "fsa_carryover": 680,
+      "source": "IRS Rev. Proc. 2025-19 (HSA) and Rev. Proc. 2025-32 (health FSA)",
+      "reviewed": "2026-10-18"
+    }
+  ]
+}

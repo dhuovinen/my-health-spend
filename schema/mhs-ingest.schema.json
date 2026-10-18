@@ -238,16 +238,96 @@
           "enum": [
             "hsa",
             "fsa",
+            "lpfsa",
+            "hra",
             "credit_card",
             "debit_card",
             "bank",
             "cash",
             "other"
-          ]
+          ],
+          "description": "fsa is a general-purpose health FSA; lpfsa a limited-purpose (dental and vision) FSA; hra a health reimbursement arrangement."
         },
         "plan_year": {
           "type": "integer",
           "description": "For FSAs and other per-year accounts."
+        },
+        "opened": {
+          "$ref": "#/$defs/date",
+          "description": "When an HSA was established; expenses before it can't be reimbursed from it (TAX-04)."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "description": "The account holder first (HSA), or the participants (FSA, HRA)."
+        },
+        "plan_year_start": {
+          "$ref": "#/$defs/date",
+          "description": "First day of an FSA's or HRA's plan year (default: January 1 of plan_year)."
+        },
+        "plan_year_end": {
+          "$ref": "#/$defs/date",
+          "description": "Last day of the plan year (default: December 31 of plan_year)."
+        },
+        "grace_period": {
+          "type": "boolean",
+          "description": "The plan year's money pays expenses through the 15th of the third month after it ends (TAX-02)."
+        },
+        "carryover": {
+          "$ref": "#/$defs/money",
+          "description": "Most the plan carries into the next plan year; capped by the IRS maximum for the year."
+        },
+        "run_out_end": {
+          "$ref": "#/$defs/date",
+          "description": "Last day to file claims for the plan year."
+        },
+        "balance": {
+          "$ref": "#/$defs/money",
+          "description": "Balance on balance_as_of, as the member entered it."
+        },
+        "balance_as_of": {
+          "$ref": "#/$defs/date"
+        },
+        "eligible_categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "An HRA's eligible expense categories (ids from the Publication 502 table)."
+        },
+        "coverage": {
+          "type": "array",
+          "description": "HSA-eligible coverage periods for an HSA's contribution limit (TAX-06); default: from the HSA-eligible plans covering the holder.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "start": {
+                "$ref": "#/$defs/date"
+              },
+              "end": {
+                "$ref": "#/$defs/date"
+              },
+              "type": {
+                "enum": [
+                  "self_only",
+                  "family"
+                ]
+              }
+            }
+          }
+        },
+        "last_month_rule_years": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "Tax years the HSA's limit uses the last-month rule instead of monthly pro rata."
         },
         "notes": {
           "$ref": "#/$defs/notes"
@@ -447,6 +527,25 @@
               "since": {
                 "$ref": "#/$defs/date"
               }
+            }
+          }
+        },
+        "tax": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The member's tax choices for this visit (TAX-01, TAX-07): its Publication 502 category (with the table version it was chosen from), a letter of medical necessity on file, and an HSA payment marked as a mistake.",
+          "properties": {
+            "category": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "documentation": {
+              "type": "boolean"
+            },
+            "mistake": {
+              "type": "boolean"
             }
           }
         }
@@ -1036,6 +1135,26 @@
             "type": "string"
           },
           "description": "Names this member appears under in source files (e.g. claims 'Patient')."
+        },
+        "birth_year": {
+          "type": "integer",
+          "minimum": 1900,
+          "maximum": 2100,
+          "description": "Year only: for the HSA 55+ catch-up and FSA rules for children under 27 (TAX-06, TAX-09)."
+        },
+        "tax_dependent": {
+          "type": "object",
+          "description": "Whether this member is a tax dependent, by tax year, e.g. {\"2026\": true} (TAX-09).",
+          "propertyNames": {
+            "pattern": "^[0-9]{4}$"
+          },
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "medicare_from": {
+          "$ref": "#/$defs/date",
+          "description": "First day of Medicare coverage; no HSA contributions from that month on (TAX-08)."
         },
         "notes": {
           "$ref": "#/$defs/notes"

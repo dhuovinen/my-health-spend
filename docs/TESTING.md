@@ -18,12 +18,12 @@ docker compose --profile test run --rm tests
 uv run --with pytest-cov pytest --cov=mhs
 ```
 
-## Current state (2026-10-17, phase 1.5 built on `feat/r1-web-experience`)
+## Current state (2026-10-18, Release 2 HSA and tax built on `feat/r2-hsa-tax`)
 
 | Measure | Value |
 | --- | --- |
-| Automated tests | 387 on the compose stack (none skipped); `uv run pytest` 371 with 16 skipped (stack tests and the ones that need the tesseract binary or Chromium), 2026-10-17 on `main` after the phase 1.5 merge. They include phase 1.5's page and layout tests (`test_ux.py`, `test_ux_layout.py`), the 55 Release 0 tests (22 run a second time against Release 1), phase 1.4's core and page tests (`test_r1_reconcile.py`, `test_r1_reconcile_pages.py`), the other Release 1 tests in `tests/test_r1_*.py` (uploads, scrubbing, OCR, Claude extraction, dates, demo, corpus, cloud adapters, recovery, export and delete, the 1.3 leftovers, email, access log) and the stack tests in `tests/stack/` (including SMTP delivery and the performance check) |
-| Coverage, `core/` | 92 to 99% per module: `reconcile.py` 97%, `lines.py` 94%, `matching.py` 99%, `edits.py` 92% (target ≥ 80%) |
+| Automated tests | 449 on the compose stack (none skipped); `uv run pytest` 433 with 16 skipped (stack tests and the ones that need the tesseract binary or Chromium), 2026-10-18 on `feat/r2-hsa-tax`. They include the HSA and tax tests (`test_tax.py`, `test_tax_pages.py`), phase 1.5's page and layout tests (`test_ux.py`, `test_ux_layout.py`), the 55 Release 0 tests (22 run a second time against Release 1), phase 1.4's core and page tests (`test_r1_reconcile.py`, `test_r1_reconcile_pages.py`), the other Release 1 tests in `tests/test_r1_*.py` and the stack tests in `tests/stack/` |
+| Coverage, `core/` | 92 to 99% per module: `tax.py` 99%, `reconcile.py` 97%, `lines.py` 94%, `matching.py` 99%, `edits.py` 92% (target ≥ 80%) |
 | Coverage, `data/` | 89 to 100% per module |
 | Coverage, `web/pages.py` (shared pages), `web/household/app.py`, `auth.py` | 92%, 95%, 98% |
 | Coverage, `ingest/` (upload pipeline), `web/household/intake.py` | 72 to 100% per module under `uv run pytest` (OCR and worker paths run fully only on the stack) |
@@ -79,6 +79,7 @@ Each scenario is automated in `tests/test_r1_scenarios.py` (with the worker run 
 | 25 | Help | Open Help (the ? icon) | Every visit status and check is explained in plain words; the server app covers signing in, recovery, uploads and your data; the laptop app covers import by path | UX-05, B-9 | `test_web.py::test_help_explains_statuses_checks_and_the_app` |
 | 26 | Forward an email | From your own address, forward an email with a PDF and a photo to the address on Uploads; then one whose body is a statement | One upload per attachment (others skipped), and one for the statement body, each read and ready to review; a stranger's mail and unknown addresses are refused at SMTP | ING-01 (TC-4), ADR-039 | `test_r1_mail.py`, stack (`test_forwarded_email_arrives_and_is_read`) |
 | 27 | Access log | Open a visit, download a statement, change a provider, add and delete a note, upload and review a file, export; then open "Your data" | Each action listed with who, what, which record and when; the log can't be changed by the app; another household's entries never show | PRV-10 (TC-1, TC-2), ADR-040 | `test_r1_access_log.py` |
+| 28 | HSA and tax (Release 2) | Import `samples/tax-ingest.json` on the Import page; open HSA and tax for 2026; mark the eye exam reimbursed; mark the vitamins' HSA payment a mistake on its visit; set Jamie as a 2026 tax dependent; choose the last-month rule for 2026; choose "Save the HSA for later" | Summary: $474.00 of HSA distributions by person and purpose, adding up; vault $330.00, then $120.00 (a second reimbursement refused); contributions $7,875.00 over the $7,575.00 monthly limit by $300.00, then within $9,750.00 with the testing-period warning; the vitamins flagged, with return guidance only once marked; Jamie's urgent care flagged, then not; the vault reads "banked for later"; the disclaimer under every suggestion | TAX-01 to TAX-04, TAX-06 to TAX-10, CMP-04 (ADR-042) | `test_tax_pages.py`, `test_tax.py` |
 
 **Scrubbing is deterministic (scenario 19).** Presidio reads each document's original text once, and its finds are placed in the rules' output wherever the rules left them whole. It used to run a second time on text that already held random vault tokens, so the same statement scrubbed differently from upload to upload: a bare letterhead above a tokenized address read as a person in about one upload in four (43 of 150 in `mhs:test`), and extraction took the table header as the provider. Names and places Presidio finds that hold a practice word (Orthopedics, Radiology, Clinic, Imaging, Pharmacy, Labs and the rest of `ORG_WORDS` in `ingest/scrub.py`), with any capitalized words after them on the line, are kept, because spaCy reads "Bennett Radiology" as a person even in the original text. The recall seed set is unchanged at 189 of 190 identifiers (99.5%).
 
@@ -199,6 +200,58 @@ The P1 UX cases for UX-01, UX-02, UX-06 and UX-10 are automated with the synthet
 The layout tests skip where Playwright's Chromium isn't installed (`uv run playwright install chromium`); the compose `tests` image has it. `MHS_UX_SCREENSHOTS=<folder> uv run pytest tests/test_ux_layout.py` keeps a full-page screenshot of every page it checks (full-page captures drop the touch emulation, so Uploads' camera button doesn't show in them; the test checks it on the live page).
 
 **By hand.** The camera itself: on a real phone the "Take a photo" button opens the camera and the photo uploads when taken. The local stack binds 127.0.0.1 only, so this waits for staging (phase 1.6); the browser test covers everything but the camera app.
+
+## HSA and tax (Release 2, ADR-042)
+
+Every P2 case for TAX-01, TAX-02, TAX-03 and TAX-06 to TAX-10 is automated, plus TAX-04's vault cases (P1, which this
+work finishes). Core cases (U) are in `tests/test_tax.py`, with "today" pinned to 2026-10-09 (2026-10-18 for the
+sample household). Page cases (I, E) are in `tests/test_tax_pages.py`, which runs each one against both apps through
+the `web` fixture, using the synthetic household in `samples/tax-ingest.json` (`uv run tools/make_tax_sample.py`
+rewrites it). `/tax` is also in the phone layout check (`test_ux_layout.py`, 375px, both apps). The IRS limits and the
+Publication 502 categories are dated data in `src/mhs/data/reference/` (PLT-01).
+
+| Cases | Test |
+| --- | --- |
+| TC-TAX-01-1 office visit copay: likely qualified, citing "Physicians" | `test_tax.py::test_tc_tax_01_1_*` |
+| TC-TAX-01-2 vitamins likely not qualified; with a letter on file, "needs documentation" satisfied | `test_tc_tax_01_2_*`; on the visit page `test_tax_pages.py::test_member_category_and_letter_*` |
+| TC-TAX-01-3 massage therapy needs a letter of medical necessity | `test_tc_tax_01_3_*` |
+| TC-TAX-01-4 a new table version tags new expenses only; earlier ones and member choices keep theirs | `test_tc_tax_01_4_*`, `test_reference_tables_are_dated_data` |
+| TC-TAX-02-1 grace period: 2026 money pays a 2027-03-10 expense | `test_tc_tax_02_1_*` |
+| TC-TAX-02-2 $680 carryover of $1,000 unspent: $680 carried, $320 forfeited (capped by the IRS maximum) | `test_tc_tax_02_2_*` |
+| TC-TAX-02-3 claim filed 2027-04-02 after a 2027-03-31 run-out: past the deadline | `test_tc_tax_02_3_*` |
+| TC-TAX-02-4 limited-purpose FSA and a medical expense: not eligible | `test_tc_tax_02_4_*` |
+| TC-TAX-02-5 HRA pays only its listed expenses | `test_tc_tax_02_5_*` |
+| TC-TAX-03-1, 03-3 HSA by default, with an LPFSA available | `test_tc_tax_03_1_and_3_*` |
+| TC-TAX-03-2 "save HSA for later": pay another way, into the vault | `test_tc_tax_03_2_*` (core), `test_tc_tax_03_2_strategy_setting_*` (pages) |
+| TC-TAX-03-4 the LPFSA never recommended for a medical expense | `test_tc_tax_03_4_*` |
+| TC-TAX-03-5 dental, LPFSA $300.00 forfeits in 20 days: the LPFSA, with the HSA as the alternative | `test_tc_tax_03_5_*` |
+| TC-TAX-04-1 $120.00 paid outside the HSA after it opened: in the vault, running total | `test_tc_tax_04_1_*`, `test_tax_page_shows_the_year` |
+| TC-TAX-04-2 an expense before the HSA opened stays out | `test_tc_tax_04_2_*` |
+| TC-TAX-04-3 reimbursed: the total drops; the same entry can't be reimbursed twice; a part paid back leaves the rest open; an FSA reimbursement isn't HSA money | `test_tc_tax_04_3_*` (core and pages), `test_partial_and_fsa_reimbursements`, `test_a_payment_reimbursed_in_part_*` |
+| TC-TAX-04-4 the vault receipt is the unchanged original | `test_tax_pages.py::test_tc_tax_04_4_*` |
+| TC-TAX-06-1 family coverage, $8,000.00 in: $750.00 room | `test_tc_tax_06_1_*` |
+| TC-TAX-06-2 holder 55 or older: catch-up included | `test_tc_tax_06_2_*` |
+| TC-TAX-06-3 self-only then family: $6,575.00 monthly, $8,750.00 with the last-month rule and its warning (and a note when December isn't covered) | `test_tc_tax_06_3_*`, `test_last_month_rule_without_december_coverage_says_so`; on the page `test_account_rules_people_and_the_contribution_rule` |
+| TC-TAX-06-4 $300.00 over: excess contribution | `test_tc_tax_06_4_*`, `test_sample_household_*` |
+| TC-TAX-06-5 2025 and 2026 each against its own row (prior-year contributions by tax year) | `test_tc_tax_06_5_*` |
+| TC-TAX-07-1 a non-qualified HSA payment; return guidance only when marked a mistake; an earlier visit paid this year is checked this year | `test_tc_tax_07_1_*`, `test_an_earlier_visit_paid_from_the_hsa_*` |
+| TC-TAX-07-2 a "needs documentation" item asks for the letter and isn't called non-qualified | `test_tc_tax_07_2_*` |
+| TC-TAX-07-3 the guidance screen shows the disclaimer | `test_tax_pages.py::test_tc_tax_07_3_*` |
+| TC-TAX-08-1 a general-purpose FSA and HSA contributions: conflict | `test_tc_tax_08_1_*` |
+| TC-TAX-08-2 a limited-purpose FSA: no conflict | `test_tc_tax_08_2_*` |
+| TC-TAX-08-3 Medicare from 2026-06-01: later contributions flagged | `test_tc_tax_08_3_*` |
+| TC-TAX-09-1 the HSA pays for a spouse | `test_tc_tax_09_1_*` |
+| TC-TAX-09-2 a 24-year-old non-dependent: flagged from the HSA, allowed from a health FSA | `test_tc_tax_09_2_*` |
+| TC-TAX-09-3 dependent status per tax year | `test_tc_tax_09_3_*`; on the page `test_account_rules_people_and_the_contribution_rule` |
+| TC-TAX-10-1 distributions by person and purpose add up to the HSA's | `test_tc_tax_10_1_*` |
+| TC-TAX-10-2 unreimbursed line equals the vault at year end | `test_tc_tax_10_2_*` |
+| TC-TAX-10-3 medical spend for itemizing, with the disclaimer, no advice to itemize | `test_tc_tax_10_3_*`, `test_tax_page_shows_the_year` |
+| TC-CMP-04-1 (the tax screens) the disclaimer on every block that suggests an action | `test_tax_page_shows_the_year`, `test_tc_tax_07_3_*` |
+| PRV-11 on the new routes | `test_tax_page_and_forms_belong_to_their_household` |
+
+**By hand.** Release 0 on a scratch data folder (`MHS_DATA_DIR=<scratch> uv run mhs`, import `samples/tax-ingest.json`),
+or scenario 28 on the stack. The advice for the LPFSA depends on today's date (within 90 days of its year end it is
+suggested first for dental and vision care), so the page tests don't assert it.
 
 ## Release 1 additions
 
