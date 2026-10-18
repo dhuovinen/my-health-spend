@@ -32,10 +32,11 @@ from mhs.data.repository import PREFERENCE, RECONCILIATION, load_dataset, waitin
 from mhs.data.settings_file import settings_document
 from mhs.data.store import Store
 from mhs.web import letters
+from mhs.web.tax_pages import add_tax_pages, visit_tax
 
 WEB = Path(__file__).parent
 CATEGORIES = ["provider_visit", "service", "supplements", "rx", "equipment"]
-ACCOUNT_TYPES = ["hsa", "fsa", "credit_card", "debit_card", "bank", "cash", "other"]
+ACCOUNT_TYPES = ["hsa", "fsa", "lpfsa", "hra", "credit_card", "debit_card", "bank", "cash", "other"]
 PROVIDER_KINDS = ["physician_practice", "hospital", "lab", "imaging", "pharmacy", "retailer", "other"]
 NETWORK_STATUSES = ["in_network", "out_of_network", "not_applicable", "unknown"]
 RELATIONSHIPS = ["self", "spouse", "child", "other"]
@@ -449,7 +450,7 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         return render(request, "visit.html", status_code=status_code, report=report, v=vr, group=group, error=error,
                       notes=notes, plan=store.get("plan", visit.get("plan_id", "")), accounts=accounts,
                       others=[o for o in group.visits if o.id != visit_id], lines=line_rows(vr.line_match),
-                      history=case_history(vr, notes, accounts))
+                      history=case_history(vr, notes, accounts), tax=visit_tax(store, visit_id))
 
     @app.get("/visits/{visit_id}", response_class=HTMLResponse)
     def visit_detail(request: Request, visit_id: str):
@@ -1161,4 +1162,5 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         host.store(request)
         return render(request, "help.html", CHECK_NAMES=CHECK_NAMES, CHECK_HELP=CHECK_HELP, STATUS_HELP=STATUS_HELP)
 
+    add_tax_pages(app, render, host, posted)  # the HSA and tax page (ADR-043)
     return preview_import

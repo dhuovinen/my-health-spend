@@ -481,44 +481,44 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 
 | TC | Req | Scenario | Expected result | Level | Status |
 | --- | --- | --- | --- | --- | --- |
-| TC-TAX-01-1 | TAX-01 | Office visit copay | Tagged "likely qualified" citing Pub 502 "Physicians" | U | New |
-| TC-TAX-01-2 | TAX-01 | General vitamins; then the same with a letter of medical necessity on file | "Likely not qualified"; then "needs documentation" satisfied | U | New |
-| TC-TAX-01-3 | TAX-01 | Massage therapy | Needs documentation (letter of medical necessity) | U | New |
-| TC-TAX-01-4 | TAX-01 | Category table updated to a new version | Existing tags keep their old version; new tags use the new one (PLT-01) | U | New |
-| TC-TAX-02-1 | TAX-02 | Health FSA with a 2.5-month grace period; expense on 2027-03-10 | 2026 funds usable | U | New |
-| TC-TAX-02-2 | TAX-02 | FSA with $680 carryover; $1,000 unspent at year end | $680 carried; $320 forfeited | U | New |
-| TC-TAX-02-3 | TAX-02 | Run-out deadline 2027-03-31; claim filed 2027-04-02 | Marked past deadline | U | New |
-| TC-TAX-02-4 | TAX-02 | Limited-purpose FSA and a medical (non-dental, non-vision) expense | Not eligible from the LPFSA | U | New |
-| TC-TAX-02-5 | TAX-02 | HRA with employer-defined eligible list | Only listed expenses eligible | U | New |
-| TC-TAX-03-1 | TAX-03 | HSA-eligible member, qualified expense, default setting, HSA and LPFSA balances available | Recommend the HSA | U | New |
-| TC-TAX-03-2 | TAX-03 | Setting "save HSA for later" | Recommend paying another way and adding the expense to the receipt vault | U | New |
-| TC-TAX-03-3 | TAX-03 | Setting "pay from HSA now" | Recommend HSA | U | New |
-| TC-TAX-03-4 | TAX-03 | Medical expense with only an LPFSA and HSA | LPFSA never recommended for it | U | New |
-| TC-TAX-03-5 | TAX-03 | Dental expense; LPFSA balance $300.00 forfeits in 20 days; HSA also available | Suggest the LPFSA (forfeiture rule), with the HSA as the alternative | U | New |
-| TC-TAX-04-1 | TAX-04 | Qualified $120.00 paid outside the HSA after the HSA open date | Vault entry; running total +$120.00; receipt attached; shown as a reimbursement opportunity ("pay now") or banked savings ("save for later") | U | Exists (R0 flag only): `test_hsa_flags` |
-| TC-TAX-04-2 | TAX-04 | Qualified expense dated before the HSA was established | Not added to the vault | U | New |
-| TC-TAX-04-3 | TAX-04 | Vault entry reimbursed from the HSA | Running total decreases; the same entry cannot be reimbursed twice | U | New |
-| TC-TAX-04-4 | TAX-04 | Vault receipt | Original kept unchanged and viewable (ING-10) | I | New |
+| TC-TAX-01-1 | TAX-01 | Office visit copay | Tagged "likely qualified" citing Pub 502 "Physicians" | U | Exists: `test_tax.py::test_tc_tax_01_1_*` |
+| TC-TAX-01-2 | TAX-01 | General vitamins; then the same with a letter of medical necessity on file | "Likely not qualified"; then "needs documentation" satisfied | U | Exists: `test_tax.py::test_tc_tax_01_2_*` |
+| TC-TAX-01-3 | TAX-01 | Massage therapy | Needs documentation (letter of medical necessity) | U | Exists: `test_tax.py::test_tc_tax_01_3_*` |
+| TC-TAX-01-4 | TAX-01 | Category table updated to a new version | Existing tags keep their old version; new tags use the new one (PLT-01) | U | Exists: `test_tax.py::test_tc_tax_01_4_*` |
+| TC-TAX-02-1 | TAX-02 | Health FSA with a 2.5-month grace period; expense on 2027-03-10 | 2026 funds usable | U | Exists: `test_tax.py::test_tc_tax_02_1_*` |
+| TC-TAX-02-2 | TAX-02 | FSA with $680 carryover; $1,000 unspent at year end | $680 carried; $320 forfeited | U | Exists: `test_tax.py::test_tc_tax_02_2_*` |
+| TC-TAX-02-3 | TAX-02 | Run-out deadline 2027-03-31; claim filed 2027-04-02 | Marked past deadline | U | Exists: `test_tax.py::test_tc_tax_02_3_*` |
+| TC-TAX-02-4 | TAX-02 | Limited-purpose FSA and a medical (non-dental, non-vision) expense | Not eligible from the LPFSA | U | Exists: `test_tax.py::test_tc_tax_02_4_*` |
+| TC-TAX-02-5 | TAX-02 | HRA with employer-defined eligible list | Only listed expenses eligible | U | Exists: `test_tax.py::test_tc_tax_02_5_*` |
+| TC-TAX-03-1 | TAX-03 | HSA-eligible member, qualified expense, default setting, HSA and LPFSA balances available | Recommend the HSA | U | Exists: `test_tax.py::test_tc_tax_03_1_*` |
+| TC-TAX-03-2 | TAX-03 | Setting "save HSA for later" | Recommend paying another way and adding the expense to the receipt vault | U | Exists: `test_tax.py::test_tc_tax_03_2_*` |
+| TC-TAX-03-3 | TAX-03 | Setting "pay from HSA now" | Recommend HSA | U | Exists: `test_tax.py::test_tc_tax_03_3_*` |
+| TC-TAX-03-4 | TAX-03 | Medical expense with only an LPFSA and HSA | LPFSA never recommended for it | U | Exists: `test_tax.py::test_tc_tax_03_4_*` |
+| TC-TAX-03-5 | TAX-03 | Dental expense; LPFSA balance $300.00 forfeits in 20 days; HSA also available | Suggest the LPFSA (forfeiture rule), with the HSA as the alternative | U | Exists: `test_tax.py::test_tc_tax_03_5_*` |
+| TC-TAX-04-1 | TAX-04 | Qualified $120.00 paid outside the HSA after the HSA open date | Vault entry; running total +$120.00; receipt attached; shown as a reimbursement opportunity ("pay now") or banked savings ("save for later") | U | Exists: `test_tax.py::test_tc_tax_04_1_*` |
+| TC-TAX-04-2 | TAX-04 | Qualified expense dated before the HSA was established | Not added to the vault | U | Exists: `test_tax.py::test_tc_tax_04_2_*` |
+| TC-TAX-04-3 | TAX-04 | Vault entry reimbursed from the HSA | Running total decreases; the same entry cannot be reimbursed twice | U | Exists: `test_tax.py::test_tc_tax_04_3_*` |
+| TC-TAX-04-4 | TAX-04 | Vault receipt | Original kept unchanged and viewable (ING-10) | I | Exists: `test_tax_pages.py::test_tc_tax_04_4_vault_receipt_is_the_unchanged_original` |
 | TC-TAX-05-1 | TAX-05 | FSA balance $500.00, 30 days to plan year end, $200.00 eligible unclaimed | Alert: $500.00 at risk, 30 days left, $200.00 claimable now | U | New |
 | TC-TAX-05-2 | TAX-05 | Same, with $680 carryover available | At-risk amount accounts for the carryover ($0.00 here) | U | New |
 | TC-TAX-05-3 | TAX-05 | FSA balance $0.00 | No alert | U | New |
-| TC-TAX-06-1 | TAX-06 | Family coverage, $8,000.00 contributed in 2026 | Under the $8,750 limit; $750.00 room left | U | New |
-| TC-TAX-06-2 | TAX-06 | Account holder aged 55 or older | Limit includes the $1,000 catch-up | U | New |
-| TC-TAX-06-3 | TAX-06 | Self-only Jan to Jun, family Jul to Dec 2026, default rule | Limit = 6/12 × $4,400 + 6/12 × $8,750 = $6,575.00; switching to the last-month rule gives $8,750.00 with the testing-period warning | U | New |
-| TC-TAX-06-4 | TAX-06 | Contributions exceed the limit by $300.00 | Finding: excess contribution $300.00 | U | New |
-| TC-TAX-06-5 | TAX-06 | 2025 vs 2026 contributions | Each year checked against its own reference table row | U | New |
-| TC-TAX-07-1 | TAX-07 | HSA paid $40.00 for a non-qualified item the member marks as a mistake | Finding with mistaken-distribution guidance and the CMP-04 disclaimer; without the mistake mark, no return guidance | U | New |
-| TC-TAX-07-2 | TAX-07 | HSA paid for a "needs documentation" item | Prompt to get a letter of medical necessity; not labeled non-qualified | U | New |
-| TC-TAX-07-3 | TAX-07 | Guidance screen | Disclaimer present | E | New |
-| TC-TAX-08-1 | TAX-08 | Member has a general-purpose FSA and makes HSA contributions | Eligibility conflict flagged | U | New |
-| TC-TAX-08-2 | TAX-08 | Limited-purpose FSA with HSA | No conflict | U | New |
-| TC-TAX-08-3 | TAX-08 | Medicare enrollment date 2026-06-01; HSA contributions after | Contributions after enrollment flagged | U | New |
-| TC-TAX-09-1 | TAX-09 | HSA pays a spouse's expense | Allowed | U | New |
-| TC-TAX-09-2 | TAX-09 | HSA pays for a 24-year-old child who is not a tax dependent | Flagged; the same expense from a health FSA is allowed | U | New |
-| TC-TAX-09-3 | TAX-09 | Dependent status changes between tax years | Each year uses its own status | U | New |
-| TC-TAX-10-1 | TAX-10 | Year-end summary | HSA distributions by person and purpose sum to account distributions | U | New |
-| TC-TAX-10-2 | TAX-10 | Unreimbursed qualified expenses line | Equals the vault total at year end | U | New |
-| TC-TAX-10-3 | TAX-10 | Medical spend total for itemizing | Total shown with the disclaimer; no advice to itemize | U | New |
+| TC-TAX-06-1 | TAX-06 | Family coverage, $8,000.00 contributed in 2026 | Under the $8,750 limit; $750.00 room left | U | Exists: `test_tax.py::test_tc_tax_06_1_*` |
+| TC-TAX-06-2 | TAX-06 | Account holder aged 55 or older | Limit includes the $1,000 catch-up | U | Exists: `test_tax.py::test_tc_tax_06_2_*` |
+| TC-TAX-06-3 | TAX-06 | Self-only Jan to Jun, family Jul to Dec 2026, default rule | Limit = 6/12 × $4,400 + 6/12 × $8,750 = $6,575.00; switching to the last-month rule gives $8,750.00 with the testing-period warning | U | Exists: `test_tax.py::test_tc_tax_06_3_*` |
+| TC-TAX-06-4 | TAX-06 | Contributions exceed the limit by $300.00 | Finding: excess contribution $300.00 | U | Exists: `test_tax.py::test_tc_tax_06_4_*` |
+| TC-TAX-06-5 | TAX-06 | 2025 vs 2026 contributions | Each year checked against its own reference table row | U | Exists: `test_tax.py::test_tc_tax_06_5_*` |
+| TC-TAX-07-1 | TAX-07 | HSA paid $40.00 for a non-qualified item the member marks as a mistake | Finding with mistaken-distribution guidance and the CMP-04 disclaimer; without the mistake mark, no return guidance | U | Exists: `test_tax.py::test_tc_tax_07_1_*` |
+| TC-TAX-07-2 | TAX-07 | HSA paid for a "needs documentation" item | Prompt to get a letter of medical necessity; not labeled non-qualified | U | Exists: `test_tax.py::test_tc_tax_07_2_*` |
+| TC-TAX-07-3 | TAX-07 | Guidance screen | Disclaimer present | E | Exists: `test_tax_pages.py::test_tc_tax_07_3_guidance_only_after_the_member_marks_a_mistake_with_the_disclaimer` |
+| TC-TAX-08-1 | TAX-08 | Member has a general-purpose FSA and makes HSA contributions | Eligibility conflict flagged | U | Exists: `test_tax.py::test_tc_tax_08_1_*` |
+| TC-TAX-08-2 | TAX-08 | Limited-purpose FSA with HSA | No conflict | U | Exists: `test_tax.py::test_tc_tax_08_2_*` |
+| TC-TAX-08-3 | TAX-08 | Medicare enrollment date 2026-06-01; HSA contributions after | Contributions after enrollment flagged | U | Exists: `test_tax.py::test_tc_tax_08_3_*` |
+| TC-TAX-09-1 | TAX-09 | HSA pays a spouse's expense | Allowed | U | Exists: `test_tax.py::test_tc_tax_09_1_*` |
+| TC-TAX-09-2 | TAX-09 | HSA pays for a 24-year-old child who is not a tax dependent | Flagged; the same expense from a health FSA is allowed | U | Exists: `test_tax.py::test_tc_tax_09_2_*` |
+| TC-TAX-09-3 | TAX-09 | Dependent status changes between tax years | Each year uses its own status | U | Exists: `test_tax.py::test_tc_tax_09_3_*` |
+| TC-TAX-10-1 | TAX-10 | Year-end summary | HSA distributions by person and purpose sum to account distributions | U | Exists: `test_tax.py::test_tc_tax_10_1_*` |
+| TC-TAX-10-2 | TAX-10 | Unreimbursed qualified expenses line | Equals the vault total at year end | U | Exists: `test_tax.py::test_tc_tax_10_2_*` |
+| TC-TAX-10-3 | TAX-10 | Medical spend total for itemizing | Total shown with the disclaimer; no advice to itemize | U | Exists: `test_tax.py::test_tc_tax_10_3_*` |
 
 ### 3.6 Pre-visit strategy (PRE)
 
@@ -720,16 +720,16 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | ALC-06 | P1 | 1, 2 (2) | U | — | — |
 | ALC-07 | P2 | 1, 2, 3 (3) | E | — | — |
 | ALC-08 | P2 | 1, 2, 3 (3) | U | — | — |
-| TAX-01 | P2 | 1, 2, 3, 4 (4) | U | — | — |
-| TAX-02 | P2 | 1, 2, 3, 4, 5 (5) | U | — | — |
-| TAX-03 | P2 | 1, 2, 3, 4, 5 (5) | U | — | — |
-| TAX-04 | P1 | 1, 2, 3, 4 (4) | IU | — | 1 partly |
+| TAX-01 | P2 | 1, 2, 3, 4 (4) | U | — | all (ADR-043) |
+| TAX-02 | P2 | 1, 2, 3, 4, 5 (5) | U | — | all (ADR-043) |
+| TAX-03 | P2 | 1, 2, 3, 4, 5 (5) | U | — | all (ADR-043) |
+| TAX-04 | P1 | 1, 2, 3, 4 (4) | IU | — | all (ADR-043) |
 | TAX-05 | P3 | 1, 2, 3 (3) | U | — | — |
-| TAX-06 | P2 | 1, 2, 3, 4, 5 (5) | U | — | — |
-| TAX-07 | P2 | 1, 2, 3 (3) | EU | — | — |
-| TAX-08 | P2 | 1, 2, 3 (3) | U | — | — |
-| TAX-09 | P2 | 1, 2, 3 (3) | U | — | — |
-| TAX-10 | P2 | 1, 2, 3 (3) | U | — | — |
+| TAX-06 | P2 | 1, 2, 3, 4, 5 (5) | U | — | all (ADR-043) |
+| TAX-07 | P2 | 1, 2, 3 (3) | EU | — | all (ADR-043) |
+| TAX-08 | P2 | 1, 2, 3 (3) | U | — | all (ADR-043) |
+| TAX-09 | P2 | 1, 2, 3 (3) | U | — | all (ADR-043) |
+| TAX-10 | P2 | 1, 2, 3 (3) | U | — | all (ADR-043) |
 | PRE-01 | P2 | 1, 2, 3 (3) | EIU | — | — |
 | PRE-02 | P2 | 1, 2, 3 (3) | U | — | — |
 | PRE-03 | P3 | 1, 2, 3 (3) | IU | — | — |

@@ -293,7 +293,7 @@ form.stack .btn { align-self: flex-start; }
   summary { min-height: 44px; padding: .55rem 0; }
   input[type=checkbox], input[type=radio] { width: 22px; height: 22px; }
   /* links standing on their own (not inside a sentence) are tap targets too */
-  a.back, .page-head a, .toc a, td > a, .kv a, .person-card h2 a, .case-row > a, .note-head a {
+  a.back, a.more, .page-head a, .toc a, td > a, .kv a, .person-card h2 a, .case-row > a, .note-head a {
     display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
   input[type=file] { min-height: 44px; max-width: 100%; }
   main .queue li > a { display: grid; grid-template-columns: minmax(0, 1fr); }
@@ -357,3 +357,7 @@ form.stack .btn { align-self: flex-start; }
 @media (max-width: 860px) {
   .uploads input[type=file] { min-height: 44px; width: 100%; }
 }
+
+/* HSA and tax (ADR-043): the CMP-04 disclaimer under every block that suggests an action */
+.disclaimer { color: var(--muted); border-left: 3px solid var(--border); padding-left: .6rem; margin: .75rem 0 0; }
+.guidance { margin-top: .35rem; }

@@ -23,8 +23,8 @@ flowchart LR
 
 | Layer | Code | Responsibility | Rule |
 | --- | --- | --- | --- |
-| Core | `src/mhs/core/` | Checks, visit status, payment allocation, provider ledgers, HSA flags, plan-limit progress (`reconcile.py`); identities, buckets, line pairing (`lines.py`); match scores (`matching.py`); the member's decisions as record changes (`edits.py`); dispute cases' follow-ups, deadlines, evidence and savings (`disputes.py`, ADR-042) | Pure functions over record dicts, money in integer cents. No database or web imports. Never changed to suit the UI. |
-| Data | `src/mhs/data/` | Record store (one JSON record per kind and id), import validation and upsert, owner-edit protection, money conversion, settings export | The store does not mirror schema fields as columns, so the ingest schema can evolve |
+| Core | `src/mhs/core/` | Checks, visit status, payment allocation, provider ledgers, HSA flags, plan-limit progress (`reconcile.py`); identities, buckets, line pairing (`lines.py`); match scores (`matching.py`); the member's decisions as record changes (`edits.py`); per-person totals (`household.py`); dispute cases' follow-ups, deadlines, evidence and savings (`disputes.py`, ADR-042); HSA and tax: "likely" tags, account rules, the receipt vault, contribution limits, year-end summary (`tax.py`, ADR-043) | Pure functions over record dicts, money in integer cents. No database or web imports. Never changed to suit the UI. |
+| Data | `src/mhs/data/` | Record store (one JSON record per kind and id), import validation and upsert, owner-edit protection, money conversion, settings export; reference tables as dated data (`reference/`: IRS limits by year, Publication 502 categories by version, PLT-01) | The store does not mirror schema fields as columns, so the ingest schema can evolve |
 | Web | `src/mhs/web/` | Server-rendered pages, forms, file serving | Binds to 127.0.0.1 only; no login |
 | Tools | `tools/build_ingest.py` | Converts real source files into ingest JSON | Reads `data/settings.json` so in-app edits carry through |
 
@@ -80,7 +80,7 @@ Keep the Release 0 layering and add two packages:
 
 | Package | Holds |
 | --- | --- |
-| `core/` | Reconciliation, matching and identities (pure) |
+| `core/` | Reconciliation, matching and identities, HSA and tax (pure) |
 | `data/` | Repositories for the records database and owner-edit protection |
 | `ingest/` (new) | The upload pipeline (ADR-033): reading values (`values.py`), HSA and claims exports (`hsa.py`, `claims.py`), text from PDFs and photos (`text.py`; OCR in `ocr.py`, Tesseract locally) and identifier scrubbing (`scrub.py`, rules plus Presidio), all run in the application tier; classification and field extraction (`extract.py` layout rules, `ai.py` Claude for households that turned it on, ADR-034) and the queue worker (`worker.py`), run in the back-end tier. Routes and review pages in `web/household/intake.py` |
 | `vault/` (new) | Identity vault service, client, encrypted backup and restore; tokenize, normalize (PRV-03), re-identify |

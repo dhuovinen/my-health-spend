@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}HSA and tax{% endblock %}
+{% from "_macros.html" import tax_tag as tag_chip %}
+{% macro disclaimer_note() %}<p class="disclaimer small">{{ disclaimer }}</p>{% endmacro %}
+{% block content %}
+{% set y = view.year %}
+<div class="page-head">
+  <div>
+    <h1>HSA and tax</h1>
+    <p class="muted flush">Receipts to reimburse, contributions against the IRS limit, and a year-end summary. Tags say "likely": they are possibilities, not rulings.</p>
+  </div>
+  <form method="get" action="/tax" class="inline">
+    <label>Tax year
+      <select name="year" data-autosubmit>{% for yy in years %}<option value="{{ yy }}" {{ 'selected' if yy == y }}>{{ yy }}</option>{% endfor %}</select>
+    </label>
+    <noscript><button class="btn small">Go</button></noscript>
+  </form>
+</div>
+{% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
+{% if saved %}<div class="alert good">Saved.</div>{% endif %}
+<div class="alert warn" id="disclaimer">{{ disclaimer }}</div>
+
+<nav class="toc small"><a href="#summary">Year-end summary</a><a href="#vault">Receipt vault</a><a href="#contributions">Contributions</a><a href="#flags">HSA payments to check</a><a href="#pay">Which account pays</a><a href="#strategy">Your HSA choice</a><a href="#accounts">Account rules</a><a href="#people">People</a></nav>
+
+{% if not view.hsa %}
+<div class="callout">No HSA yet. Add one under <a href="/settings#accounts">Payment accounts</a> in Settings (type HSA), then set when it was opened under <a href="#accounts">Account rules</a>.</div>
+{% endif %}
+
+<section class="card section" id="summary">
+  <h2>Year-end summary for {{ y }}</h2>
+  {% set s = view.summary %}
+  <div class="grid tiles">
+    <div class="card tile"><div class="label">HSA distributions</div><div class="value">{{ s.distributions|money }}</div>{% if s.refunds %}<div class="small muted">{{ s.refunds|money }} refunded to the HSA</div>{% endif %}</div>
+    <div class="card tile"><div class="label">Unreimbursed qualified expenses</div><div class="value">{{ view.vault_total(y ~ '-12-31')|money }}</div><div class="small muted">In the receipt vault on Dec 31</div></div>
+    <div class="card tile"><div class="label">Paid out of pocket, likely qualified</div><div class="value">{{ s.family.out_of_pocket|money }}</div><div class="small muted">For a possible itemized deduction</div></div>
+    <div class="card tile"><div class="label">HSA contributions</div><div class="value">{{ view.contributions|sum(attribute='contributed')|money }}</div></div>
+  </div>
+  <div class="table-wrap">
+  <table class="people" id="summary-table">
+    <thead><tr><th>Person</th><th class="num">HSA distributions</th><th class="num">Unreimbursed (vault)</th><th class="num">Out of pocket, likely qualified</th></tr></thead>
+    <tbody>
+    {% for r in s.rows if r.hsa_distributions or r.unreimbursed or r.out_of_pocket or r.member_id not in ('', 'unmatched') %}
+    <tr><td data-label="Person">{{ r.name }}</td><td data-label="HSA distributions" class="num">{{ r.hsa_distributions|money }}</td>
+      <td data-label="Unreimbursed" class="num">{{ r.unreimbursed|money }}</td><td data-label="Out of pocket" class="num">{{ r.out_of_pocket|money }}</td></tr>
+    {% endfor %}
+    </tbody>
+    <tfoot><tr class="total"><td data-label="Person">Household</td><td data-label="HSA distributions" class="num">{{ s.family.hsa_distributions|money }}</td>
+      <td data-label="Unreimbursed" class="num">{{ s.family.unreimbursed|money }}</td><td data-label="Out of pocket" class="num">{{ s.family.out_of_pocket|money }}</td></tr></tfoot>
+  </table>
+  </div>
+  {% if s.family.by_purpose %}
+  <h3 class="section">HSA distributions by purpose</h3>
+  <ul class="kv" id="by-purpose">
+    {% for purpose, amount in s.family.by_purpose|dictsort %}<li><span>{{ purpose }}</span><span class="num">{{ amount|money }}</span></li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if not s.balanced %}<p class="small bad-ink">The rows don't add up to the HSA's distributions; please report this.</p>{% endif %}
+  <p class="small muted">Out of pocket counts payments made in {{ y }} from cards, bank accounts and cash for likely-qualified expenses, not paid back from an HSA or FSA. Medical expenses are deductible only if you itemize, and only the part above 7.5% of your adjusted gross income. Insurance premiums, mileage and other costs that aren't visits aren't included. This isn't advice to itemize.</p>
+  {{ disclaimer_note() }}
+</section>
+
+<section class="card section" id="vault">
+  <h2>Receipt vault</h2>
+  <p class="muted small">Likely-qualified expenses paid outside the HSA after it was opened{% if view.hsa and view.hsa.opened %} ({{ view.hsa.opened|nice_date }}){% endif %}. You can reimburse yourself from the HSA for them in any later year; keep the receipts.
+    {% if view.strategy == 'save_for_later' %}You chose to save the HSA for later, so these are <strong>savings banked for later</strong>.{% else %}You pay from the HSA now, so these are <strong>reimbursement opportunities</strong>.{% endif %}</p>
+  <div class="grid tiles"><div class="card tile"><div class="label">{{ 'Banked for later' if view.strategy == 'save_for_later' else 'To reimburse' }}</div><div class="value" id="vault-total">{{ view.vault_total()|money }}</div><div class="small muted">{{ view.open_vault|length }} open entr{{ 'y' if view.open_vault|length == 1 else 'ies' }}</div></div></div>
+  {% if view.double_reimbursed %}<div class="alert bad">Reimbursed more than once: {{ view.double_reimbursed|join(', ') }}. Count it once and check with your HSA custodian.</div>{% endif %}
+  {% if view.vault %}
+  <div class="table-wrap"><table>
+    <tr><th>Visit</th><th>Person</th><th>Tag</th><th>Paid</th><th class="num">Amount</th><th>Receipts</th><th></th></tr>
+    {% for e in view.vault %}
+    <tr class="{{ '' if e.open else 'muted' }}">
+      <td><a href="/visits/{{ e.visit.id }}">{{ e.visit.visit.date|nice_date }} · {{ e.visit.provider.name }}</a></td>
+      <td>{{ e.visit.member.name if e.visit.member else '—' }}</td>
+      <td>{{ tag_chip(e.tag) }} <span class="small muted">{{ e.tag.category.cite }}</span></td>
+      <td class="small">{{ e.payment.date|nice_date }}, {{ accounts|selectattr('id', 'equalto', e.payment.account_id)|map(attribute='name')|first|default(e.payment.account_id) }}</td>
+      <td class="num">{{ e.amount|money }}{% if e.open and e.repaid %}<div class="small muted">{{ e.outstanding()|money }} left</div>{% endif %}</td>
+      <td class="small">{% for d in e.visit.receipts + e.visit.claims %}{% if d.stored_file %}<a href="/files/{{ d.id }}">{{ d.type|humanize }}</a> {% endif %}{% endfor %}{% for b, l in e.visit.bill_lines %}{% if b.stored_file %}<a href="/files/{{ b.id }}">Statement</a> {% endif %}{% endfor %}</td>
+      <td class="num">{% if e.open %}
+        <form method="post" action="/tax/reimburse/{{ e.payment.id }}" class="inline small">{{ csrf_input() }}<input type="hidden" name="year" value="{{ y }}">
+          <label class="visually-hidden" for="rd-{{ e.payment.id }}-{{ loop.index }}">Reimbursed on</label><input id="rd-{{ e.payment.id }}-{{ loop.index }}" type="date" name="date" value="{{ view.today.isoformat() }}">
+          <button class="btn small">Reimbursed from HSA</button></form>
+        {% else %}<span class="small">Reimbursed {{ e.reimbursement.date|nice_date }}{% set src = accounts|selectattr('id', 'equalto', e.reimbursement.from_account_id)|map(attribute='name')|first %}{% if src %} from {{ src }}{% endif %}</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="muted small">Nothing in the vault.</p>{% endif %}
+  {{ disclaimer_note() }}
+</section>
+
+<section class="card section" id="contributions">
+  <h2>Contributions in {{ y }}</h2>
+  {% if limits %}<p class="small muted">IRS limits for {{ y }}: self-only {{ limits.hsa_self_only|money }}, family {{ limits.hsa_family|money }}, catch-up at 55 or older {{ limits.hsa_catch_up|money }} ({{ limits.source }}).</p>{% endif %}
+  {% for c in view.contributions %}
+  <div class="section contribution" id="contrib-{{ c.account.id }}">
+    <h3>{{ c.account.name }}{% if c.holder %} · {{ c.holder.name }}{% endif %}</h3>
+    <ul class="kv">
+      <li><span>You contributed</span><span class="num">{{ c.employee|money }}</span></li>
+      <li><span>Employer contributed</span><span class="num">{{ c.employer|money }}</span></li>
+      <li><span><strong>Total</strong></span><span class="num"><strong>{{ c.contributed|money }}</strong></span></li>
+      {% if c.limit is not none %}
+      <li><span>Limit ({{ 'last-month rule' if c.rule == 'last_month' else 'monthly, ' ~ c.eligible_months ~ ' of 12 months eligible' }}{% if c.catch_up %}, includes {{ c.catch_up|money }} catch-up{% endif %})</span><span class="num">{{ c.limit|money }}</span></li>
+      {% if c.excess %}<li class="bad-ink"><span><strong>Excess contribution</strong></span><span class="num"><strong>{{ c.excess|money }}</strong></span></li>
+      {% else %}<li class="good-ink"><span>Room left</span><span class="num">{{ c.room|money }}</span></li>{% endif %}
+      {% endif %}
+    </ul>
+    {% if c.excess %}<p class="small">An excess contribution is usually taxed 6% a year until it's taken out. Ask your HSA custodian about withdrawing the excess and its earnings before your tax filing deadline.</p>{% endif %}
+    <p class="small muted">Months: {% for m in c.months %}<span class="chip {{ 'good' if m.eligible else ('bad' if m.blocked else 'idle') }}" title="{{ m.blocked or (m.coverage or 'not covered')|humanize }}">{{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m.month - 1] }} {{ {'self_only': 'self', 'family': 'family'}.get(m.coverage, '—') }}{% if m.blocked %} ✕{% endif %}</span>{% endfor %}</p>
+    {% for conflict in c.conflicts %}
+    <div class="alert bad conflict"><strong>Eligibility conflict:</strong> {{ conflict.text }}{% if conflict.contributions %} ({{ conflict.amount|money }}){% endif %}</div>
+    {% endfor %}
+    {% if c.warning %}<div class="alert warn">{{ c.warning }}</div>{% endif %}
+    {% for n in c.notes %}<p class="small warn-ink">{{ n }}</p>{% endfor %}
+    {% if c.fees %}<p class="small fees">Account fees in {{ y }}: <strong>{{ c.fee_total|money }}</strong> ({% for f in c.fees %}{{ f.description or 'fee' }}{{ ', ' if not loop.last }}{% endfor %}). A possible saving: ask the custodian whether a fee such as paper statements can be switched off.</p>{% endif %}
+    <form method="post" action="/tax/contribution-rule/{{ c.account.id }}" class="inline small">{{ csrf_input() }}<input type="hidden" name="year" value="{{ y }}">
+      <label>Limit rule for {{ y }}<select name="rule"><option value="monthly" {{ 'selected' if y not in (c.account.last_month_rule_years or []) }}>Monthly pro rata (default)</option><option value="last_month" {{ 'selected' if y in (c.account.last_month_rule_years or []) }}>Last-month rule</option></select></label>
+      <button class="btn small">Save</button>
+    </form>
+  </div>
+  {% else %}<p class="muted small">No HSA.</p>{% endfor %}
+  <p class="small muted">Married with two HSAs? You share one family limit; the app checks each HSA on its own for now.</p>
+</section>
+
+<section class="card section" id="flags">
+  <h2>HSA payments to check in {{ y }}</h2>
+  {% for v, fl in flagged %}
+  <div class="check fail tax-flag">
+    <div class="mark">!</div>
+    <div><strong><a class="more" href="/visits/{{ v.id }}#tax">{{ v.visit.date|nice_date }} · {{ v.provider.name }}</a></strong>{% if v.member %} · {{ v.member.name }}{% endif %}
+      {% for f in fl %}<div class="small">{{ f.text }}</div>{% if f.guidance %}<div class="small guidance">{{ f.guidance }}</div>{% endif %}{% endfor %}
+    </div>
+    <div class="num">{{ fl[0].amount|money }}</div>
+  </div>
+  {% else %}<p class="good-ink small">No HSA payments look out of place.</p>{% endfor %}
+  {{ disclaimer_note() }}
+</section>
+
+<section class="card section" id="pay">
+  <h2>Which account should pay</h2>
+  <p class="muted small">For {{ y }}'s visits that still have a balance. HSA first when it can pay (your choice: <a href="#strategy">{{ strategies[view.strategy] }}</a>); an FSA only when it's the only tax-advantaged account for the expense, or its money would otherwise be forfeited.</p>
+  {% for v in to_pay %}{% set r = view.recommendations[v.id] %}{% set t = view.tags[v.id] %}
+  <div class="check info recommendation">
+    <div class="mark">→</div>
+    <div><strong><a class="more" href="/visits/{{ v.id }}#tax">{{ v.visit.date|nice_date }} · {{ v.provider.name }}</a></strong> {{ tag_chip(t) }}
+      <div class="small">{{ r.text }}{% if r.alternative %} {{ r.alternative }}{% endif %}</div>
+      {% if r.letter %}<div class="small warn-ink">{{ r.letter }}</div>{% endif %}
+    </div>
+    <div class="num">{{ v.remaining|money }}</div>
+  </div>
+  {% else %}<p class="muted small">Nothing left to pay this year.</p>{% endfor %}
+  {{ disclaimer_note() }}
+</section>
+
+<section class="card section" id="strategy">
+  <h2>Your HSA choice</h2>
+  <form method="post" action="/tax/strategy" class="inline">{{ csrf_input() }}<input type="hidden" name="year" value="{{ y }}">
+    {% for key, label in strategies.items() %}<label class="check-label"><input type="radio" name="hsa_strategy" value="{{ key }}" {{ 'checked' if view.strategy == key }}> {{ label }}</label>{% endfor %}
+    <button class="btn primary">Save</button>
+  </form>
+  <p class="small muted">"Pay from the HSA now" pays qualified expenses from the HSA as they come. "Save the HSA for later" pays them another way and keeps the receipts in the vault, so the HSA can keep growing and you reimburse yourself later.</p>
+</section>
+
+<section class="section" id="accounts">
+  <h2>Account rules</h2>
+  <p class="muted small">HSAs, FSAs and HRAs. Add other accounts in <a href="/settings#accounts">Settings</a>; change an account's type here to make it an FSA or HRA.</p>
+  {% for a in accounts if a.type in account_labels %}{% set bal = balance(a) %}
+  <div class="card section">
+    <h3>{{ a.name }} <span class="chip info">{{ account_labels.get(a.type, a.type) }}</span></h3>
+    <form method="post" action="/tax/accounts/{{ a.id }}" class="inline">{{ csrf_input() }}<input type="hidden" name="year" value="{{ y }}"><input type="hidden" name="rules" value="1">
+      <label>Type<select name="type">{% for k, label in account_labels.items() %}<option value="{{ k }}" {{ 'selected' if k == a.type }}>{{ label }}</option>{% endfor %}</select></label>
+      <div><div class="muted small">{{ 'Holder' if a.type == 'hsa' else 'Participants' }}</div>
+        {% for m in members %}<label class="check-label"><input type="checkbox" name="member_ids" value="{{ m.id }}" {{ 'checked' if m.id in (a.member_ids or []) }}> {{ m.name }}</label>{% endfor %}</div>
+      {% if a.type == 'hsa' %}
+      <label>Opened<input type="date" name="opened" value="{{ a.opened or '' }}"></label>
+      <label class="grow">Coverage periods (optional; default from HSA-eligible plans), one per line: "2026-01-01 to 2026-06-30: self-only"<textarea name="coverage" rows="2">{{ coverage_text(a.coverage) }}</textarea></label>
+      {% else %}
+      <label>Plan year<input type="number" name="plan_year" class="w-6" value="{{ a.plan_year or '' }}"></label>
+      <label>Plan year start<input type="date" name="plan_year_start" value="{{ a.plan_year_start or '' }}"></label>
+      <label>Plan year end<input type="date" name="plan_year_end" value="{{ a.plan_year_end or '' }}"></label>
+      <label class="check-label"><input type="checkbox" name="grace_period" {{ 'checked' if a.grace_period }}> Grace period (2½ months)</label>
+      <label>Carryover<input name="carryover" inputmode="decimal" class="w-8" value="{{ '%.2f'|format(a.carryover / 100) if a.carryover else '' }}"></label>
+      <label>Claim deadline<input type="date" name="run_out_end" value="{{ a.run_out_end or '' }}"></label>
+      {% if a.type == 'hra' %}
+      <div><div class="muted small">Eligible expenses (none ticked: all qualified)</div>
+        {% for c in categories %}<label class="check-label"><input type="checkbox" name="eligible_categories" value="{{ c.id }}" {{ 'checked' if c.id in (a.eligible_categories or []) }}> {{ c.name }}</label>{% endfor %}</div>
+      {% endif %}
+      {% endif %}
+      <label>Balance<input name="balance" inputmode="decimal" class="w-8" value="{{ '%.2f'|format(a.balance / 100) if a.balance is not none and a.balance is defined else '' }}"></label>
+      <label>Balance as of<input type="date" name="balance_as_of" value="{{ a.balance_as_of or '' }}"></label>
+      <button class="btn primary">Save</button>
+    </form>
+    <p class="small muted">
+      {% if bal[0] is not none %}Balance {{ bal[0]|money }} on {{ bal[1]|nice_date }}. {% endif %}
+      {% if a.type in ('fsa', 'lpfsa', 'hra') and plan_period(a) %}Pays expenses from {{ plan_period(a)[0].isoformat()|nice_date }} through {{ last_day(a).isoformat()|nice_date }}{% if a.run_out_end %}; claims due by {{ a.run_out_end|nice_date }}{% endif %}. {% endif %}
+      {% if a.type == 'lpfsa' %}A limited-purpose FSA pays dental and vision care only, and doesn't block HSA contributions.{% elif a.type == 'fsa' %}A general-purpose health FSA blocks HSA contributions during its plan year.{% elif a.type == 'hra' %}An HRA pays the expenses its plan lists.{% elif a.type == 'hsa' %}An HSA pays for you, your spouse and your tax dependents.{% endif %}
+    </p>
+  </div>
+  {% else %}<p class="muted small">No tax-advantaged accounts.</p>{% endfor %}
+  {% set others = accounts|rejectattr('type', 'in', ['hsa', 'fsa', 'lpfsa', 'hra'])|list %}
+  {% if others %}
+  <details class="card section"><summary><strong>Make another account an FSA or HRA</strong></summary>
+    {% for a in others %}
+    <form method="post" action="/tax/accounts/{{ a.id }}" class="inline section">{{ csrf_input() }}<input type="hidden" name="year" value="{{ y }}">
+      <span class="grow-wide">{{ a.name }} <span class="muted small">({{ a.type|humanize }})</span></span>
+      <label>New type<select name="type">{% for k, label in account_labels.items() if k != 'hsa' %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select></label>
+      <button class="btn small">Change</button>
+    </form>
+    {% endfor %}
+  </details>
+  {% endif %}
+</section>
+
+<section class="section" id="people">
+  <h2>People</h2>
+  <p class="muted small">Who each account may pay for (TAX-09), the 55+ catch-up and Medicare. Only the birth year is kept.</p>
+  {% for m in members %}
+  <div class="card section">
+    <h3>{{ m.name }} <span class="muted small">{{ (m.relationship or 'other')|humanize }}</span></h3>
+    <form method="post" action="/tax/members/{{ m.id }}" class="inline">{{ csrf_input() }}<input type="hidden" name="year" value="{{ y }}">
+      <label>Birth year<input name="birth_year" inputmode="numeric" class="w-6" value="{{ m.birth_year or '' }}"></label>
+      <label>Medicare from<input type="date" name="medicare_from" value="{{ m.medicare_from or '' }}"></label>
+      {% for dy in dependent_years %}{% set dep = (m.tax_dependent or {}).get(dy|string) %}
+      <label>Tax dependent in {{ dy }}<select name="dep-{{ dy }}"><option value="">Not set</option><option value="yes" {{ 'selected' if dep == true }}>Yes</option><option value="no" {{ 'selected' if dep == false }}>No</option></select></label>
+      {% endfor %}
+      <button class="btn primary">Save</button>
+    </form>
+    <p class="small muted">{% for a in tax_accounts %}{% set ans = may_pay(a, m) %}{{ a.name }}: <span class="{{ {'yes': 'good-ink', 'no': 'bad-ink'}.get(ans[0], 'warn-ink') }}">{{ {'yes': 'can pay', 'no': "can't pay", 'check': 'check'}[ans[0]] }}</span>{% if ans[0] != 'yes' %} ({{ ans[1] }}){% endif %}{{ '. ' if not loop.last }}{% endfor %}</p>
+  </div>
+  {% else %}<p class="muted small">No household members yet. Add them in <a href="/settings#members">Settings</a>.</p>{% endfor %}
+</section>
+<p class="small muted section">Category table {{ category_table.version }} ({{ category_table.source }}). Expenses keep the table version in effect on their date.</p>
+{% endblock %}

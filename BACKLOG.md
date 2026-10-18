@@ -8,7 +8,7 @@ Items deferred from the MVP. Newest decisions are in `docs/MVP_REQUIREMENTS.md` 
 | B-2 | Agreed rate from provider billing | Owner, 2026-10-09 | Review whether bills reliably show a rate (`rate` field already in the bill line) and how it compares to the EOB `allowed`. |
 | B-3 | Supplements and equipment: HSA/FSA eligibility, and member-submitted claims to insurance that may count toward the deductible | Owner, 2026-10-09 | Unknown whether insurers accept these or whether it varies by plan. Needs research before modelling. |
 | B-4 | Ledger over time: chart of charges, payments and running balance per provider and overall | Owner, 2026-10-09 | MVP has the ledger table only. |
-| B-5 | Confirmed HSA/FSA eligibility rules (replace "possible opportunity" with eligible / not eligible / needs a letter of medical necessity) | Owner, 2026-10-09 | MVP flags every non-HSA payment as a possibility. |
+| B-5 | Confirmed HSA/FSA eligibility rules (replace "possible opportunity" with eligible / not eligible / needs a letter of medical necessity) | Owner, 2026-10-09 | Built 2026-10-18 as "likely" tags (TAX-01, ADR-021, ADR-043, branch feat/r2-hsa-tax); still possibilities, not rulings. |
 | B-6 | In-app forms to add and edit visits and documents | Review | MVP corrects data by re-importing JSON. |
 | B-7 | Pre-visit strategy (use case 2): self-pay vs insurance, account choice, expected cost | Plan phase 5 | Depends on open question: does self-pay count toward the deductible? |
 | B-8 | Service-line (CPT) reconciliation | Review | Lines are captured on EOBs but not checked. |
@@ -20,9 +20,9 @@ Items deferred from the MVP. Newest decisions are in `docs/MVP_REQUIREMENTS.md` 
 | B-14 | Import claims for other household members | Plan | Members and member-provider links are in the MVP model (D9); the claims export so far covers the owner only. |
 | B-15 | Generalize the ingest schema into a baseline for all scenarios | Owner, 2026-10-09 | Use `extensions` to trial new fields; promote and bump `schema_version`. |
 | B-16 | Deferred NFRs ND-1 to ND-14 | Owner, 2026-10-09 | Trigger: anyone other than the owner uses the app. |
-| B-17 | Account fee flags (e.g. HSA paper-statement fees) as savings opportunities | Real data, 2026-10-09 | $1/month paper statement fee seen on the HSA. |
+| B-17 | Account fee flags (e.g. HSA paper-statement fees) as savings opportunities | Real data, 2026-10-09 | Built 2026-10-18 (branch feat/r2-hsa-tax): the HSA and tax page lists the year's HSA fees as a possible saving. |
 | B-18 | Importers for other insurers and HSA providers | Real data, 2026-10-09 | `tools/build_ingest.py` handles one claims CSV layout and one HSA export layout. |
-| B-19 | HSA contribution tracking against the annual IRS limit | Real data, 2026-10-09 | Contributions are now imported as `account_transaction`. |
+| B-19 | HSA contribution tracking against the annual IRS limit | Real data, 2026-10-09 | Built 2026-10-18 (TAX-06, ADR-043, branch feat/r2-hsa-tax). |
 | B-20 | Statement parsers for other provider billing systems | Real data, 2026-10-09 | One layout supported (Southeastern Retina). |
 | B-21 | Prior-year (2025) HSA history | Real data, 2026-10-09 | Needed to close 2025 Southeastern Retina payments; HSA export starts 2026-01-14. |
 | B-22 | Follow-up tracking on provider notes (open / resolved, follow-up date, reminders) | Owner, 2026-10-09 | MVP notes are a plain dated log. |

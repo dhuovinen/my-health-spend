@@ -20,6 +20,7 @@
       <a href="/household" class="{{ 'active' if path.startswith('/household') }}">Household</a>
       <a href="/providers" class="{{ 'active' if path.startswith('/providers') }}">Providers</a>
       <a href="/cases" class="{{ 'active' if path.startswith('/cases') or '/cases/' in path }}">Cases</a>
+      <a href="/tax" class="{{ 'active' if path.startswith('/tax') }}">HSA and tax</a>
       <a href="/import" class="{{ 'active' if path.startswith('/import') }}">Import</a>
       {% if session %}<a href="/uploads" class="{{ 'active' if path.startswith('/uploads') }}">Uploads</a>{% endif %}
     </nav>

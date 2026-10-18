@@ -64,6 +64,7 @@
   <a href="#cases">Cases{% if v.cases %} ({{ v.cases|length }}){% endif %}</a>
   <a href="#lines">Line by line</a>
   <a href="#allocation">Who pays what</a>
+  <a href="#tax">HSA and tax</a>
   <a href="#documents">Documents</a>
   <a href="#history">Case history</a>
 </nav>
@@ -187,6 +188,7 @@
     <button class="btn small">Open a case</button>
   </form>
 </div>
+{% include "_tax_visit.html" %}
 
 <div class="card section" id="lines">
   <h2>Line by line</h2>

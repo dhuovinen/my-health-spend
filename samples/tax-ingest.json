@@ -1,0 +1,812 @@
+{
+ "schema_version": "0.1",
+ "source": {
+  "prepared_by": "tools/make_tax_sample.py",
+  "prepared_on": "2026-10-18",
+  "notes": "Made-up household for the HSA and tax features (ADR-043). Every name, provider, amount and claim number is invented."
+ },
+ "plans": [
+  {
+   "id": "plan-2025",
+   "plan_year": 2025,
+   "insurer": "Example Health",
+   "plan_name": "HDHP Self",
+   "coverage_order": "primary",
+   "coverage_start": "2025-01-01",
+   "coverage_end": "2025-12-31",
+   "hsa_eligible_plan": true,
+   "member_ids": [
+    "mem-robin"
+   ],
+   "limits": []
+  },
+  {
+   "id": "plan-2026-self",
+   "plan_year": 2026,
+   "insurer": "Example Health",
+   "plan_name": "HDHP Self",
+   "coverage_start": "2026-01-01",
+   "coverage_end": "2026-06-30",
+   "hsa_eligible_plan": true,
+   "member_ids": [
+    "mem-robin"
+   ],
+   "limits": []
+  },
+  {
+   "id": "plan-2026-family",
+   "plan_year": 2026,
+   "insurer": "Example Health",
+   "plan_name": "HDHP Family",
+   "coverage_order": "primary",
+   "coverage_start": "2026-07-01",
+   "coverage_end": "2026-12-31",
+   "hsa_eligible_plan": true,
+   "member_ids": [
+    "mem-robin",
+    "mem-casey",
+    "mem-jamie",
+    "mem-max"
+   ],
+   "limits": []
+  }
+ ],
+ "accounts": [
+  {
+   "id": "acct-hsa",
+   "name": "HSA",
+   "type": "hsa",
+   "opened": "2025-03-01",
+   "member_ids": [
+    "mem-robin"
+   ]
+  },
+  {
+   "id": "acct-card",
+   "name": "Family Visa",
+   "type": "credit_card"
+  },
+  {
+   "id": "acct-lpfsa",
+   "name": "Dental and vision FSA",
+   "type": "lpfsa",
+   "plan_year": 2026,
+   "member_ids": [
+    "mem-robin",
+    "mem-casey",
+    "mem-jamie",
+    "mem-max"
+   ],
+   "run_out_end": "2027-03-31",
+   "balance": 300,
+   "balance_as_of": "2026-10-01"
+  }
+ ],
+ "members": [
+  {
+   "id": "mem-robin",
+   "name": "Robin Example",
+   "relationship": "self",
+   "birth_year": 1969
+  },
+  {
+   "id": "mem-casey",
+   "name": "Casey Example",
+   "relationship": "spouse",
+   "birth_year": 1971
+  },
+  {
+   "id": "mem-jamie",
+   "name": "Jamie Example",
+   "relationship": "child",
+   "birth_year": 2002,
+   "tax_dependent": {
+    "2025": true,
+    "2026": false
+   }
+  },
+  {
+   "id": "mem-max",
+   "name": "Max Example",
+   "relationship": "child",
+   "birth_year": 2012,
+   "tax_dependent": {
+    "2025": true,
+    "2026": true
+   }
+  }
+ ],
+ "providers": [
+  {
+   "id": "prov-pcp",
+   "name": "Example Family Practice",
+   "kind": "physician_practice",
+   "network_status": "in_network"
+  },
+  {
+   "id": "prov-derm",
+   "name": "Example Dermatology",
+   "kind": "physician_practice",
+   "network_status": "in_network"
+  },
+  {
+   "id": "prov-lab",
+   "name": "Example Lab Services",
+   "kind": "lab",
+   "network_status": "in_network"
+  },
+  {
+   "id": "prov-urgent",
+   "name": "Example Urgent Care",
+   "kind": "physician_practice",
+   "network_status": "in_network"
+  },
+  {
+   "id": "prov-dental",
+   "name": "Example Dental Group",
+   "kind": "physician_practice",
+   "network_status": "not_applicable"
+  },
+  {
+   "id": "prov-eye",
+   "name": "Example Eye Care",
+   "kind": "retailer",
+   "network_status": "not_applicable"
+  },
+  {
+   "id": "prov-massage",
+   "name": "Example Massage Studio",
+   "kind": "other",
+   "network_status": "not_applicable"
+  },
+  {
+   "id": "prov-vitamins",
+   "name": "Example Health Foods",
+   "kind": "retailer",
+   "network_status": "not_applicable"
+  },
+  {
+   "id": "prov-pharmacy",
+   "name": "Example Pharmacy",
+   "kind": "pharmacy",
+   "network_status": "in_network"
+  }
+ ],
+ "visits": [
+  {
+   "id": "v-2025-02-10-pcp",
+   "date": "2025-02-10",
+   "provider_id": "prov-pcp",
+   "member_id": "mem-robin",
+   "category": "provider_visit",
+   "description": "Office visit, before the HSA opened",
+   "plan_id": "plan-2025"
+  },
+  {
+   "id": "v-2025-05-14-derm",
+   "date": "2025-05-14",
+   "provider_id": "prov-derm",
+   "member_id": "mem-robin",
+   "category": "provider_visit",
+   "description": "Dermatology office visit",
+   "plan_id": "plan-2025"
+  },
+  {
+   "id": "v-2025-09-03-dental",
+   "date": "2025-09-03",
+   "provider_id": "prov-dental",
+   "member_id": "mem-max",
+   "category": "service",
+   "description": "Dental cleaning",
+   "payment_path": "self_pay"
+  },
+  {
+   "id": "v-2026-01-20-pcp",
+   "date": "2026-01-20",
+   "provider_id": "prov-pcp",
+   "member_id": "mem-robin",
+   "category": "provider_visit",
+   "description": "Office visit copay and deductible",
+   "plan_id": "plan-2026-self"
+  },
+  {
+   "id": "v-2026-03-05-lab",
+   "date": "2026-03-05",
+   "provider_id": "prov-lab",
+   "member_id": "mem-robin",
+   "category": "provider_visit",
+   "description": "Blood work",
+   "plan_id": "plan-2026-self"
+  },
+  {
+   "id": "v-2026-04-11-vitamins",
+   "date": "2026-04-11",
+   "provider_id": "prov-vitamins",
+   "member_id": "mem-robin",
+   "category": "supplements",
+   "description": "Vitamins"
+  },
+  {
+   "id": "v-2026-05-02-massage",
+   "date": "2026-05-02",
+   "provider_id": "prov-massage",
+   "member_id": "mem-casey",
+   "category": "service",
+   "description": "Massage therapy, 60 minutes",
+   "payment_path": "self_pay"
+  },
+  {
+   "id": "v-2026-07-08-dental",
+   "date": "2026-07-08",
+   "provider_id": "prov-dental",
+   "member_id": "mem-robin",
+   "category": "service",
+   "description": "Dental cleaning",
+   "payment_path": "self_pay"
+  },
+  {
+   "id": "v-2026-08-12-urgent",
+   "date": "2026-08-12",
+   "provider_id": "prov-urgent",
+   "member_id": "mem-jamie",
+   "category": "provider_visit",
+   "description": "Urgent care office visit",
+   "plan_id": "plan-2026-family"
+  },
+  {
+   "id": "v-2026-08-20-eye",
+   "date": "2026-08-20",
+   "provider_id": "prov-eye",
+   "member_id": "mem-max",
+   "category": "equipment",
+   "description": "Eye exam and eyeglasses"
+  },
+  {
+   "id": "v-2026-09-15-dental",
+   "date": "2026-09-15",
+   "provider_id": "prov-dental",
+   "member_id": "mem-casey",
+   "category": "service",
+   "description": "Dental filling",
+   "payment_path": "self_pay"
+  },
+  {
+   "id": "v-2026-10-02-pcp",
+   "date": "2026-10-02",
+   "provider_id": "prov-pcp",
+   "member_id": "mem-casey",
+   "category": "provider_visit",
+   "description": "Office visit",
+   "plan_id": "plan-2026-family"
+  }
+ ],
+ "documents": [
+  {
+   "id": "eob-2025-02-10-pcp",
+   "type": "eob",
+   "date": "2025-02-17",
+   "plan_id": "plan-2025",
+   "provider_id": "prov-pcp",
+   "visit_id": "v-2025-02-10-pcp",
+   "claim_number": "EXT20250210PCP",
+   "claim_status": "processed",
+   "network_status": "in_network",
+   "billed": 180,
+   "allowed": 90,
+   "adjustment": 90,
+   "insurer_paid": 0,
+   "deductible": 90,
+   "patient_responsibility": 90
+  },
+  {
+   "id": "eob-2025-05-14-derm",
+   "type": "eob",
+   "date": "2025-05-21",
+   "plan_id": "plan-2025",
+   "provider_id": "prov-derm",
+   "visit_id": "v-2025-05-14-derm",
+   "claim_number": "EXT20250514ERM",
+   "claim_status": "processed",
+   "network_status": "in_network",
+   "billed": 240,
+   "allowed": 120,
+   "adjustment": 120,
+   "insurer_paid": 0,
+   "deductible": 120,
+   "patient_responsibility": 120
+  },
+  {
+   "id": "bill-2025-09-03-dental",
+   "type": "provider_bill",
+   "date": "2025-09-03",
+   "provider_id": "prov-dental",
+   "balance_due": 80,
+   "lines": [
+    {
+     "visit_id": "v-2025-09-03-dental",
+     "description": "Dental cleaning",
+     "billed_charge": 80,
+     "patient_amount": 80
+    }
+   ]
+  },
+  {
+   "id": "eob-2026-01-20-pcp",
+   "type": "eob",
+   "date": "2026-01-27",
+   "plan_id": "plan-2026-self",
+   "provider_id": "prov-pcp",
+   "visit_id": "v-2026-01-20-pcp",
+   "claim_number": "EXT20260120PCP",
+   "claim_status": "processed",
+   "network_status": "in_network",
+   "billed": 300,
+   "allowed": 150,
+   "adjustment": 150,
+   "insurer_paid": 0,
+   "deductible": 150,
+   "patient_responsibility": 150
+  },
+  {
+   "id": "eob-2026-03-05-lab",
+   "type": "eob",
+   "date": "2026-03-12",
+   "plan_id": "plan-2026-self",
+   "provider_id": "prov-lab",
+   "visit_id": "v-2026-03-05-lab",
+   "claim_number": "EXT20260305LAB",
+   "claim_status": "processed",
+   "network_status": "in_network",
+   "billed": 120,
+   "allowed": 60,
+   "adjustment": 60,
+   "insurer_paid": 0,
+   "deductible": 60,
+   "patient_responsibility": 60
+  },
+  {
+   "id": "rcpt-2026-04-11-vitamins",
+   "type": "receipt",
+   "date": "2026-04-11",
+   "provider_id": "prov-vitamins",
+   "visit_id": "v-2026-04-11-vitamins",
+   "total": 35,
+   "items": [
+    {
+     "description": "Vitamin D3 2000 IU, 120 ct",
+     "quantity": 1,
+     "amount": 35
+    }
+   ]
+  },
+  {
+   "id": "bill-2026-05-02-massage",
+   "type": "provider_bill",
+   "date": "2026-05-02",
+   "provider_id": "prov-massage",
+   "balance_due": 90,
+   "lines": [
+    {
+     "visit_id": "v-2026-05-02-massage",
+     "description": "Massage therapy, 60 minutes",
+     "billed_charge": 90,
+     "patient_amount": 90
+    }
+   ]
+  },
+  {
+   "id": "bill-2026-07-08-dental",
+   "type": "provider_bill",
+   "date": "2026-07-08",
+   "provider_id": "prov-dental",
+   "balance_due": 60,
+   "lines": [
+    {
+     "visit_id": "v-2026-07-08-dental",
+     "description": "Dental cleaning",
+     "billed_charge": 60,
+     "patient_amount": 60
+    }
+   ]
+  },
+  {
+   "id": "eob-2026-08-12-urgent",
+   "type": "eob",
+   "date": "2026-08-19",
+   "plan_id": "plan-2026-family",
+   "provider_id": "prov-urgent",
+   "visit_id": "v-2026-08-12-urgent",
+   "claim_number": "EXT20260812ENT",
+   "claim_status": "processed",
+   "network_status": "in_network",
+   "billed": 250,
+   "allowed": 125,
+   "adjustment": 125,
+   "insurer_paid": 0,
+   "deductible": 125,
+   "patient_responsibility": 125
+  },
+  {
+   "id": "rcpt-2026-08-20-eye",
+   "type": "receipt",
+   "date": "2026-08-20",
+   "provider_id": "prov-eye",
+   "visit_id": "v-2026-08-20-eye",
+   "total": 210,
+   "items": [
+    {
+     "description": "Eye exam and eyeglasses",
+     "quantity": 1,
+     "amount": 210
+    }
+   ]
+  },
+  {
+   "id": "bill-2026-09-15-dental",
+   "type": "provider_bill",
+   "date": "2026-09-15",
+   "provider_id": "prov-dental",
+   "balance_due": 180,
+   "lines": [
+    {
+     "visit_id": "v-2026-09-15-dental",
+     "description": "Dental filling",
+     "billed_charge": 180,
+     "patient_amount": 180
+    }
+   ]
+  },
+  {
+   "id": "eob-2026-10-02-pcp",
+   "type": "eob",
+   "date": "2026-10-09",
+   "plan_id": "plan-2026-family",
+   "provider_id": "prov-pcp",
+   "visit_id": "v-2026-10-02-pcp",
+   "claim_number": "EXT20261002PCP",
+   "claim_status": "processed",
+   "network_status": "in_network",
+   "billed": 190,
+   "allowed": 95,
+   "adjustment": 95,
+   "insurer_paid": 0,
+   "deductible": 95,
+   "patient_responsibility": 95
+  },
+  {
+   "id": "pay-2025-02-20-pcp",
+   "type": "payment",
+   "date": "2025-02-20",
+   "kind": "payment",
+   "provider_id": "prov-pcp",
+   "account_id": "acct-card",
+   "amount": 90
+  },
+  {
+   "id": "pay-2025-05-30-derm",
+   "type": "payment",
+   "date": "2025-05-30",
+   "kind": "payment",
+   "provider_id": "prov-derm",
+   "account_id": "acct-card",
+   "amount": 120
+  },
+  {
+   "id": "pay-2025-09-03-dental",
+   "type": "payment",
+   "date": "2025-09-03",
+   "kind": "payment",
+   "provider_id": "prov-dental",
+   "account_id": "acct-card",
+   "amount": 80
+  },
+  {
+   "id": "pay-2026-02-05-pcp",
+   "type": "payment",
+   "date": "2026-02-05",
+   "kind": "payment",
+   "provider_id": "prov-pcp",
+   "account_id": "acct-hsa",
+   "amount": 150
+  },
+  {
+   "id": "pay-2026-03-20-lab",
+   "type": "payment",
+   "date": "2026-03-20",
+   "kind": "payment",
+   "provider_id": "prov-lab",
+   "account_id": "acct-hsa",
+   "amount": 60
+  },
+  {
+   "id": "pay-2026-04-11-vitamins",
+   "type": "payment",
+   "date": "2026-04-11",
+   "kind": "payment",
+   "provider_id": "prov-vitamins",
+   "account_id": "acct-hsa",
+   "amount": 35
+  },
+  {
+   "id": "pay-2026-05-02-massage",
+   "type": "payment",
+   "date": "2026-05-02",
+   "kind": "payment",
+   "provider_id": "prov-massage",
+   "account_id": "acct-card",
+   "amount": 90
+  },
+  {
+   "id": "pay-2026-06-30-pharmacy",
+   "type": "payment",
+   "date": "2026-06-30",
+   "kind": "payment",
+   "provider_id": "prov-pharmacy",
+   "account_id": "acct-hsa",
+   "amount": 24
+  },
+  {
+   "id": "pay-2026-07-08-dental",
+   "type": "payment",
+   "date": "2026-07-08",
+   "kind": "payment",
+   "provider_id": "prov-dental",
+   "account_id": "acct-lpfsa",
+   "amount": 60
+  },
+  {
+   "id": "pay-2026-08-25-urgent",
+   "type": "payment",
+   "date": "2026-08-25",
+   "kind": "payment",
+   "provider_id": "prov-urgent",
+   "account_id": "acct-hsa",
+   "amount": 125
+  },
+  {
+   "id": "pay-2026-08-20-eye",
+   "type": "payment",
+   "date": "2026-08-20",
+   "kind": "payment",
+   "provider_id": "prov-eye",
+   "account_id": "acct-card",
+   "amount": 210
+  },
+  {
+   "id": "reimb-2026-01-15-dental",
+   "type": "account_reimbursement",
+   "date": "2026-01-15",
+   "from_account_id": "acct-hsa",
+   "amount": 80,
+   "payment_ids": [
+    "pay-2025-09-03-dental"
+   ]
+  },
+  {
+   "id": "hsa-2025-03-15-employee",
+   "type": "account_transaction",
+   "date": "2025-03-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 360,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2025-04-15-employee",
+   "type": "account_transaction",
+   "date": "2025-04-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 360,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2025-05-15-employee",
+   "type": "account_transaction",
+   "date": "2025-05-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 360,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2025-06-15-employee",
+   "type": "account_transaction",
+   "date": "2025-06-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 360,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2025-07-15-employee",
+   "type": "account_transaction",
+   "date": "2025-07-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 360,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2025-08-15-employee",
+   "type": "account_transaction",
+   "date": "2025-08-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 360,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2025-09-15-employee",
+   "type": "account_transaction",
+   "date": "2025-09-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 360,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2025-10-15-employee",
+   "type": "account_transaction",
+   "date": "2025-10-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 360,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2025-11-15-employee",
+   "type": "account_transaction",
+   "date": "2025-11-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 360,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2025-12-15-employee",
+   "type": "account_transaction",
+   "date": "2025-12-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 360,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2025-03-15-employer",
+   "type": "account_transaction",
+   "date": "2025-03-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employer",
+   "amount": 500,
+   "description": "Employer contribution"
+  },
+  {
+   "id": "hsa-2026-03-31-employee",
+   "type": "account_transaction",
+   "date": "2026-03-31",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 300,
+   "description": "Payroll contribution, Tax year: 2025",
+   "tax_year": 2025
+  },
+  {
+   "id": "hsa-2026-01-15-employee",
+   "type": "account_transaction",
+   "date": "2026-01-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 687.5,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2026-02-15-employee",
+   "type": "account_transaction",
+   "date": "2026-02-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 687.5,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2026-03-15-employee",
+   "type": "account_transaction",
+   "date": "2026-03-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 687.5,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2026-04-15-employee",
+   "type": "account_transaction",
+   "date": "2026-04-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 687.5,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2026-05-15-employee",
+   "type": "account_transaction",
+   "date": "2026-05-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 687.5,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2026-06-15-employee",
+   "type": "account_transaction",
+   "date": "2026-06-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 687.5,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2026-07-15-employee",
+   "type": "account_transaction",
+   "date": "2026-07-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 687.5,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2026-08-15-employee",
+   "type": "account_transaction",
+   "date": "2026-08-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 687.5,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2026-09-15-employee",
+   "type": "account_transaction",
+   "date": "2026-09-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 687.5,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2026-10-15-employee",
+   "type": "account_transaction",
+   "date": "2026-10-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employee",
+   "amount": 687.5,
+   "description": "Payroll contribution"
+  },
+  {
+   "id": "hsa-2026-01-15-employer",
+   "type": "account_transaction",
+   "date": "2026-01-15",
+   "account_id": "acct-hsa",
+   "kind": "contribution_employer",
+   "amount": 1000,
+   "description": "Employer contribution"
+  },
+  {
+   "id": "hsa-2026-08-28-fee",
+   "type": "account_transaction",
+   "date": "2026-08-28",
+   "account_id": "acct-hsa",
+   "kind": "fee",
+   "amount": 1,
+   "description": "Paper statement fee"
+  },
+  {
+   "id": "hsa-2026-09-28-fee",
+   "type": "account_transaction",
+   "date": "2026-09-28",
+   "account_id": "acct-hsa",
+   "kind": "fee",
+   "amount": 1,
+   "description": "Paper statement fee"
+  }
+ ]
+}
