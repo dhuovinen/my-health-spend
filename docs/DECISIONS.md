@@ -49,7 +49,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 039 | Forwarded email: a private address per household, members' own addresses only, attachments and statement bodies become uploads | 2026-10-17 | Accepted |
 | 040 | Access log: member views and changes logged per household, readable by members, append-only for the app | 2026-10-17 | Accepted |
 | 041 | Web experience: home order, amount at issue, a household view kept in a cookie, phone layout with a bottom bar and 44px targets, browser layout tests | 2026-10-17 | Accepted |
-| 042 | Dispute cases on the visit record: four dated statuses, follow-ups and deadlines in the attention queue, a call log on provider notes, letters drafted on request in the application tier and never stored, outcomes feeding lifetime savings | 2026-10-18 | Proposed |
+| 042 | Dispute cases on the visit record: four dated statuses, follow-ups and deadlines in the attention queue, a call log on provider notes, letters drafted on request in the application tier and never stored, outcomes feeding lifetime savings | 2026-10-18 | Accepted |
 
 ## Records
 
@@ -290,8 +290,8 @@ Implementation choices for phase 1.5 (UX-01, UX-02, UX-06, UX-10), inside ADR-01
 
 **Consequences.** The home page grows a card list and gets longer on a phone; the year-detail panels move below it. A member's view choice is per browser, not per account. The test image is larger by the browser (about 300 MB).
 
-### ADR-042 · Dispute cases (Proposed)
-How Release 2's disputes are built (DSP-01, DSP-02, DSP-04, DSP-05, DSP-07, and DSP-03's call script), replacing the minimal dispute of ADR-035, inside ADR-011 and ADR-022. Proposed by the build session on 2026-10-18. Recorded before building because two choices are hard to undo: where cases are stored (it fixes the ingest schema and the export), and that drafted letters are never stored.
+### ADR-042 · Dispute cases (Accepted)
+How Release 2's disputes are built (DSP-01, DSP-02, DSP-04, DSP-05, DSP-07, and DSP-03's call script), replacing the minimal dispute of ADR-035, inside ADR-011 and ADR-022. Proposed by the build session on 2026-10-18 and accepted by the owner on 2026-10-18. Recorded before building because two choices are hard to undo: where cases are stored (it fixes the ingest schema and the export), and that drafted letters are never stored.
 
 **Decision.**
 - **A case lives on its visit** (`visit.cases`, a list), like the other member decisions of ADR-035, so it is the member's edit that imports keep, it goes into the export and comes back on import, and no migration is needed. A case covers one finding, or the whole visit (every finding open when it is opened). An old `visit.dispute` is read as a case; any change writes `cases` and drops `dispute`. The "Open a dispute" form and its route go.
