@@ -12,6 +12,8 @@ LINE_FROM_ITEM = {"billed_charge": "charge", "adjustment": "adjustment", "insura
                   "write_off": "write_off"}
 DOCUMENT_KINDS = ("bill", "itemized_bill", "eob", "receipt", "payment")
 EXPECTATIONS = ("expected", "not_applicable")
+VERDICTS = ("real", "wrong")  # the member's word on a finding they close (PLT-02, ADR-044)
+REASON_LENGTH = 200
 
 
 class EditError(ValueError):
@@ -177,21 +179,32 @@ def open_dispute(visit: dict, today: str, note: str = "") -> dict:
     return out
 
 
-def close_dispute(visit: dict, today: str, findings: list[tuple[str, int]], outcome: str = "") -> dict:
-    """Close the dispute; the findings still open are closed with it (the member accepts them as they are)."""
+def close_dispute(visit: dict, today: str, findings: list[tuple[str, int, str]], outcome: str = "",
+                  verdict: str = "real", release: str = "") -> dict:
+    """Close the dispute; the findings passed, (code, amount, kind), are closed with it with the member's verdict
+    (accepting them as they are says they were real; "nothing was wrong" says they were wrong)."""
     if (visit.get("dispute") or {}).get("status") != "open":
         raise EditError("There is no open dispute on this visit.")
     out = copy.deepcopy(visit)
     out["dispute"].update(status="closed", closed=today, **({"outcome": outcome} if outcome else {}))
-    for code, amount in findings:
-        out = close_finding(out, code, amount, today, "dispute closed")
+    for code, amount, kind in findings:
+        out = close_finding(out, code, amount, today, "dispute closed", verdict=verdict, kind=kind, release=release)
     return out
 
 
-def close_finding(visit: dict, code: str, amount: int, today: str, how: str = "marked dealt with") -> dict:
+def close_finding(visit: dict, code: str, amount: int, today: str, how: str = "marked dealt with",
+                  verdict: str | None = None, reason: str = "", kind: str = "", release: str = "") -> dict:
+    """Close a finding. The verdict is the member's word on it: a real problem, or wrong (a false positive); kind and
+    release are kept with it so it still counts if the finding later disappears (ADR-044)."""
+    if verdict is not None and verdict not in VERDICTS:
+        raise EditError("Say whether the finding was a real problem or wrong.")
     out = copy.deepcopy(visit)
     closed = [f for f in out.get("closed_findings", []) if (f["code"], f["amount"]) != (code, amount)]
-    closed.append({"code": code, "amount": amount, "closed": today, "how": how})
+    entry = {"code": code, "amount": amount, "closed": today, "how": how}
+    reason = " ".join(reason.split())[:REASON_LENGTH]
+    entry.update({k: v for k, v in (("verdict", verdict), ("reason", reason), ("kind", kind), ("release", release))
+                  if v})
+    closed.append(entry)
     out["closed_findings"] = closed
     return out
 

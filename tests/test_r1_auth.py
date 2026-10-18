@@ -12,7 +12,7 @@ from tests.conftest import admin_sql, csrf_from
 pytestmark = pytest.mark.postgres
 
 DATA_ROUTES = [
-    "/", "/visits", "/visits/v1", "/providers", "/providers/p1", "/import", "/settings", "/settings/export", "/help",
+    "/", "/visits", "/visits/v1", "/providers", "/providers/p1", "/import", "/settings", "/settings/export", "/help", "/accuracy",
     "/files/d1", "/uploads", "/uploads/upl_x", "/api/uploads", "/api/visits", "/api/session", "/api/visits/v1",
 ]
 # Every post route of the Release 0 pages, as (path, form data).

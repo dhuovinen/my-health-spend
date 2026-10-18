@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Finding accuracy{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Finding accuracy</h1>
+    <p class="muted flush">When you close a finding, you say whether it was a real problem or wrong. A finding you marked wrong is a false positive: the aim is that no more than {{ (TARGET * 100)|round|int }}% of findings are.</p>
+  </div>
+  <div class="actions">
+    <form method="get" action="/accuracy" class="inline">
+      <label>Findings closed in
+        <select name="year" data-autosubmit>
+          {% for y in years %}<option value="{{ y }}" {{ 'selected' if y == year }}>{{ y }}</option>{% endfor %}
+        </select>
+      </label>
+      <noscript><button class="btn small">Go</button></noscript>
+    </form>
+  </div>
+</div>
+
+<div class="grid tiles">
+  <div class="card tile"><div class="label">Findings you decided</div><div class="value">{{ total.decided }}</div><div class="muted small">closed in {{ year }}</div></div>
+  <div class="card tile"><div class="label">Real problems</div><div class="value">{{ total.real }}</div></div>
+  <div class="card tile"><div class="label">Wrong</div><div class="value">{{ total.wrong }}</div></div>
+  <div class="card tile {{ 'accent' if total.meets_target == false }}"><div class="label">False-positive rate</div><div class="value">{{ percent(total.rate) }}</div>
+    <div class="muted small">{% if total.rate is none %}Nothing decided yet{% elif total.meets_target %}Within the {{ (TARGET * 100)|round|int }}% aim{% else %}Above the {{ (TARGET * 100)|round|int }}% aim{% endif %}</div></div>
+</div>
+
+<div class="card section" id="kinds">
+  <h2>By kind of finding</h2>
+  {% if not acc.rows %}
+  <p class="muted small">No findings closed in {{ year }} and none open. Findings appear on a visit's page under "What's wrong".</p>
+  {% else %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Finding</th><th class="num">Real</th><th class="num">Wrong</th><th class="num">Rate</th><th class="num">Still open</th></tr></thead>
+    <tbody>
+    {% for k in acc.rows %}
+    <tr>
+      <td>{{ k.label }}</td>
+      <td class="num">{{ k.real }}</td>
+      <td class="num">{{ k.wrong }}</td>
+      <td class="num {{ 'bad-ink' if k.meets_target == false }}">{{ percent(k.rate) }}</td>
+      <td class="num">{{ k.open }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+    <tr class="total"><td>All findings</td><td class="num">{{ total.real }}</td><td class="num">{{ total.wrong }}</td>
+      <td class="num {{ 'bad-ink' if total.meets_target == false }}">{{ percent(total.rate) }}</td><td class="num">{{ total.open }}</td></tr>
+    </tfoot>
+  </table>
+  </div>
+  {% endif %}
+  <p class="muted small">The rate is the findings you marked wrong out of those you decided. Findings still open aren't in it yet, whatever year they're from{% if total.unrated %}; nor {{ 'are' if total.unrated != 1 else 'is' }} the {{ total.unrated }} finding{{ 's' if total.unrated != 1 }} closed before the app asked{% endif %}. Your reasons stay with each finding on its visit's page.</p>
+</div>
+{% endblock %}

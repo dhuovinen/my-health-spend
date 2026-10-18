@@ -583,7 +583,7 @@ def test_rec_11_3_lifecycle():
     closed = edits.close_dispute(v, "2026-10-07", [], "Corrected bill")
     assert run(base(visits=[closed], documents=fixed)).visit("v1").status == "resolved"
     # Accepting the difference instead closes the finding with the dispute.
-    findings = [(c.code, c.amount) for c in r.visit("v1").findings]
+    findings = [(c.code, c.amount, c.kind) for c in r.visit("v1").findings]
     accepted = edits.close_dispute(v, "2026-10-07", findings, "Accepted")
     after = run(base(visits=[accepted], documents=docs + [pay("p", "2026-10-06", 18000)])).visit("v1")
     assert after.status == "discrepancy"  # paying the inflated bill is a new finding (an overpayment)

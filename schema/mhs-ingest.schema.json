@@ -395,7 +395,7 @@
         },
         "closed_findings": {
           "type": "array",
-          "description": "Findings the member closed (dealt with, or accepted when closing a dispute).",
+          "description": "Findings the member closed (dealt with, or accepted when closing a dispute), with whether each was a real problem or wrong.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -415,6 +415,25 @@
               },
               "how": {
                 "type": "string"
+              },
+              "verdict": {
+                "enum": [
+                  "real",
+                  "wrong"
+                ],
+                "description": "The member's word on the finding: a real problem, or wrong (a false positive; PLT-02, ADR-044)."
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "kind": {
+                "type": "string",
+                "description": "The finding's kind (or its check code) when it was closed."
+              },
+              "release": {
+                "type": "string",
+                "description": "The release that showed the finding, e.g. release-1."
               }
             }
           }

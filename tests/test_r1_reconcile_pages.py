@@ -221,8 +221,8 @@ def test_rec_11_dispute_lifecycle_and_findings_on_the_pages(web):
         web.client.post("/visits/v-2026-04-02-pcp/findings", data={"code": f["code"], "amount": f["amount"],
                                                                    "action": "reopen"})
     assert "Discrepancy found" in text_of(web.client.get("/visits/v-2026-04-02-pcp").text)
-    web.client.post("/visits/v-2026-04-02-pcp/findings", data={"code": "C2", "amount": "8000"})
-    web.client.post("/visits/v-2026-04-02-pcp/findings", data={"code": "C4", "amount": "8000"})
+    web.client.post("/visits/v-2026-04-02-pcp/findings", data={"code": "C2", "amount": "8000", "verdict": "real"})
+    web.client.post("/visits/v-2026-04-02-pcp/findings", data={"code": "C4", "amount": "8000", "verdict": "real"})
     assert "Resolved" in text_of(web.client.get("/visits/v-2026-04-02-pcp").text)
     assert web.client.post("/visits/v-2026-04-02-pcp/dispute", data={"action": "close"}).status_code == 400
     listing = web.client.get("/visits?year=2026").text

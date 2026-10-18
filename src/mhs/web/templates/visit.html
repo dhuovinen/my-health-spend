@@ -44,6 +44,7 @@
     <input type="hidden" name="action" value="close">
     <label class="check-label"><input type="radio" name="outcome" value="fixed" checked> The provider or insurer fixed it</label>
     <label class="check-label"><input type="radio" name="outcome" value="accepted"> I accept it as it is</label>
+    <label class="check-label"><input type="radio" name="outcome" value="wrong"> Nothing was wrong: the findings were wrong</label>
     <button class="btn small">Close the dispute</button>
   </form>
 </div>
@@ -90,13 +91,18 @@
         {% if c.result == 'closed' %}
         <form method="post" action="/visits/{{ v.id }}/findings" class="inline small">{{ csrf_input() }}
           <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}"><input type="hidden" name="action" value="reopen">
-          <span class="muted">Closed by you on {{ c.closed.closed|nice_date }} ({{ c.closed.how }}).</span> <button class="btn small">Reopen</button>
+          <span class="muted">Closed by you on {{ c.closed.closed|nice_date }} ({{ closed_how(c.closed) }}){% if c.closed.reason %}: {{ c.closed.reason }}{% endif %}.</span> <button class="btn small">Reopen</button>
         </form>
         {% elif c.result == 'fail' and c.code not in ('C6', 'claim_filed') %}
-        <form method="post" action="/visits/{{ v.id }}/findings" class="inline small">{{ csrf_input() }}
-          <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}">
-          <button class="btn small">I've dealt with this</button>
-        </form>
+        <details class="small close-finding">
+          <summary>Close this finding</summary>
+          <form method="post" action="/visits/{{ v.id }}/findings" class="inline small">{{ csrf_input() }}
+            <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}">
+            <label class="grow">Why (optional)<input name="reason" maxlength="200" placeholder="The provider sent a corrected bill"></label>
+            <button class="btn small" name="verdict" value="real">It was a real problem</button>
+            <button class="btn small" name="verdict" value="wrong">It was wrong</button>
+          </form>
+        </details>
         {% endif %}
       </div>
       <div class="num">{% if c.result in ('fail', 'closed') and c.amount %}{{ c.amount|money }}{% endif %}</div>
@@ -118,6 +124,7 @@
     </details>
     {% endif %}
     {% if v.missing %}<p class="small">Missing: {{ v.missing|join(', ') }}</p>{% endif %}
+    {% if v.findings or v.checks|selectattr('result', 'equalto', 'closed')|list %}<p class="small muted">When you close a finding, say whether it was a real problem or wrong: <a href="/accuracy">how often the findings were wrong</a>.</p>{% endif %}
     {% if v.findings and not (v.dispute and v.dispute.status == 'open') %}
     <details class="small section">
       <summary>Open a dispute</summary>

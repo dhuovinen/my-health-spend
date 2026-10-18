@@ -657,7 +657,7 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-PLT-01-2 | PLT-01 | Update a reference table | Past findings keep the version they used | U | New |
 | TC-PLT-01-3 | PLT-01 | Inspect the code | No IRS limits, codes or categories hard-coded outside the tables | R | New |
 | TC-PLT-02-1 | PLT-02 | Each release: held-out sample of ≥ 50 documents graded by hand before confirmation | Extracted amounts ≥ 95% correct | M | New |
-| TC-PLT-02-2 | PLT-02 | Findings dismissed by the member as wrong | False-positive rate computed per release and ≤ 5% | U | New |
+| TC-PLT-02-2 | PLT-02 | Findings dismissed by the member as wrong | False-positive rate computed per release and ≤ 5% | U | Exists: `test_false_positives.py` (the computation; the ≤ 5% result is measured on real visits in phase 1.6, ADR-044) |
 | TC-PLT-03-1 | PLT-03 | Any finding or recommendation | Stores rule ID, rule version and source document IDs; "why" view shows them | U | New |
 | TC-PLT-03-2 | PLT-03 | Rule changes to a new version | Old findings still show the old version | U | New |
 | TC-PLT-04-1 | PLT-04 | Capture AI extraction calls from the back-end tier | Only pseudonymized content sent | S | New |

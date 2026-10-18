@@ -60,6 +60,12 @@ A three-person synthetic household (Household page, view switch, a six-line visi
 uv run pytest tests/test_ux_layout.py
 ```
 
+False-positive rate of findings (PLT-02, ADR-044): members say "real problem" or "wrong" when closing a finding and see the rate on Finding accuracy; the owner's report, counts only, over every household (`--household`, `--release` optional):
+
+```bash
+docker compose exec app mhs-admin false-positives --from 2026-10-01 --to 2026-10-31
+```
+
 Extraction accuracy on the synthetic corpus (development set `tests/corpus`, held-out set `tests/corpus-holdout`; regenerate with `uv run python tools/make_corpus.py`; add `--extractor claude` with an API key to measure Claude):
 
 ```bash

@@ -4,7 +4,7 @@
 <div class="page-head"><h1>Help</h1><span class="muted small">How My Health Spend checks your health spending, and how to use it</span></div>
 
 <nav class="card section help-toc">
-  <a href="#idea">What it does</a> · <a href="#pages">Home, visits and household</a> · {% if not path_import %}<a href="#signin">Signing in</a> · <a href="#uploads">Uploading</a> · {% endif %}<a href="#import">Importing a file</a> · <a href="#statuses">Visit statuses</a> · <a href="#checks">The checks</a> · <a href="#hsa">HSA flags</a> · <a href="#settings">Settings</a>{% if not path_import %} · <a href="#data">Your data</a>{% endif %} · <a href="#limits">What it isn't</a>
+  <a href="#idea">What it does</a> · <a href="#pages">Home, visits and household</a> · {% if not path_import %}<a href="#signin">Signing in</a> · <a href="#uploads">Uploading</a> · {% endif %}<a href="#import">Importing a file</a> · <a href="#statuses">Visit statuses</a> · <a href="#checks">The checks</a> · <a href="#accuracy">Closing a finding</a> · <a href="#hsa">HSA flags</a> · <a href="#settings">Settings</a>{% if not path_import %} · <a href="#data">Your data</a>{% endif %} · <a href="#limits">What it isn't</a>
 </nav>
 
 <section class="card section" id="idea">
@@ -62,6 +62,11 @@
     {% endfor %}
   </ul>
   <p class="small muted">A difference under $1.00 is cleared within tolerance and isn't a finding; cleared amounts are added up per provider each year, and a provider past $5.00 is flagged (ADR-015, ADR-035). Balances owed and duplicate charges are never cleared. Every finding is shown with the numbers that disagree, on the visit's page.</p>
+</section>
+
+<section class="card section" id="accuracy">
+  <h2>Closing a finding</h2>
+  <p class="small">When you've dealt with a finding, close it on the visit's page and say which it was: <em>It was a real problem</em> (the provider or insurer got something wrong), or <em>It was wrong</em> (the app flagged something that was fine), with a reason if you like. Closing a dispute asks the same: accepting the findings as they are counts them as real, and "Nothing was wrong" counts them as wrong. <a href="/accuracy">Finding accuracy</a> shows how many of the findings you decided were wrong, by kind; the aim is no more than 5%. You can reopen a finding to change your answer.</p>
 </section>
 
 <section class="card section" id="hsa">
