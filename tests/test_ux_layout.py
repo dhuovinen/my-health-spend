@@ -30,7 +30,7 @@ playwright_api = pytest.importorskip("playwright.sync_api")
 PHONE = {"viewport": {"width": 375, "height": 812}, "is_mobile": True, "has_touch": True, "device_scale_factor": 2}
 DESKTOP = {"viewport": {"width": 1280, "height": 800}}
 PAGES = ["/", "/visits?year=2026", f"/visits/{PEDS}", "/visits/v-2026-04-02-pcp", "/household", "/providers",
-         "/providers/prov-peds?year=2026", "/settings", "/help", "/import"]
+         "/providers/prov-peds?year=2026", "/settings", "/help", "/import", "/cases", f"/visits/{PEDS}/cases/case-1"]
 R1_PAGES = ["/uploads", "/account", "/data"]
 SHOTS = os.environ.get("MHS_UX_SCREENSHOTS")
 
@@ -91,7 +91,9 @@ def release0(tmp_path):
     from tests.test_web import ReleaseZero
 
     config = Config(data_dir=tmp_path / "data")
-    import_household(ReleaseZero(config))
+    r0 = ReleaseZero(config)
+    import_household(r0)
+    open_case(r0.client)
     server = Server(create_app(config))
     yield server, []
     server.stop()
@@ -106,10 +108,18 @@ def release1(household, app_db, worker_db):
     r1 = ReleaseOne.__new__(ReleaseOne)
     r1.client = member.client
     import_household(r1)
+    open_case(r1.client)
     server = Server(household.app)
     cookie = {"name": "mhs_session", "value": member.client.client.cookies.get("mhs_session"), "url": server.url}
     yield server, [cookie], member
     server.stop()
+
+
+def open_case(client):
+    """A dispute case with a logged call, for the case and Cases pages (ADR-042)."""
+    assert client.post(f"/visits/{PEDS}/cases", data={"finding": "all"}, follow_redirects=False).status_code == 303
+    client.post(f"/visits/{PEDS}/cases/case-1/contacts", data={"channel": "phone", "person": "Dana", "reference": "R-1",
+                                                               "outcome": "Will send a corrected bill"})
 
 
 def open_page(browser, server, cookies, device):

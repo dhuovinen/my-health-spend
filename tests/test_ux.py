@@ -107,7 +107,7 @@ def test_attention_queue_ranks_by_dollars_then_age():
         class V:
             pass
         x = V()
-        x.id, x.visit, x.status, x.at_stake, x.remaining = vid, {"date": day}, status, stake, owed
+        x.id, x.visit, x.status, x.at_stake, x.remaining, x.due = vid, {"date": day}, status, stake, owed, []
         return x
 
     visits = [v("a", "2026-03-01", "discrepancy", 1500, 0), v("b", "2026-02-01", "balance_outstanding", 0, 8000),
@@ -120,7 +120,7 @@ def test_attention_queue_ranks_by_dollars_then_age():
 def test_tc_ux_02_1_visit_detail_has_everything_on_one_page(web):
     """Documents, line comparison, allocation, findings and case history on one page, in the order of ADR-041."""
     import_household(web)
-    web.client.post(f"/visits/{PEDS}/dispute", data={"action": "open", "note": "Called billing about 96110"})
+    web.client.post(f"/visits/{PEDS}/cases", data={"finding": "all", "note": "Called billing about 96110"})
     web.client.post("/notes", data={"provider_id": "prov-peds", "visit_id": PEDS, "date": "2026-10-16",
                                     "channel": "phone", "direction": "sent", "text": "Asked for a corrected bill"})
     web.client.post(f"/visits/{PEDS}/expected", data={"kind": "itemized_bill", "state": "not_applicable"})
@@ -130,7 +130,7 @@ def test_tc_ux_02_1_visit_detail_has_everything_on_one_page(web):
     for jump in ("#findings", "#lines", "#allocation", "#documents", "#history"):
         assert f'href="{jump}"' in page
     history = page[page.index('id="history"'):page.index('id="notes"')]
-    for text in ("You opened a dispute", "Called billing about 96110", "Note (Phone · Sent)", "Asked for a corrected bill",
+    for text in ("You opened a case with", "Called billing about 96110", "Note (Phone · Sent)", "Asked for a corrected bill",
                  "Itemized bill: not needed", "Provider statement", "Insurance decision (EOB)",
                  "The insurer received the claim", "Well-child visit and vaccines"):
         assert text in history, text

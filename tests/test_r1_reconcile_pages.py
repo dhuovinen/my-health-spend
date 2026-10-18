@@ -203,18 +203,18 @@ def test_mat_10_3_and_4_document_checklist(web, tmp_path):
 
 
 def test_rec_11_dispute_lifecycle_and_findings_on_the_pages(web):
-    """REC-11 In dispute and Resolved on the pages; a finding the member deals with; status badges say the status
-    in words (TC-REC-11-5)."""
+    """REC-11 In dispute and Resolved on the pages (a case, ADR-042); a finding the member deals with; status badges
+    say the status in words (TC-REC-11-5)."""
     import_sample(web)
     page = text_of(web.client.get("/visits/v-2026-04-02-pcp").text)
-    assert "Discrepancy found" in page and "Missed adjustment" in page and "Open a dispute" in page
-    web.client.post("/visits/v-2026-04-02-pcp/dispute", data={"action": "open", "note": "Called billing"})
+    assert "Discrepancy found" in page and "Missed adjustment" in page and "Open a case" in page
+    web.client.post("/visits/v-2026-04-02-pcp/cases", data={"finding": "all", "note": "Called billing"})
     page = text_of(web.client.get("/visits/v-2026-04-02-pcp").text)
-    assert "In dispute since" in page and "Called billing" in page
-    web.client.post("/visits/v-2026-04-02-pcp/dispute", data={"action": "close", "outcome": "accepted"})
+    assert "In dispute: a case with Example Family Medicine" in page and "opened on" in page and "Called billing" in page
+    web.client.post("/visits/v-2026-04-02-pcp/cases/case-1/resolve", data={"result": "denied"})
     page = text_of(web.client.get("/visits/v-2026-04-02-pcp").text)
-    assert "Resolved" in page and "Closed by you on" in page
-    assert web.store.get("visit", "v-2026-04-02-pcp")["dispute"]["status"] == "closed"
+    assert "Resolved" in page and "Closed by you on" in page and "case resolved: denied" in page
+    assert web.store.get("visit", "v-2026-04-02-pcp")["cases"][0]["status"] == "resolved"
     # Reopen one finding: the visit is a discrepancy again.
     closed = web.store.get("visit", "v-2026-04-02-pcp")["closed_findings"]
     for f in closed:
@@ -224,7 +224,8 @@ def test_rec_11_dispute_lifecycle_and_findings_on_the_pages(web):
     web.client.post("/visits/v-2026-04-02-pcp/findings", data={"code": "C2", "amount": "8000"})
     web.client.post("/visits/v-2026-04-02-pcp/findings", data={"code": "C4", "amount": "8000"})
     assert "Resolved" in text_of(web.client.get("/visits/v-2026-04-02-pcp").text)
-    assert web.client.post("/visits/v-2026-04-02-pcp/dispute", data={"action": "close"}).status_code == 400
+    assert web.client.post("/visits/v-2026-04-02-pcp/cases/case-1/resolve",
+                           data={"result": "denied"}).status_code == 400  # already resolved
     listing = web.client.get("/visits?year=2026").text
     for status in ("resolved", "complete", "balance_outstanding", "awaiting_eob"):
         assert f'<span class="badge s-{status}">{STATUS_LABELS[status]}</span>' in listing
@@ -257,7 +258,8 @@ def test_payment_path_and_home_year_buckets(web):
 def test_decisions_on_another_visit_or_unknown_records_are_refused(web, tmp_path):
     import_data(web, tmp_path, scenario())
     assert web.client.post("/visits/A/documents/eob-B/confirm").status_code == 404
-    assert web.client.post("/visits/nope/dispute", data={"action": "open"}).status_code == 404
+    assert web.client.post("/visits/nope/cases", data={"finding": "all"}).status_code == 404
+    assert web.client.get("/visits/A/cases/case-1").status_code == 404
     assert web.client.post("/payments/eob-A/split", data={}).status_code == 404
     r = web.client.post("/visits/A/documents/eob-A/move", data={"target": "nowhere"})
     assert r.status_code == 400 and "Choose the visit it belongs to" in r.text
@@ -273,7 +275,7 @@ def test_another_household_cannot_change_these_records(household, app_db, tmp_pa
     a, b = ReleaseOne(household, app_db), ReleaseOne(household, app_db)
     import_data(a, tmp_path, scenario(documents=[payment(150)]))
     before = (a.store.get("visit", "A"), a.store.get("document", "pay-1"), a.store.get("document", "eob-A"))
-    for url, data in [("/visits/A/dispute", {"action": "open"}), ("/visits/A/findings", {"code": "C2", "amount": "1"}),
+    for url, data in [("/visits/A/cases", {"finding": "all"}), ("/visits/A/findings", {"code": "C2", "amount": "1"}),
                       ("/visits/A/expected", {"kind": "eob", "state": "not_applicable"}),
                       ("/visits/A/payment-path", {"path": "self_pay"}), ("/visits/A/merge", {"other": "B"}),
                       ("/visits/A/delete", {}), ("/visits/A/documents/eob-A/confirm", {}),

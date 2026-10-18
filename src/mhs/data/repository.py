@@ -24,4 +24,5 @@ def load_dataset(store: Store) -> Dataset:
         visits=store.all("visit"),
         documents=store.all("document"),
         waiting_days=waiting_days(store),
+        notes=store.all("provider_note"),
     )

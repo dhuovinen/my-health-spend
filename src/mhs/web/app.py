@@ -57,6 +57,9 @@ class LocalHost:
     def record_view(self, request: Request, kind: str, record_id: str, action: str = "view") -> None:
         pass  # one owner on their own laptop: no access log
 
+    def identifiers(self, request: Request, store: Store, visit) -> dict[str, str]:
+        return {}  # no uploads or vault in Release 0: letters leave the account number blank
+
     def default_import_path(self) -> str:
         candidates = sorted(self.config.data_dir.glob("ingest-*.json"))
         return str(candidates[-1]) if candidates else ""

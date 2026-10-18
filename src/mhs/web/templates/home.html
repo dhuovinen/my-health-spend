@@ -56,7 +56,7 @@
 <section class="card section" id="attention">
   <h2>Needs your attention</h2>
   {% if attention %}
-  <p class="muted small rule">Most dollars first (at stake plus still owed), then the oldest visit.</p>
+  <p class="muted small rule">Most dollars first (at stake plus still owed), then the oldest visit. A follow-up that is due, or a deadline 14 days away or nearer, comes before them.</p>
   <ol class="queue">
     {% for v in attention %}
     <li>
@@ -71,6 +71,7 @@
   </ol>
   {% if attention_more > 0 %}<p class="small"><a href="/visits?year={{ report.year }}&flagged=1">{{ attention_more }} more</a></p>{% endif %}
   {% else %}<p class="muted">Nothing needs you right now.</p>{% endif %}
+  {% if report.cases %}<p class="small"><a href="/cases">Your cases</a>: {{ report.cases|selectattr('open')|list|length }} open{% if report.recovered_lifetime %}, {{ report.recovered_lifetime|money }} recovered so far{% endif %}</p>{% endif %}
 </section>
 
 <section class="section" id="visits">

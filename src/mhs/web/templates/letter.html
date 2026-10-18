@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ letter.title }} · {{ v.provider.name }}{% endblock %}
+{% block content %}
+<p class="small"><a class="back" href="/visits/{{ v.id }}/cases/{{ case.id }}#letter">← Back to the case</a></p>
+<div class="page-head"><div>
+  <h1>{{ letter.title }}</h1>
+  <div class="muted">To {{ letter.to }} · drafted {{ today|nice_date }}, not saved</div>
+</div></div>
+<p class="alert info small" id="disclaimer">{{ disclaimer }}</p>
+{% if letter.blanks %}<p class="alert warn small">Fill in the parts in [brackets] before you send it: {{ blanks|join(', ') }}. You can also type them under "Your details" on the case and draft it again.</p>{% endif %}
+<div class="card section">
+  <label for="letter-text" class="muted small">Select all and copy, or download it as a text file.</label>
+  <textarea id="letter-text" class="letter" rows="24" readonly>{{ letter.text }}</textarea>
+  <div class="actions section">
+    <form method="post" action="/visits/{{ v.id }}/cases/{{ case.id }}/letter" class="inline">{{ csrf_input() }}
+      <input type="hidden" name="kind" value="{{ letter.kind }}"><input type="hidden" name="format" value="text">
+      {% for key, value in fields.items() if value %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+      <button class="btn">Download as a text file</button>
+    </form>
+  </div>
+</div>
+<div class="card section">
+  <h2>When you've sent it</h2>
+  <p class="muted small">The app never sends anything for you. Log it so the case knows when to remind you.</p>
+  <form method="post" action="/visits/{{ v.id }}/cases/{{ case.id }}/sent" class="inline">{{ csrf_input() }}
+    <input type="hidden" name="kind" value="{{ letter.kind }}">
+    <label>By<select name="channel">{% for c in ('letter', 'email', 'portal') %}<option value="{{ c }}">{{ c|humanize }}</option>{% endfor %}</select></label>
+    <label>On<input type="date" name="date" value="{{ today }}"></label>
+    <button class="btn primary">I sent it</button>
+  </form>
+</div>
+{% endblock %}

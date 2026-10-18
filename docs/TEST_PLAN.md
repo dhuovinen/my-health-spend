@@ -545,25 +545,25 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 
 | TC | Req | Scenario | Expected result | Level | Status |
 | --- | --- | --- | --- | --- | --- |
-| TC-DSP-01-1 | DSP-01 | Create a case from a REC-02 finding | Case holds the bill, EOB, payment proof, the lines and amounts | I | New |
-| TC-DSP-01-2 | DSP-01 | Evidence files in the case | Same originals as ING-10 (hash match), served from the application tier only | I | New |
-| TC-DSP-01-3 | DSP-01 | Finding with the payment proof missing | Case created; missing evidence listed | I | New |
-| TC-DSP-02-1 | DSP-02 | Draft each of: itemized bill request, billing correction, refund request, claim resubmission, insurer appeal | Each draft has the real claim #, DOS, amounts and request, filled in by the application tier; the back-end tier only ever sees tokens | U | New |
-| TC-DSP-02-2 | DSP-02 | Any draft | Never sent without an explicit user action; no auto-send | E | New |
-| TC-DSP-03-1 | DSP-03 | Open a call script for a refund case | Script includes what to ask for and the reference numbers to record | U | New |
-| TC-DSP-03-2 | DSP-03 | Log a call: date, person, reference #, outcome | Saved and shown in the case history | I | Exists (provider-level log): `test_provider_notes_can_be_added_edited_and_deleted` |
-| TC-DSP-03-3 | DSP-03 | Log a call with no outcome | Validation message; nothing saved | I | New |
-| TC-DSP-04-1 | DSP-04 | Case status changes open → waiting on provider → resolved | Each change dated and shown | U | New |
-| TC-DSP-04-2 | DSP-04 | Case with no response logged 30 days after the last contact; another with a 10-day override | Reminders appear in the attention queue at 30 and 10 days respectively | U | New |
-| TC-DSP-04-3 | DSP-04 | Response logged | Reminder cleared | U | New |
-| TC-DSP-05-1 | DSP-05 | EOB dated 2026-03-01, 180-day appeal window | Deadline 2026-08-28 shown (real dates in the back-end tier) | U | New |
-| TC-DSP-05-2 | DSP-05 | Self-pay bill exceeds GFE | No Surprises Act dispute deadline 120 days from the bill date | U | New |
-| TC-DSP-05-3 | DSP-05 | Deadline within 14 days | Item rises in the attention queue | U | New |
+| TC-DSP-01-1 | DSP-01 | Create a case from a REC-02 finding | Case holds the bill, EOB, payment proof, the lines and amounts | I | Automated: `test_r2_disputes.py::test_tc_dsp_01_1_*` (core and pages) |
+| TC-DSP-01-2 | DSP-01 | Evidence files in the case | Same originals as ING-10 (hash match), served from the application tier only | I | Automated: `test_tc_dsp_01_2_evidence_files_are_the_originals` |
+| TC-DSP-01-3 | DSP-01 | Finding with the payment proof missing | Case created; missing evidence listed | I | Automated: `test_tc_dsp_01_3_*` (core and pages) |
+| TC-DSP-02-1 | DSP-02 | Draft each of: itemized bill request, billing correction, refund request, claim resubmission, insurer appeal | Each draft has the real claim #, DOS, amounts and request, filled in by the application tier; the back-end tier only ever sees tokens | U | Automated: `test_tc_dsp_02_1_*` (each draft; identifiers re-identified in the application tier, tokens only in records and jobs) |
+| TC-DSP-02-2 | DSP-02 | Any draft | Never sent without an explicit user action; no auto-send | E | Automated: `test_tc_dsp_02_2_a_draft_is_never_sent_without_the_member` |
+| TC-DSP-03-1 | DSP-03 | Open a call script for a refund case | Script includes what to ask for and the reference numbers to record | U | Automated: `test_tc_dsp_03_1_call_script_for_a_refund_case` |
+| TC-DSP-03-2 | DSP-03 | Log a call: date, person, reference #, outcome | Saved and shown in the case history | I | Automated: `test_tc_dsp_03_2_and_03_3_log_a_call` (per case, shown on the case, visit and provider log) |
+| TC-DSP-03-3 | DSP-03 | Log a call with no outcome | Validation message; nothing saved | I | Automated: `test_tc_dsp_03_2_and_03_3_log_a_call` |
+| TC-DSP-04-1 | DSP-04 | Case status changes open → waiting on provider → resolved | Each change dated and shown | U | Automated: `test_tc_dsp_04_1_status_changes_are_dated`, `test_tc_dsp_04_on_the_pages` |
+| TC-DSP-04-2 | DSP-04 | Case with no response logged 30 days after the last contact; another with a 10-day override | Reminders appear in the attention queue at 30 and 10 days respectively | U | Automated: `test_tc_dsp_04_2_reminders_at_30_and_10_days_rise_in_the_queue` |
+| TC-DSP-04-3 | DSP-04 | Response logged | Reminder cleared | U | Automated: `test_tc_dsp_04_3_a_reply_clears_the_reminder`, `test_tc_dsp_04_on_the_pages` |
+| TC-DSP-05-1 | DSP-05 | EOB dated 2026-03-01, 180-day appeal window | Deadline 2026-08-28 shown (real dates in the back-end tier) | U | Automated: `test_tc_dsp_05_1_appeal_deadline_from_the_eob_date` |
+| TC-DSP-05-2 | DSP-05 | Self-pay bill exceeds GFE | No Surprises Act dispute deadline 120 days from the bill date | U | Automated: `test_tc_dsp_05_2_*`, `test_tc_dsp_05_on_the_pages` ($400.00 threshold, ADR-042) |
+| TC-DSP-05-3 | DSP-05 | Deadline within 14 days | Item rises in the attention queue | U | Automated: `test_tc_dsp_05_3_a_deadline_within_14_days_rises_in_the_queue` |
 | TC-DSP-06-1 | DSP-06 | Hospital bill; household income below the hospital's assistance threshold | Screen says "may qualify" with a link to the hospital's application | U | New |
 | TC-DSP-06-2 | DSP-06 | Non-hospital provider | Screen not offered | U | New |
-| TC-DSP-07-1 | DSP-07 | Case closed as refunded $75.00 | Lifetime savings +$75.00 | U | New |
-| TC-DSP-07-2 | DSP-07 | Closed as written off $200.00; another closed as denied | +$200.00 and +$0.00 | U | New |
-| TC-DSP-07-3 | DSP-07 | Case reopened and closed again | Savings counted once | U | New |
+| TC-DSP-07-1 | DSP-07 | Case closed as refunded $75.00 | Lifetime savings +$75.00 | U | Automated: `test_tc_dsp_07_1_refunded_75_adds_75`, `test_tc_dsp_07_on_the_pages` |
+| TC-DSP-07-2 | DSP-07 | Closed as written off $200.00; another closed as denied | +$200.00 and +$0.00 | U | Automated: `test_tc_dsp_07_2_written_off_and_denied` |
+| TC-DSP-07-3 | DSP-07 | Case reopened and closed again | Savings counted once | U | Automated: `test_tc_dsp_07_3_reopened_and_closed_again_counts_once`, `test_tc_dsp_07_on_the_pages` |
 
 ### 3.8 User experience and reporting (UX)
 

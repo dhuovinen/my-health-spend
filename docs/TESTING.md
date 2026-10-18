@@ -79,6 +79,7 @@ Each scenario is automated in `tests/test_r1_scenarios.py` (with the worker run 
 | 25 | Help | Open Help (the ? icon) | Every visit status and check is explained in plain words; the server app covers signing in, recovery, uploads and your data; the laptop app covers import by path | UX-05, B-9 | `test_web.py::test_help_explains_statuses_checks_and_the_app` |
 | 26 | Forward an email | From your own address, forward an email with a PDF and a photo to the address on Uploads; then one whose body is a statement | One upload per attachment (others skipped), and one for the statement body, each read and ready to review; a stranger's mail and unknown addresses are refused at SMTP | ING-01 (TC-4), ADR-039 | `test_r1_mail.py`, stack (`test_forwarded_email_arrives_and_is_read`) |
 | 27 | Access log | Open a visit, download a statement, change a provider, add and delete a note, upload and review a file, export; then open "Your data" | Each action listed with who, what, which record and when; the log can't be changed by the app; another household's entries never show | PRV-10 (TC-1, TC-2), ADR-040 | `test_r1_access_log.py` |
+| 28 | Dispute a finding | On a visit with a missed adjustment, Open a case beside the finding; draft the billing correction (type your member ID under "Your details"); download it; log "I sent it"; 30 days on, see it at the top of Home; log their call with person, reference and outcome; resolve as refunded $75.00; open Cases | The case keeps the finding, the lines and the evidence, and lists anything missing; the letter has your name, account number, claim number, dates and amounts, and isn't saved anywhere; nothing is sent; the reminder clears when their reply is logged; resolving closes the findings and Cases shows $75.00 recovered; reopening takes it off | DSP-01 to DSP-05, DSP-07, ADR-042 | `test_r2_disputes.py` |
 
 **Scrubbing is deterministic (scenario 19).** Presidio reads each document's original text once, and its finds are placed in the rules' output wherever the rules left them whole. It used to run a second time on text that already held random vault tokens, so the same statement scrubbed differently from upload to upload: a bare letterhead above a tokenized address read as a person in about one upload in four (43 of 150 in `mhs:test`), and extraction took the table header as the provider. Names and places Presidio finds that hold a practice word (Orthopedics, Radiology, Clinic, Imaging, Pharmacy, Labs and the rest of `ORG_WORDS` in `ingest/scrub.py`), with any capitalized words after them on the line, are kept, because spaCy reads "Bennett Radiology" as a person even in the original text. The recall seed set is unchanged at 189 of 190 identifiers (99.5%).
 
@@ -199,6 +200,27 @@ The P1 UX cases for UX-01, UX-02, UX-06 and UX-10 are automated with the synthet
 The layout tests skip where Playwright's Chromium isn't installed (`uv run playwright install chromium`); the compose `tests` image has it. `MHS_UX_SCREENSHOTS=<folder> uv run pytest tests/test_ux_layout.py` keeps a full-page screenshot of every page it checks (full-page captures drop the touch emulation, so Uploads' camera button doesn't show in them; the test checks it on the live page).
 
 **By hand.** The camera itself: on a real phone the "Take a photo" button opens the camera and the photo uploads when taken. The local stack binds 127.0.0.1 only, so this waits for staging (phase 1.6); the browser test covers everything but the camera app.
+
+## Disputes (Release 2)
+
+Every test case for DSP-01, DSP-02, DSP-04, DSP-05 and DSP-07 (all P2), and DSP-03's call script and log, is automated in `tests/test_r2_disputes.py`: core cases (U) with "today" pinned to 2026-10-09, page cases (I, E) against both apps through the `web` fixture on the real date, and the identifier case against the Release 1 upload pipeline (Postgres, vault, worker in-process). `tests/test_ux_layout.py` adds the Cases page and a case page to the phone checks. Rules and choices: ADR-042. On `feat/r2-disputes`, 2026-10-18: 423 tests on the compose stack (none skipped), `uv run pytest` 407 passed and 16 skipped.
+
+| Cases | Test |
+| --- | --- |
+| TC-DSP-01-1 a case from a REC-02 finding holds the bill, EOB, payment proof, lines and amounts | `test_tc_dsp_01_1_case_from_a_rec_02_finding_*` (core), `test_tc_dsp_01_1_and_01_2_on_the_pages` |
+| TC-DSP-01-2 evidence files are the originals (same SHA-256), served by the application tier | `test_tc_dsp_01_2_evidence_files_are_the_originals` |
+| TC-DSP-01-3 payment proof missing: the case opens and lists it | `test_tc_dsp_01_3_missing_payment_proof_is_listed`, `test_tc_dsp_01_3_on_the_pages` |
+| TC-DSP-02-1 each of the five drafts has the real claim number, dates, amounts and request; identifiers only in the application tier | `test_tc_dsp_02_1_each_draft_has_*`, `test_tc_dsp_02_1_balance_billing_duplicate_and_estimate_letters`, `test_tc_dsp_02_1_identifiers_only_in_the_application_tier` |
+| TC-DSP-02-2 never sent without the member | `test_tc_dsp_02_2_a_draft_is_never_sent_without_the_member` |
+| TC-DSP-03-1 call script for a refund case; TC-DSP-03-2 a call logged with person, reference and outcome; TC-DSP-03-3 no outcome, nothing saved | `test_tc_dsp_03_1_*`, `test_tc_dsp_03_2_and_03_3_log_a_call` |
+| TC-DSP-04-1 status changes dated; TC-DSP-04-2 reminders at 30 and 10 days rise in the queue; TC-DSP-04-3 a reply clears it | `test_tc_dsp_04_1_*`, `test_tc_dsp_04_2_*`, `test_tc_dsp_04_3_*`, `test_tc_dsp_04_on_the_pages` |
+| TC-DSP-05-1 appeal deadline 2026-08-28 from a 2026-03-01 EOB; TC-DSP-05-2 No Surprises Act deadline 120 days from the first bill; TC-DSP-05-3 14 days away rises in the queue | `test_tc_dsp_05_1_*`, `test_tc_dsp_05_2_*`, `test_tc_dsp_05_3_*`, `test_tc_dsp_05_on_the_pages` |
+| TC-DSP-07-1 refunded $75.00; TC-DSP-07-2 written off $200.00 and denied; TC-DSP-07-3 reopened and closed again counts once | `test_tc_dsp_07_1_*`, `test_tc_dsp_07_2_*`, `test_tc_dsp_07_3_*`, `test_tc_dsp_07_on_the_pages` |
+| ADR-042: an old minimal dispute reads as a case; cases survive re-import and move on merge; another household gets Not found on every case route; the schema takes the new fields | `test_an_old_minimal_dispute_reads_as_a_case`, `test_cases_survive_reimport_and_move_on_merge`, `test_another_household_cannot_reach_a_case`, `test_schema_accepts_a_case_and_the_new_note_fields` |
+
+**Changed test expectations.** The minimal dispute's route is gone: `test_rec_11_3_lifecycle` (core), `test_rec_11_dispute_lifecycle_and_findings_on_the_pages`, `test_decisions_on_another_visit_*`, `test_another_household_cannot_change_these_records` and `test_tc_ux_02_1_*` open and resolve a case instead; `test_attention_queue_ranks_by_dollars_then_age` gives its stand-in visits an empty `due`.
+
+**By hand.** Letters on paper: draft each of the five from a case, print the page, and read it as the provider or insurer would.
 
 ## Release 1 additions
 
