@@ -7,6 +7,7 @@ them. Pure functions; no database or web imports. Money in integer cents.
 import copy
 
 from mhs.core import disputes
+from mhs.core.accuracy import NOT_CLOSABLE
 
 # Statement line fields and the item field each one sums (moving items moves these amounts with them).
 LINE_FROM_ITEM = {"billed_charge": "charge", "adjustment": "adjustment", "insurance_paid": "insurance_paid",
@@ -14,6 +15,8 @@ LINE_FROM_ITEM = {"billed_charge": "charge", "adjustment": "adjustment", "insura
                   "write_off": "write_off"}
 DOCUMENT_KINDS = ("bill", "itemized_bill", "eob", "receipt", "payment")
 EXPECTATIONS = ("expected", "not_applicable")
+VERDICTS = ("real", "wrong")  # the member's word on a finding they close (PLT-02, ADR-044)
+REASON_LENGTH = 200
 
 
 class EditError(ValueError):
@@ -252,25 +255,28 @@ def set_follow_up(visit: dict, case_id: str, days: int | None) -> dict:
     return out
 
 
-def resolve_case(visit: dict, case_id: str, today: str, result: str, recovered: int, note: str = "") -> dict:
-    """DSP-07: close the case with its outcome and the dollars recovered (none when denied); the findings it is about
-    are closed with it."""
+def resolve_case(visit: dict, case_id: str, today: str, result: str, recovered: int, note: str = "",
+                 release: str = "") -> dict:
+    """DSP-07: close the case with its outcome and the dollars recovered (none when denied or the findings were wrong);
+    the findings it is about are closed with it, with the verdict the outcome implies (ADR-044)."""
     if result not in disputes.OUTCOMES:
-        raise EditError("Choose the outcome: corrected, refunded, written off or denied.")
+        raise EditError("Choose the outcome: corrected, refunded, written off, denied or the findings were wrong.")
     if recovered < 0:
         raise EditError("The amount recovered can't be negative.")
     out, cases = _with_cases(visit)
     case = _case(cases, case_id)
     if case["status"] == "resolved":
         raise EditError("This case is already resolved.")
-    recovered = 0 if result == "denied" else recovered
+    recovered = 0 if result in disputes.NO_RECOVERY else recovered
     case["status"] = "resolved"
     case["outcome"] = {"result": result, "recovered": recovered, "date": today, **({"note": note} if note else {})}
     case.setdefault("history", []).append({"date": today, "status": "resolved",
                                            "note": f"{disputes.OUTCOMES[result]}, ${recovered / 100:,.2f} recovered"})
     how = f"case resolved: {disputes.OUTCOMES[result].lower()}"
     for f in case.get("findings") or []:
-        out = close_finding(out, f["code"], f["amount"], today, how)
+        verdict = None if f["code"] in NOT_CLOSABLE else disputes.OUTCOME_VERDICT.get(result)
+        out = close_finding(out, f["code"], f["amount"], today, how, verdict, kind=f.get("kind", ""),
+                            release=release if verdict else "")
     return out
 
 
@@ -312,10 +318,19 @@ def merge_cases(keep: dict, drop: dict) -> tuple[dict, dict[str, str]]:
 
 # ---------- findings and the document checklist (REC-11, MAT-10) ----------
 
-def close_finding(visit: dict, code: str, amount: int, today: str, how: str = "marked dealt with") -> dict:
+def close_finding(visit: dict, code: str, amount: int, today: str, how: str = "marked dealt with",
+                  verdict: str | None = None, reason: str = "", kind: str = "", release: str = "") -> dict:
+    """Close a finding. The verdict is the member's word on it: a real problem, or wrong (a false positive); kind and
+    release are kept with it so it still counts if the finding later disappears (ADR-044)."""
+    if verdict is not None and verdict not in VERDICTS:
+        raise EditError("Say whether the finding was a real problem or wrong.")
     out = copy.deepcopy(visit)
     closed = [f for f in out.get("closed_findings", []) if (f["code"], f["amount"]) != (code, amount)]
-    closed.append({"code": code, "amount": amount, "closed": today, "how": how})
+    entry = {"code": code, "amount": amount, "closed": today, "how": how}
+    reason = " ".join(reason.split())[:REASON_LENGTH]
+    entry.update({k: v for k, v in (("verdict", verdict), ("reason", reason), ("kind", kind), ("release", release))
+                  if v})
+    closed.append(entry)
     out["closed_findings"] = closed
     return out
 

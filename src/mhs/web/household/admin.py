@@ -5,6 +5,7 @@ Run inside the app container:
     docker compose exec -it app mhs-admin add-member --household <id> --email a@example.com --name "A Member"
     docker compose exec app mhs-admin import --household <id> /srv/mhs/samples/example-ingest.json --yes
     docker compose exec app mhs-admin demo-setup
+    docker compose exec app mhs-admin false-positives --from 2026-10-01 --to 2026-10-31
 """
 
 import argparse
@@ -12,14 +13,18 @@ import getpass
 import json
 import secrets
 import sys
+from datetime import date
 from pathlib import Path
 
+from mhs.core.accuracy import TARGET, Accuracy, accuracy, open_findings, percent
+from mhs.core.reconcile import available_years, build_report
 from mhs.data import importer
 from mhs.data.db import Database
 from mhs.data.household_store import HouseholdStore
 from mhs.data.keys import db_keyring, keys_from_env
 from mhs.data.money import to_dollars
 from mhs.data.objects import object_store_from_env
+from mhs.data.repository import load_dataset
 from mhs.ingest.resolve import slug
 from mhs.stack import load_app_config
 from mhs.web.household.files import EncryptedFiles
@@ -60,6 +65,53 @@ def import_file(accounts: Accounts, household_id: str, path: Path, commit: bool,
     files = EncryptedFiles(object_store_from_env(config.objects_dir), accounts.keyring, household_id)
     summary = importer.commit(plan, store, files, replace_edits=replace_edits)
     print(f"saved: {json.dumps(summary)}")
+
+
+def household_accuracy(accounts: Accounts, household_id: str, start: str | None, end: str | None,
+                       release: str | None, today: date) -> Accuracy:
+    ds = load_dataset(HouseholdStore(accounts.db, household_id))
+    open_now = open_findings([build_report(ds, y, today) for y in available_years(ds)])
+    return accuracy(ds.visits, open_now, start, end, release)
+
+
+def false_positives(accounts: Accounts, start: str | None = None, end: str | None = None, release: str | None = None,
+                    household_id: str | None = None, today: date | None = None) -> str:
+    """PLT-02, TC-PLT-02-2: the false-positive rate of findings over the households, as counts only (ADR-044):
+    no reasons, names, record ids, dates of service or amounts."""
+    for d in (start, end):
+        if d:
+            try:
+                date.fromisoformat(d)
+            except ValueError:
+                raise AccountError(f"Not a date: {d} (use YYYY-MM-DD).") from None
+    if household_id:
+        if accounts.household_name(household_id) is None:
+            raise AccountError("No such household.")
+        households = [household_id]
+    else:
+        with accounts.db.tx() as c:
+            households = [str(r["id"]) for r in c.execute("SELECT id FROM app.households ORDER BY created_at, id")]
+    total = Accuracy()
+    for hid in households:
+        total = total + household_accuracy(accounts, hid, start, end, release, today or date.today())
+    t = total.total
+    width = max([len(k.label) for k in total.rows] + [len("All findings")])
+    lines = [f"False-positive rate of findings (PLT-02: at most {TARGET:.0%} dismissed by the member as wrong)",
+             f"Households read: {len(households)}. Findings closed {start or 'any time'} to {end or 'today'}; "
+             f"release: {release or 'all'}.",
+             "",
+             f"{'Finding':<{width}}  {'real':>5}  {'wrong':>5}  {'rate':>6}  {'open':>5}"]
+    for k in total.rows:
+        lines.append(f"{k.label:<{width}}  {k.real:>5}  {k.wrong:>5}  {percent(k.rate):>6}  {k.open:>5}")
+    verdict = ("nothing decided yet" if t.rate is None else
+               "meets the target" if t.meets_target else "ABOVE the target")
+    lines += [f"{'All findings':<{width}}  {t.real:>5}  {t.wrong:>5}  {percent(t.rate):>6}  {t.open:>5}",
+              "",
+              f"Overall: {t.wrong} wrong of {t.decided} decided, {percent(t.rate)}: {verdict}.",
+              f"Still open now (not in the rate): {t.open}. Closed without a verdict (not in the rate): {t.unrated}."]
+    if total.releases:
+        lines.append("Decided by release: " + ", ".join(f"{r} {n}" for r, n in sorted(total.releases.items())) + ".")
+    return "\n".join(lines)
 
 
 def read_password(from_stdin: bool) -> str:
@@ -157,6 +209,11 @@ def main(argv: list[str] | None = None) -> None:
     a = sub.add_parser("ai-extraction", help="let Claude read this household's scrubbed documents (ADR-028, ADR-034)")
     a.add_argument("--household", required=True)
     a.add_argument("state", choices=["on", "off", "status"])
+    f = sub.add_parser("false-positives", help="the false-positive rate of findings, counts only (PLT-02, ADR-044)")
+    f.add_argument("--from", dest="start", metavar="DATE", help="first closing date counted (YYYY-MM-DD)")
+    f.add_argument("--to", dest="end", metavar="DATE", help="last closing date counted (YYYY-MM-DD)")
+    f.add_argument("--release", help="only findings shown by this release, e.g. release-1")
+    f.add_argument("--household", help="one household (default: all)")
     args = parser.parse_args(argv)
 
     db, accounts = accounts_from_env()
@@ -183,6 +240,8 @@ def main(argv: list[str] | None = None) -> None:
             print("Upload the files in samples/demo/ in order; docs/DEMO.md has the walkthrough.")
         elif args.command == "import":
             import_file(accounts, args.household, args.path, args.yes, args.replace_edits)
+        elif args.command == "false-positives":
+            print(false_positives(accounts, args.start, args.end, args.release, args.household))
         elif args.command == "ai-extraction":
             if args.state != "status":
                 accounts.set_ai_extraction(args.household, args.state == "on")

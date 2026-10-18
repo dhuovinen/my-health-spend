@@ -20,7 +20,9 @@ from fastapi.templating import Jinja2Templates
 from jinja2 import pass_context
 from markupsafe import Markup, escape
 
+from mhs import RELEASE
 from mhs.core import disputes, edits
+from mhs.core.accuracy import NOT_CLOSABLE, TARGET, accuracy, open_findings, percent
 from mhs.core.household import NOBODY, household_totals, visits_for
 from mhs.core.lines import BUCKETS, LineMatch
 from mhs.core.reconcile import (ATTENTION, CHECK_NAMES, DOCUMENT_LABELS, FINDING_KINDS, STATUS_HELP, STATUS_LABELS,
@@ -44,6 +46,8 @@ LIMIT_TYPES = ["deductible", "out_of_pocket_max", "annual_maximum"]
 LIMIT_NETWORKS = ["in_network", "out_of_network", "combined"]
 NOTE_CHANNELS = ["email", "phone", "portal", "in_person", "letter", "other"]
 NOTE_DIRECTIONS = ["sent", "received", "note"]
+CLOSED_HOW = {"real": "marked dealt with", "wrong": "marked wrong"}
+VERDICT_TEXT = {"real": "a real problem", "wrong": "the finding was wrong"}
 # Visit-list filters behind the home page's HSA totals: query value -> (VisitResult attribute, label)
 HSA_FILTERS = {
     "unpaid": ("remaining", "Unpaid — pay from HSA"),
@@ -266,7 +270,8 @@ def case_history(v: VisitResult, notes: list[dict], accounts: dict[str, dict]) -
             events.append((h["date"], what, h.get("note") or (c.case.get("note", "") if h["status"] == "open" else "")))
     for f in v.visit.get("closed_findings") or []:
         events.append((f["closed"], f"Finding closed: {CHECK_NAMES.get(f['code'], f['code'])}",
-                       f"{money_text(f['amount'])}, {f.get('how', '')}"))
+                       ", ".join(filter(None, (money_text(f["amount"]), closed_how(f)))) +
+                       (f": {f['reason']}" if f.get("reason") else "")))
     for n in notes:
         if n.get("visit_id") == v.id:
             how = " · ".join(humanize(n[k]) for k in ("channel", "direction") if n.get(k))
@@ -275,6 +280,15 @@ def case_history(v: VisitResult, notes: list[dict], accounts: dict[str, dict]) -
                            n["text"] + (f" ({who})" if who else "")))
     order = sorted(range(len(events)), key=lambda i: (events[i][0], i), reverse=True)
     return [{"date": events[i][0], "what": events[i][1], "detail": events[i][2]} for i in order]
+
+
+def closed_how(entry: dict) -> str:
+    """How a finding was closed, with the member's verdict when the way doesn't already say it (ADR-044)."""
+    how = entry.get("how", "")
+    verdict = entry.get("verdict")
+    if verdict and how not in CLOSED_HOW.values() and not how.startswith("case resolved"):  # the outcome says it
+        return f"{how}, {VERDICT_TEXT[verdict]}" if how else VERDICT_TEXT[verdict]
+    return how
 
 
 @pass_context
@@ -293,7 +307,8 @@ def make_templates(directories: list[Path], context: Callable[[Request], dict]) 
     templates.env.globals.update(STATUS_LABELS=STATUS_LABELS, STATUS_ORDER=STATUS_ORDER, STATUS_HELP=STATUS_HELP,
                                  BUCKETS=BUCKETS, FINDING_KINDS=FINDING_KINDS, csrf_input=csrf_input,
                                  CASE_LABELS=disputes.CASE_LABELS, OUTCOMES=disputes.OUTCOMES,
-                                 LETTERS=disputes.LETTERS)
+                                 LETTERS=disputes.LETTERS,
+                                 closed_how=closed_how)
     return templates
 
 
@@ -574,7 +589,16 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
             if form.get("action") == "reopen":
                 changed = edits.reopen_finding(visit, code, amount)
             else:
-                changed = edits.close_finding(visit, code, amount, date.today().isoformat())
+                # PLT-02: the member says whether it was a real problem or wrong (ADR-044).
+                verdict = form.get("verdict") or ""
+                if verdict not in edits.VERDICTS:
+                    raise edits.EditError("Say whether the finding was a real problem or wrong.")
+                finding = next((c for c in report_for(store, int(visit["date"][:4])).visit(visit_id).findings
+                                if (c.code, c.amount) == (code, amount) and c.code not in NOT_CLOSABLE), None)
+                if finding is None:
+                    raise edits.EditError("That finding isn't open on this visit.")
+                changed = edits.close_finding(visit, code, amount, date.today().isoformat(), CLOSED_HOW[verdict],
+                                              verdict, form.get("reason") or "", finding.kind, RELEASE)
             save_record(store, "visit", changed)
             return ""
         return await decide(request, visit_id, change)
@@ -783,7 +807,7 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                 raise edits.EditError(str(e)) from None
             save_record(store, "visit", edits.resolve_case(visit, case_id, date.today().isoformat(),
                                                            form.get("result") or "", amount,
-                                                           (form.get("note") or "").strip()))
+                                                           (form.get("note") or "").strip(), RELEASE))
             return ""
         return await case_change(request, visit_id, case_id, change)
 
@@ -1156,6 +1180,21 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
             rel["notes"] = notes
         save_settings(store, "provider_relationship", "provider_relationship", rel)
         return back("relationships")
+
+    @app.get("/accuracy", response_class=HTMLResponse)
+    def accuracy_page(request: Request, year: int | None = None):
+        """PLT-02, TC-PLT-02-2: how many of the findings the member closed in a year they marked wrong (ADR-044)."""
+        store = host.store(request)
+        ds = load_dataset(store)
+        today = date.today()
+        closed_years = {int(f["closed"][:4]) for v in ds.visits for f in v.get("closed_findings") or []
+                        if f.get("closed")}
+        years = sorted(closed_years | {today.year}, reverse=True)
+        year = year if year in years else today.year
+        open_now = open_findings([build_report(ds, y, today) for y in available_years(ds)])
+        acc = accuracy(ds.visits, open_now, f"{year}-01-01", f"{year}-12-31")
+        return render(request, "accuracy.html", acc=acc, total=acc.total, year=year, years=years, TARGET=TARGET,
+                      percent=percent)
 
     @app.get("/help", response_class=HTMLResponse)
     def help_page(request: Request):

@@ -30,7 +30,7 @@ playwright_api = pytest.importorskip("playwright.sync_api")
 PHONE = {"viewport": {"width": 375, "height": 812}, "is_mobile": True, "has_touch": True, "device_scale_factor": 2}
 DESKTOP = {"viewport": {"width": 1280, "height": 800}}
 PAGES = ["/", "/visits?year=2026", f"/visits/{PEDS}", "/visits/v-2026-04-02-pcp", "/household", "/providers",
-         "/providers/prov-peds?year=2026", "/tax?year=2026", "/settings", "/help", "/import", "/cases",
+         "/providers/prov-peds?year=2026", "/tax?year=2026", "/settings", "/help", "/accuracy", "/import", "/cases",
          f"/visits/{PEDS}/cases/case-1"]
 R1_PAGES = ["/uploads", "/account", "/data"]
 SHOTS = os.environ.get("MHS_UX_SCREENSHOTS")

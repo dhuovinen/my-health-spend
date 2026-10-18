@@ -97,7 +97,7 @@ def test_tc_ux_01_3_card_amount_at_issue_is_the_open_findings(report):
 def test_card_amount_on_the_page_and_after_closing(web):
     import_household(web)
     assert "$15.00" in card(web.client.get("/").text, PEDS)
-    web.client.post(f"/visits/{PEDS}/findings", data={"code": "C2", "amount": "1500"})
+    web.client.post(f"/visits/{PEDS}/findings", data={"code": "C2", "amount": "1500", "verdict": "real"})
     peds = card(web.client.get("/").text, PEDS)
     assert "$15.00" not in peds and ">None<" in peds and "Balance outstanding" in peds  # $418.00 is still owed
 

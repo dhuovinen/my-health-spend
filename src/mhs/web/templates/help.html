@@ -4,7 +4,7 @@
 <div class="page-head"><h1>Help</h1><span class="muted small">How My Health Spend checks your health spending, and how to use it</span></div>
 
 <nav class="card section help-toc">
-  <a href="#idea">What it does</a> · <a href="#pages">Home, visits and household</a> · {% if not path_import %}<a href="#signin">Signing in</a> · <a href="#uploads">Uploading</a> · {% endif %}<a href="#import">Importing a file</a> · <a href="#statuses">Visit statuses</a> · <a href="#checks">The checks</a> · <a href="#cases">Disputes</a> · <a href="#hsa">HSA flags</a> · <a href="#settings">Settings</a>{% if not path_import %} · <a href="#data">Your data</a>{% endif %} · <a href="#limits">What it isn't</a>
+  <a href="#idea">What it does</a> · <a href="#pages">Home, visits and household</a> · {% if not path_import %}<a href="#signin">Signing in</a> · <a href="#uploads">Uploading</a> · {% endif %}<a href="#import">Importing a file</a> · <a href="#statuses">Visit statuses</a> · <a href="#checks">The checks</a> · <a href="#cases">Disputes</a> · <a href="#accuracy">Closing a finding</a> · <a href="#hsa">HSA flags</a> · <a href="#settings">Settings</a>{% if not path_import %} · <a href="#data">Your data</a>{% endif %} · <a href="#limits">What it isn't</a>
 </nav>
 
 <section class="card section" id="idea">
@@ -71,9 +71,14 @@
     <li><strong>Letters.</strong> The case drafts an itemized bill request, a billing correction, a refund request, a claim resubmission or an appeal to the insurer, with your claim number, dates and amounts filled in{% if not path_import %} and your account number from your uploads{% endif %}. Drafts aren't saved and the app never sends anything: copy, print or download the letter, send it yourself, then log it.</li>
     <li><strong>Calls.</strong> The call script says who to call, what to have ready, what to ask for and what to write down. Log each call with the person, the reference number and the outcome.</li>
     <li><strong>Reminders and deadlines.</strong> If nothing comes back 30 days after you last sent something or called (you can change the days per case), the visit goes to the top of Home. So does an appeal deadline (180 days from the EOB unless your plan says otherwise) or, for a self-pay bill $400 or more over its good-faith estimate, the No Surprises Act dispute deadline (120 days from the first bill), once it's 14 days away.</li>
-    <li><strong>Outcomes.</strong> Resolve the case as corrected, refunded, written off or denied, with the dollars recovered. The findings close with it, and <a href="/cases">Cases</a> adds up what you've recovered.</li>
+    <li><strong>Outcomes.</strong> Resolve the case as corrected, refunded, written off, denied or "the findings were wrong", with the dollars recovered. The findings close with it, and <a href="/cases">Cases</a> adds up what you've recovered.</li>
   </ul>
   <p class="small muted">Letters and scripts are information to help you, not legal or financial advice.</p>
+</section>
+
+<section class="card section" id="accuracy">
+  <h2>Closing a finding</h2>
+  <p class="small">When you've dealt with a finding, close it on the visit's page and say which it was: <em>It was a real problem</em> (the provider or insurer got something wrong), or <em>It was wrong</em> (the app flagged something that was fine), with a reason if you like. Resolving a case answers it for the findings in the case: corrected, refunded or written off counts them as real, "The findings were wrong" counts them as wrong, and denied leaves them unrated (a denial doesn't say whether the finding was right). <a href="/accuracy">Finding accuracy</a> shows how many of the findings you decided were wrong, by kind; the aim is no more than 5%. You can reopen a finding to change your answer.</p>
 </section>
 
 <section class="card section" id="hsa">

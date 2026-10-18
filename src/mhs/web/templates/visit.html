@@ -88,7 +88,7 @@
         {% if c.result == 'closed' %}
         <form method="post" action="/visits/{{ v.id }}/findings" class="inline small">{{ csrf_input() }}
           <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}"><input type="hidden" name="action" value="reopen">
-          <span class="muted">Closed by you on {{ c.closed.closed|nice_date }} ({{ c.closed.how }}).</span> <button class="btn small">Reopen</button>
+          <span class="muted">Closed by you on {{ c.closed.closed|nice_date }} ({{ closed_how(c.closed) }}){% if c.closed.reason %}: {{ c.closed.reason }}{% endif %}.</span> <button class="btn small">Reopen</button>
         </form>
         {% elif c.result == 'fail' %}
         <div class="actions small">
@@ -101,10 +101,15 @@
         </form>
         {% endif %}
         {% if c.code not in ('C6', 'claim_filed') and not in_case %}
-        <form method="post" action="/visits/{{ v.id }}/findings" class="inline">{{ csrf_input() }}
-          <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}">
-          <button class="btn small">I've dealt with this</button>
-        </form>
+        <details class="small close-finding">
+          <summary>Close this finding</summary>
+          <form method="post" action="/visits/{{ v.id }}/findings" class="inline small">{{ csrf_input() }}
+            <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}">
+            <label class="grow">Why (optional)<input name="reason" maxlength="200" placeholder="The provider sent a corrected bill"></label>
+            <button class="btn small" name="verdict" value="real">It was a real problem</button>
+            <button class="btn small" name="verdict" value="wrong">It was wrong</button>
+          </form>
+        </details>
         {% endif %}
         </div>
         {% endif %}
@@ -128,6 +133,7 @@
     </details>
     {% endif %}
     {% if v.missing %}<p class="small">Missing: {{ v.missing|join(', ') }}</p>{% endif %}
+    {% if v.findings or v.checks|selectattr('result', 'equalto', 'closed')|list %}<p class="small muted">When you close a finding, say whether it was a real problem or wrong: <a href="/accuracy">how often the findings were wrong</a>.</p>{% endif %}
     {% if v.hsa_flags %}
     <h3 class="section">HSA</h3>
     {% for f in v.hsa_flags %}<span class="chip">{{ f }}</span>{% endfor %}

@@ -21,7 +21,12 @@ CASE_HELP = {
     "waiting": "They answered and you are waiting for them to act (a corrected bill, a refund, a new EOB).",
     "resolved": "The case is closed with its outcome.",
 }
-OUTCOMES = {"corrected": "Corrected", "refunded": "Refunded", "written_off": "Written off", "denied": "Denied"}
+OUTCOMES = {"corrected": "Corrected", "refunded": "Refunded", "written_off": "Written off", "denied": "Denied",
+            "findings_wrong": "The findings were wrong"}
+# What an outcome says about the findings it closes (PLT-02, ADR-044): fixed in any way, they were real; a denial
+# doesn't say whether they were right, so it leaves them unrated.
+OUTCOME_VERDICT = {"corrected": "real", "refunded": "real", "written_off": "real", "findings_wrong": "wrong"}
+NO_RECOVERY = ("denied", "findings_wrong")
 PARTIES = ("provider", "insurer")
 
 LETTERS = {

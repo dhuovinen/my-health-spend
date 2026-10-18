@@ -18,12 +18,12 @@ docker compose --profile test run --rm tests
 uv run --with pytest-cov pytest --cov=mhs
 ```
 
-## Current state (2026-10-18, Release 2 HSA and tax built on `feat/r2-hsa-tax`)
+## Current state (2026-10-18, disputes, HSA and tax and false-positive tracking merged into `main`)
 
 | Measure | Value |
 | --- | --- |
-| Automated tests | 449 on the compose stack (none skipped); `uv run pytest` 433 with 16 skipped (stack tests and the ones that need the tesseract binary or Chromium), 2026-10-18 on `feat/r2-hsa-tax`. They include the HSA and tax tests (`test_tax.py`, `test_tax_pages.py`), phase 1.5's page and layout tests (`test_ux.py`, `test_ux_layout.py`), the 55 Release 0 tests (22 run a second time against Release 1), phase 1.4's core and page tests (`test_r1_reconcile.py`, `test_r1_reconcile_pages.py`), the other Release 1 tests in `tests/test_r1_*.py` and the stack tests in `tests/stack/` |
-| Coverage, `core/` | 92 to 99% per module: `tax.py` 99%, `reconcile.py` 97%, `lines.py` 94%, `matching.py` 99%, `edits.py` 92% (target ≥ 80%) |
+| Automated tests | 449 on the compose stack (none skipped); `uv run pytest` 433 with 16 skipped (stack tests and the ones that need the tesseract binary or Chromium), 2026-10-18 on `feat/r2-hsa-tax`. They include false-positive tracking (`test_false_positives.py`, TC-PLT-02-2), the HSA and tax tests (`test_tax.py`, `test_tax_pages.py`), phase 1.5's page and layout tests (`test_ux.py`, `test_ux_layout.py`), the 55 Release 0 tests (22 run a second time against Release 1), phase 1.4's core and page tests (`test_r1_reconcile.py`, `test_r1_reconcile_pages.py`), the other Release 1 tests in `tests/test_r1_*.py` and the stack tests in `tests/stack/` |
+| Coverage, `core/` | 92 to 99% per module: `tax.py` 99%, `reconcile.py` 97%, `lines.py` 94%, `matching.py` 99%, `edits.py` 92%, `accuracy.py` 100% (target ≥ 80%) |
 | Coverage, `data/` | 89 to 100% per module |
 | Coverage, `web/pages.py` (shared pages), `web/household/app.py`, `auth.py` | 92%, 95%, 98% |
 | Coverage, `ingest/` (upload pipeline), `web/household/intake.py` | 72 to 100% per module under `uv run pytest` (OCR and worker paths run fully only on the stack) |
@@ -81,6 +81,7 @@ Each scenario is automated in `tests/test_r1_scenarios.py` (with the worker run 
 | 27 | Access log | Open a visit, download a statement, change a provider, add and delete a note, upload and review a file, export; then open "Your data" | Each action listed with who, what, which record and when; the log can't be changed by the app; another household's entries never show | PRV-10 (TC-1, TC-2), ADR-040 | `test_r1_access_log.py` |
 | 28 | Dispute a finding | On a visit with a missed adjustment, Open a case beside the finding; draft the billing correction (type your member ID under "Your details"); download it; log "I sent it"; 30 days on, see it at the top of Home; log their call with person, reference and outcome; resolve as refunded $75.00; open Cases | The case keeps the finding, the lines and the evidence, and lists anything missing; the letter has your name, account number, claim number, dates and amounts, and isn't saved anywhere; nothing is sent; the reminder clears when their reply is logged; resolving closes the findings and Cases shows $75.00 recovered; reopening takes it off | DSP-01 to DSP-05, DSP-07, ADR-042 | `test_r2_disputes.py` |
 | 29 | HSA and tax (Release 2) | Import `samples/tax-ingest.json` on the Import page; open HSA and tax for 2026; mark the eye exam reimbursed; mark the vitamins' HSA payment a mistake on its visit; set Jamie as a 2026 tax dependent; choose the last-month rule for 2026; choose "Save the HSA for later" | Summary: $474.00 of HSA distributions by person and purpose, adding up; vault $330.00, then $120.00 (a second reimbursement refused); contributions $7,875.00 over the $7,575.00 monthly limit by $300.00, then within $9,750.00 with the testing-period warning; the vitamins flagged, with return guidance only once marked; Jamie's urgent care flagged, then not; the vault reads "banked for later"; the disclaimer under every suggestion | TAX-01 to TAX-04, TAX-06 to TAX-10, CMP-04 (ADR-043) | `test_tax_pages.py`, `test_tax.py` |
+| 30 | Real problem or wrong | On a visit with findings, "Close this finding": mark one "It was wrong" with a reason and the other "It was a real problem"; open Finding accuracy; reopen one | Each closing shows how it was closed (and the reason) on the visit and in its case history; Finding accuracy shows each kind's real, wrong and rate, and 50% overall, above the 5% aim; a reopened finding counts as open again; `mhs-admin false-positives` prints the same counts and nothing else | PLT-02 (TC-PLT-02-2), ADR-044 | `test_false_positives.py` |
 
 **Scrubbing is deterministic (scenario 19).** Presidio reads each document's original text once, and its finds are placed in the rules' output wherever the rules left them whole. It used to run a second time on text that already held random vault tokens, so the same statement scrubbed differently from upload to upload: a bare letterhead above a tokenized address read as a person in about one upload in four (43 of 150 in `mhs:test`), and extraction took the table header as the provider. Names and places Presidio finds that hold a practice word (Orthopedics, Radiology, Clinic, Imaging, Pharmacy, Labs and the rest of `ORG_WORDS` in `ingest/scrub.py`), with any capitalized words after them on the line, are kept, because spaCy reads "Bennett Radiology" as a person even in the original text. The recall seed set is unchanged at 189 of 190 identifiers (99.5%).
 
@@ -97,6 +98,19 @@ Layout rules, 2026-10-16:
 | All header fields | 100% | 43.8% (70 of 160) | |
 
 On the held-out set, both statement layouts ("Invoice", "Billing Statement") were read as "other", and labels without a colon or in a two-column layout ("Claim   123", "Statement Dt  10/01/2026") weren't read. The rules only know the wording they were written for, so they won't reach PLT-02 on documents they haven't seen; Claude extraction (ADR-028, ADR-034) is the way to the target. Its run (`--extractor claude`, with an API key) hasn't been made yet. Before tuning anything on these results, generate a fresh held-out set; tuning on this one would make its figure meaningless. OCR accuracy (TC-PLT-02-1) is measured with Document AI in staging.
+
+## False-positive rate (PLT-02, TC-PLT-02-2)
+
+When a member closes a finding they say whether it was a real problem or wrong, with an optional reason; resolving a dispute case answers for its findings (corrected, refunded or written off counts them as real, "The findings were wrong" as wrong, denied leaves them unrated). The verdict is kept on the visit as a member edit with the finding's kind and the release (ADR-044). The false-positive rate is wrong ÷ (real + wrong) over the findings closed in a period, per kind and overall; findings still open and closings from before the question are listed beside it, not in it. The target is 5% or less (test plan A-01).
+
+- **Member:** "Finding accuracy" (`/accuracy`, linked from each visit's findings and from Help) shows a calendar year of closings.
+- **Owner:** counts only (no reasons, names, record ids, dates of service or amounts), over every household or one:
+
+```bash
+docker compose exec app mhs-admin false-positives --from 2026-10-01 --to 2026-10-31 --release release-1
+```
+
+Tests: `tests/test_false_positives.py` (the rate and the 5% boundary, period and release, open and unrated findings, the verdict on the pages of both apps and on re-import, case outcomes, and the owner's report against Postgres). Phase 1.6 measures it on a month of real visits: close every finding on them first, since open findings aren't in the rate.
 
 ## Performance (PLT-05, TC-PLT-05-1)
 

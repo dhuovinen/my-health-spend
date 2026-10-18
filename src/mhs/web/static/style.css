@@ -127,6 +127,7 @@ tr.dim td { color: var(--muted); }
 .check.closed .mark, .check.cleared .mark { color: var(--good); } .check.info .mark { color: var(--info); }
 .check form { margin-top: .35rem; }
 details.move { margin-top: .5rem; }
+details.close-finding { margin-top: .35rem; }
 .actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-start; }
 
 /* forms */
