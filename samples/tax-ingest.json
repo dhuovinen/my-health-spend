@@ -3,7 +3,7 @@
  "source": {
   "prepared_by": "tools/make_tax_sample.py",
   "prepared_on": "2026-10-18",
-  "notes": "Made-up household for the HSA and tax features (ADR-042). Every name, provider, amount and claim number is invented."
+  "notes": "Made-up household for the HSA and tax features (ADR-043). Every name, provider, amount and claim number is invented."
  },
  "plans": [
   {

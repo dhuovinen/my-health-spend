@@ -1,4 +1,4 @@
-"""The HSA and tax page and the visit page's tax section (ADR-042), on both apps, with the synthetic household in
+"""The HSA and tax page and the visit page's tax section (ADR-043), on both apps, with the synthetic household in
 samples/tax-ingest.json (tools/make_tax_sample.py). The engine's cases are in tests/test_tax.py.
 
 Web tests run on the real date, so they ask for year 2026 explicitly and don't assert advice that depends on how

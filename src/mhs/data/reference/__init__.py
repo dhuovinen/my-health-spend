@@ -1,4 +1,4 @@
-"""Reference tables as dated data (PLT-01, ADR-042): IRS limits by tax year and the Publication 502 categories.
+"""Reference tables as dated data (PLT-01, ADR-043): IRS limits by tax year and the Publication 502 categories.
 
 The JSON files beside this module hold dollars; the engine gets cents. Add a year or a category version in the yearly
 review (CMP-06); no code changes.

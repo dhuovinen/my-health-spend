@@ -1,5 +1,5 @@
 {
-  "description": "IRS limits by tax year, in dollars (PLT-01, ADR-042). Add a row in the yearly review (CMP-06); the app says a year without a row has no limits table.",
+  "description": "IRS limits by tax year, in dollars (PLT-01, ADR-043). Add a row in the yearly review (CMP-06); the app says a year without a row has no limits table.",
   "years": [
     {
       "year": 2025,

@@ -1,4 +1,4 @@
-"""HSA and tax core (Release 2: TAX-01 to TAX-04, TAX-06 to TAX-10; ADR-042), one test per TEST_PLAN case.
+"""HSA and tax core (Release 2: TAX-01 to TAX-04, TAX-06 to TAX-10; ADR-043), one test per TEST_PLAN case.
 
 Synthetic datasets only, with "today" pinned. The page tests (both apps) are in tests/test_tax_pages.py.
 """

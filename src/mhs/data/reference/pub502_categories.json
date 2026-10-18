@@ -1,5 +1,5 @@
 {
-  "description": "Expense categories for the 'likely' tax tags (TAX-01, ADR-021, ADR-042), versioned by effective date (PLT-01). Each cites the IRS Publication 502 heading it follows. Order matters: the first category whose words appear in a visit wins, so specific ones come first. tag: likely_qualified, likely_not_qualified or needs_documentation. scope: medical, dental or vision (a limited-purpose FSA pays dental and vision only). documentation: what would make the expense count, when something can.",
+  "description": "Expense categories for the 'likely' tax tags (TAX-01, ADR-021, ADR-043), versioned by effective date (PLT-01). Each cites the IRS Publication 502 heading it follows. Order matters: the first category whose words appear in a visit wins, so specific ones come first. tag: likely_qualified, likely_not_qualified or needs_documentation. scope: medical, dental or vision (a limited-purpose FSA pays dental and vision only). documentation: what would make the expense count, when something can.",
   "versions": [
     {
       "version": "pub502-2025",

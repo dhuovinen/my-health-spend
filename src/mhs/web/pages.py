@@ -898,5 +898,5 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         host.store(request)
         return render(request, "help.html", CHECK_NAMES=CHECK_NAMES, CHECK_HELP=CHECK_HELP, STATUS_HELP=STATUS_HELP)
 
-    add_tax_pages(app, render, host, posted)  # the HSA and tax page (ADR-042)
+    add_tax_pages(app, render, host, posted)  # the HSA and tax page (ADR-043)
     return preview_import

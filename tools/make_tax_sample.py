@@ -1,4 +1,4 @@
-"""Write samples/tax-ingest.json: a made-up household for the HSA and tax features (TAX-01 to TAX-10, ADR-042).
+"""Write samples/tax-ingest.json: a made-up household for the HSA and tax features (TAX-01 to TAX-10, ADR-043).
 
 The Example household: Robin (the HSA holder, born 1969, so the 55+ catch-up applies), Casey (spouse), Jamie (24,
 a tax dependent in 2025 but not in 2026) and Max (14, a dependent both years). The HSA opened on 2025-03-01; Robin had
@@ -154,7 +154,7 @@ def sample() -> dict:
     return {
         "schema_version": "0.1",
         "source": {"prepared_by": "tools/make_tax_sample.py", "prepared_on": "2026-10-18",
-                   "notes": "Made-up household for the HSA and tax features (ADR-042). Every name, provider, amount "
+                   "notes": "Made-up household for the HSA and tax features (ADR-043). Every name, provider, amount "
                             "and claim number is invented."},
         "plans": PLANS, "accounts": ACCOUNTS, "members": MEMBERS, "providers": PROVIDERS, "visits": visits,
         "documents": documents(),

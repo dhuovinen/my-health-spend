@@ -720,16 +720,16 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | ALC-06 | P1 | 1, 2 (2) | U | — | — |
 | ALC-07 | P2 | 1, 2, 3 (3) | E | — | — |
 | ALC-08 | P2 | 1, 2, 3 (3) | U | — | — |
-| TAX-01 | P2 | 1, 2, 3, 4 (4) | U | — | all (ADR-042) |
-| TAX-02 | P2 | 1, 2, 3, 4, 5 (5) | U | — | all (ADR-042) |
-| TAX-03 | P2 | 1, 2, 3, 4, 5 (5) | U | — | all (ADR-042) |
-| TAX-04 | P1 | 1, 2, 3, 4 (4) | IU | — | all (ADR-042) |
+| TAX-01 | P2 | 1, 2, 3, 4 (4) | U | — | all (ADR-043) |
+| TAX-02 | P2 | 1, 2, 3, 4, 5 (5) | U | — | all (ADR-043) |
+| TAX-03 | P2 | 1, 2, 3, 4, 5 (5) | U | — | all (ADR-043) |
+| TAX-04 | P1 | 1, 2, 3, 4 (4) | IU | — | all (ADR-043) |
 | TAX-05 | P3 | 1, 2, 3 (3) | U | — | — |
-| TAX-06 | P2 | 1, 2, 3, 4, 5 (5) | U | — | all (ADR-042) |
-| TAX-07 | P2 | 1, 2, 3 (3) | EU | — | all (ADR-042) |
-| TAX-08 | P2 | 1, 2, 3 (3) | U | — | all (ADR-042) |
-| TAX-09 | P2 | 1, 2, 3 (3) | U | — | all (ADR-042) |
-| TAX-10 | P2 | 1, 2, 3 (3) | U | — | all (ADR-042) |
+| TAX-06 | P2 | 1, 2, 3, 4, 5 (5) | U | — | all (ADR-043) |
+| TAX-07 | P2 | 1, 2, 3 (3) | EU | — | all (ADR-043) |
+| TAX-08 | P2 | 1, 2, 3 (3) | U | — | all (ADR-043) |
+| TAX-09 | P2 | 1, 2, 3 (3) | U | — | all (ADR-043) |
+| TAX-10 | P2 | 1, 2, 3 (3) | U | — | all (ADR-043) |
 | PRE-01 | P2 | 1, 2, 3 (3) | EIU | — | — |
 | PRE-02 | P2 | 1, 2, 3 (3) | U | — | — |
 | PRE-03 | P3 | 1, 2, 3 (3) | IU | — | — |

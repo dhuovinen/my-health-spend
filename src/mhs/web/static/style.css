@@ -346,6 +346,6 @@ form.stack .btn { align-self: flex-start; }
   .uploads input[type=file] { min-height: 44px; width: 100%; }
 }
 
-/* HSA and tax (ADR-042): the CMP-04 disclaimer under every block that suggests an action */
+/* HSA and tax (ADR-043): the CMP-04 disclaimer under every block that suggests an action */
 .disclaimer { color: var(--muted); border-left: 3px solid var(--border); padding-left: .6rem; margin: .75rem 0 0; }
 .guidance { margin-top: .35rem; }
