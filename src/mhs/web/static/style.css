@@ -80,6 +80,10 @@ main { max-width: 1180px; margin: 0 auto; padding: 1.5rem 16px 4rem; }
 .s-awaiting_eob, .s-awaiting_documents { background: var(--idle-soft); color: var(--idle); }
 .s-resolved, .s-complete { background: var(--good-soft); color: var(--good); }
 .s-na { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+/* dispute cases (ADR-042): the label says the status, colour only groups them */
+.c-open, .c-contacted { background: var(--info-soft); color: var(--info); border: 1px solid var(--info); }
+.c-waiting { background: var(--idle-soft); color: var(--idle); }
+.c-resolved { background: var(--good-soft); color: var(--good); }
 .chip.good { background: var(--good-soft); color: var(--good); }
 .status-help { margin: -.25rem 0 1rem; color: var(--muted); }
 .chip { display: inline-block; padding: .1rem .5rem; border-radius: 6px; font-size: .78rem; background: var(--warn-soft); color: var(--warn); margin: .15rem .25rem 0 0; }
@@ -145,6 +149,14 @@ label { max-width: 100%; }
 .alert.bad { background: var(--bad-soft); color: var(--bad); }
 .alert.good { background: var(--good-soft); color: var(--good); }
 .alert.warn { background: var(--warn-soft); color: var(--warn); }
+.alert.info { background: var(--info-soft); color: var(--info); }
+.case-row { padding: .45rem 0; border-bottom: 1px solid var(--border); }
+.case-row:last-of-type { border-bottom: 0; }
+.evidence { list-style: none; padding: 0; margin: 0; }
+.evidence li { padding: .3rem 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.call-facts { margin-top: .2rem; }
+input.short { width: 6rem; }
+textarea.letter { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; line-height: 1.45; }
 .callout { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: 1rem; }
 .settings-row { display: grid; gap: .5rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
 .settings-row:last-child { border-bottom: 0; }
@@ -281,7 +293,7 @@ form.stack .btn { align-self: flex-start; }
   summary { min-height: 44px; padding: .55rem 0; }
   input[type=checkbox], input[type=radio] { width: 22px; height: 22px; }
   /* links standing on their own (not inside a sentence) are tap targets too */
-  a.back, .page-head a, .toc a, td > a, .kv a, .person-card h2 a {
+  a.back, .page-head a, .toc a, td > a, .kv a, .person-card h2 a, .case-row > a, .note-head a {
     display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
   input[type=file] { min-height: 44px; max-width: 100%; }
   main .queue li > a { display: grid; grid-template-columns: minmax(0, 1fr); }

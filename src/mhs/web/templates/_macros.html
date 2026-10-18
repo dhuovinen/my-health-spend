@@ -12,8 +12,13 @@
 </form>
 {% endmacro %}
 
-{# The visit's reason in plain words (UX-05): its first open finding, else what its status means. #}
-{% macro reason(v) %}{% set f = v.findings|first %}{% if f %}<strong>{{ f.kind_label or f.name }}:</strong> {{ f.detail[:1]|upper }}{{ f.detail[1:] }}{% else %}{{ v.status_help }}{% endif %}{% endmacro %}
+{% macro case_badge(status) %}<span class="badge c-{{ status }}">{{ CASE_LABELS[status] }}</span>{% endmacro %}
+
+{# A follow-up that is due or a deadline that is near (DSP-04, DSP-05; ADR-042). #}
+{% macro due_text(d) %}{% if d.kind == 'follow_up' %}<strong>{{ d.label }}:</strong> nothing back since {{ d.since|nice_date }}; a reply was due {{ d.due|nice_date }}.{% else %}<strong>{{ d.label }} by {{ d.due|nice_date }}:</strong> {{ d.days_left }} day{{ 's' if d.days_left != 1 }} left.{% endif %}{% endmacro %}
+
+{# The visit's reason in plain words (UX-05): what is due, else its first open finding, else what its status means. #}
+{% macro reason(v) %}{% set f = v.findings|first %}{% if v.due %}{{ due_text(v.due[0]) }}{% elif f %}<strong>{{ f.kind_label or f.name }}:</strong> {{ f.detail[:1]|upper }}{{ f.detail[1:] }}{% else %}{{ v.status_help }}{% endif %}{% endmacro %}
 
 {# UX-01: person, provider, date, status badge, document completeness and amount at issue (ADR-041). #}
 {% macro visit_card(v) %}
@@ -63,6 +68,9 @@
   <label>How<select name="channel"><option value="">—</option>{% for c in channels %}<option value="{{ c }}" {{ 'selected' if note.channel == c }}>{{ c|humanize }}</option>{% endfor %}</select></label>
   <label>Direction<select name="direction"><option value="">—</option>{% for d in directions %}<option value="{{ d }}" {{ 'selected' if note.direction == d }}>{{ {'sent': 'I sent', 'received': 'They sent', 'note': 'My note'}[d] }}</option>{% endfor %}</select></label>
   <label>About visit<select name="visit_id"><option value="">Provider in general</option>{% for v in g.visits %}<option value="{{ v.id }}" {{ 'selected' if note.visit_id == v.id }}>{{ v.visit.date|nice_date }}{% if g.providers|length > 1 %} · {{ v.provider.name }}{% endif %}</option>{% endfor %}</select></label>
+  <label>Person<input name="person" value="{{ note.person or '' }}" placeholder="Who you spoke with"></label>
+  <label>Reference #<input name="reference" value="{{ note.reference or '' }}"></label>
+  <label class="grow">Outcome<input name="outcome" value="{{ note.outcome or '' }}" placeholder="What was agreed"></label>
   <label class="grow">Note<textarea name="text" rows="5" required>{{ note.text or '' }}</textarea></label>
 {% endmacro %}
 
@@ -71,5 +79,7 @@
   {% if n.channel %}<span class="chip info">{{ n.channel|humanize }}</span>{% endif %}
   {% if n.direction %}<span class="chip idle">{{ {'sent': 'I sent', 'received': 'They sent', 'note': 'My note'}[n.direction] }}</span>{% endif %}
   {% if show_provider %}<span class="muted small">{{ providers_by_id.get(n.provider_id, n.provider_id) }}</span>{% endif %}
-  {% if n.visit_id %}<a class="small" href="/visits/{{ n.visit_id }}">about visit {{ n.visit_id.split('-')[1:4]|join('-')|nice_date }}</a>{% endif %}
+  {% if n.visit_id %}<a class="small" href="/visits/{{ n.visit_id }}{{ '/cases/' ~ n.case_id if n.case_id }}">{{ 'case on' if n.case_id else 'about' }} visit {{ n.visit_id.split('-')[1:4]|join('-')|nice_date }}</a>{% endif %}
+  {% set outcome = n.outcome if n.outcome and n.outcome != n.text else '' %}
+  {% if n.person or n.reference or outcome %}<div class="small call-facts">{% if n.person %}Spoke with <strong>{{ n.person }}</strong>{% endif %}{% if n.reference %}{{ ' · ' if n.person }}Ref. <strong>{{ n.reference }}</strong>{% endif %}{% if outcome %}{{ ' · ' if n.person or n.reference }}Outcome: {{ outcome }}{% endif %}</div>{% endif %}
 {% endmacro %}

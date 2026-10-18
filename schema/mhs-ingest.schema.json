@@ -214,6 +214,12 @@
         },
         "extensions": {
           "$ref": "#/$defs/extensions"
+        },
+        "appeal_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3650,
+          "description": "Days after an EOB to appeal it to the insurer (DSP-05). Default 180, the ACA minimum for internal appeals."
         }
       }
     },
@@ -367,7 +373,7 @@
         "dispute": {
           "type": "object",
           "additionalProperties": false,
-          "description": "A dispute the member opened about this visit (REC-11 In dispute).",
+          "description": "The minimal dispute of Release 1 (ADR-035), read as a case. New edits write `cases` instead (ADR-042).",
           "required": [
             "status",
             "opened"
@@ -446,6 +452,167 @@
               },
               "since": {
                 "$ref": "#/$defs/date"
+              }
+            }
+          }
+        },
+        "good_faith_estimate": {
+          "$ref": "#/$defs/money",
+          "description": "The provider's good-faith estimate for a self-pay visit (No Surprises Act). A bill above it is a finding; $400 or more above it starts the 120-day patient-provider dispute window (DSP-05)."
+        },
+        "cases": {
+          "type": "array",
+          "description": "Dispute cases the member opened on this visit (DSP-01, DSP-04, DSP-07; ADR-042).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "opened",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/id"
+              },
+              "opened": {
+                "$ref": "#/$defs/date"
+              },
+              "status": {
+                "enum": [
+                  "open",
+                  "contacted",
+                  "waiting",
+                  "resolved"
+                ]
+              },
+              "party": {
+                "enum": [
+                  "provider",
+                  "insurer"
+                ],
+                "description": "Who the case is with."
+              },
+              "note": {
+                "type": "string"
+              },
+              "follow_up_days": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 365,
+                "description": "Days after the last contact before a reminder (default 30)."
+              },
+              "findings": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "code",
+                    "amount"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "description": "The findings the case is about, as they were when it was opened."
+              },
+              "lines": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "charge": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "billed": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "patient_amount": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "patient_responsibility": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "description": "The bill and EOB lines that disagreed when the case was opened."
+              },
+              "history": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "date",
+                    "status"
+                  ],
+                  "properties": {
+                    "date": {
+                      "$ref": "#/$defs/date"
+                    },
+                    "status": {
+                      "enum": [
+                        "open",
+                        "contacted",
+                        "waiting",
+                        "resolved"
+                      ]
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "outcome": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "result",
+                  "recovered",
+                  "date"
+                ],
+                "properties": {
+                  "result": {
+                    "enum": [
+                      "corrected",
+                      "refunded",
+                      "written_off",
+                      "denied"
+                    ]
+                  },
+                  "recovered": {
+                    "$ref": "#/$defs/money"
+                  },
+                  "date": {
+                    "$ref": "#/$defs/date"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
               }
             }
           }
@@ -1179,6 +1346,29 @@
         },
         "extensions": {
           "$ref": "#/$defs/extensions"
+        },
+        "case_id": {
+          "$ref": "#/$defs/id",
+          "description": "The dispute case (on the visit) the note belongs to."
+        },
+        "party": {
+          "enum": [
+            "provider",
+            "insurer"
+          ],
+          "description": "Who the contact was with (default the provider)."
+        },
+        "person": {
+          "type": "string",
+          "description": "Who you spoke to or heard from."
+        },
+        "reference": {
+          "type": "string",
+          "description": "A call or case reference number they gave."
+        },
+        "outcome": {
+          "type": "string",
+          "description": "What was agreed or said. Required for a phone call on a case."
         }
       }
     },

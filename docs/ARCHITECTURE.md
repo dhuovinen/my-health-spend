@@ -23,7 +23,7 @@ flowchart LR
 
 | Layer | Code | Responsibility | Rule |
 | --- | --- | --- | --- |
-| Core | `src/mhs/core/` | Checks, visit status, payment allocation, provider ledgers, HSA flags, plan-limit progress (`reconcile.py`); identities, buckets, line pairing (`lines.py`); match scores (`matching.py`); the member's decisions as record changes (`edits.py`) | Pure functions over record dicts, money in integer cents. No database or web imports. Never changed to suit the UI. |
+| Core | `src/mhs/core/` | Checks, visit status, payment allocation, provider ledgers, HSA flags, plan-limit progress (`reconcile.py`); identities, buckets, line pairing (`lines.py`); match scores (`matching.py`); the member's decisions as record changes (`edits.py`); dispute cases' follow-ups, deadlines, evidence and savings (`disputes.py`, ADR-042) | Pure functions over record dicts, money in integer cents. No database or web imports. Never changed to suit the UI. |
 | Data | `src/mhs/data/` | Record store (one JSON record per kind and id), import validation and upsert, owner-edit protection, money conversion, settings export | The store does not mirror schema fields as columns, so the ingest schema can evolve |
 | Web | `src/mhs/web/` | Server-rendered pages, forms, file serving | Binds to 127.0.0.1 only; no login |
 | Tools | `tools/build_ingest.py` | Converts real source files into ingest JSON | Reads `data/settings.json` so in-app edits carry through |
@@ -84,7 +84,7 @@ Keep the Release 0 layering and add two packages:
 | `data/` | Repositories for the records database and owner-edit protection |
 | `ingest/` (new) | The upload pipeline (ADR-033): reading values (`values.py`), HSA and claims exports (`hsa.py`, `claims.py`), text from PDFs and photos (`text.py`; OCR in `ocr.py`, Tesseract locally) and identifier scrubbing (`scrub.py`, rules plus Presidio), all run in the application tier; classification and field extraction (`extract.py` layout rules, `ai.py` Claude for households that turned it on, ADR-034) and the queue worker (`worker.py`), run in the back-end tier. Routes and review pages in `web/household/intake.py` |
 | `vault/` (new) | Identity vault service, client, encrypted backup and restore; tokenize, normalize (PRV-03), re-identify |
-| `web/` | The Release 0 pages (`web/pages.py`, `web/templates/`), mounted by both the Release 0 app (`web/app.py`) and the Release 1 application tier (`web/household/`: sign-in, sessions, uploads, `mhs-admin`), each through a `PagesHost` (ADR-032) |
+| `web/` | The Release 0 pages (`web/pages.py`, `web/templates/`; dispute letters and call scripts in `web/letters.py`, drafted in the application tier and never stored, ADR-042), mounted by both the Release 0 app (`web/app.py`) and the Release 1 application tier (`web/household/`: sign-in, sessions, uploads, `mhs-admin`), each through a `PagesHost` (ADR-032) |
 
 Phase 1.1 placed the adapters in `data/` (`db.py`, `records.py`, `queue.py`, `objects.py`, `keys.py`, `migrate.py` with SQL in `data/migrations/`; phase 1.2 added `household_store.py`, Release 0's store interface over a household's records, owner-edit marks and import log), the worker and the OCR interface in `ingest/`, and the stack's runtime settings and `mhs-stack` setup commands in `stack.py` (ADR-031).
 

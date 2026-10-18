@@ -6,6 +6,8 @@ them. Pure functions; no database or web imports. Money in integer cents.
 
 import copy
 
+from mhs.core import disputes
+
 # Statement line fields and the item field each one sums (moving items moves these amounts with them).
 LINE_FROM_ITEM = {"billed_charge": "charge", "adjustment": "adjustment", "insurance_paid": "insurance_paid",
                   "patient_amount": "patient_amount", "patient_paid": "patient_paid", "balance": "balance",
@@ -124,8 +126,9 @@ def _combine_lines(into: dict, other: dict) -> None:
 
 def merge_visits(keep: str, drop: str, documents: list[dict], notes: list[dict] = ()) \
         -> list[tuple[str, dict]]:
-    """Move everything on visit `drop` to visit `keep`: documents, statement lines, payment splits and notes.
-    Returns the changed (kind, record) pairs; the caller then deletes `drop`. Totals don't change."""
+    """Move everything on visit `drop` to visit `keep`: documents, statement lines, payment splits and notes (its
+    cases move with merge_cases). Returns the changed (kind, record) pairs; the caller then deletes `drop`. Totals
+    don't change."""
     if keep == drop:
         raise EditError("Choose a different visit.")
     changed = []
@@ -169,24 +172,145 @@ def references(visit_id: str, documents: list[dict], notes: list[dict] = ()) -> 
     return out
 
 
-# ---------- disputes, findings and the document checklist (REC-11, MAT-10) ----------
+# ---------- dispute cases (DSP-01, DSP-04, DSP-07; ADR-042) ----------
 
-def open_dispute(visit: dict, today: str, note: str = "") -> dict:
+def _with_cases(visit: dict) -> tuple[dict, list[dict]]:
+    """A copy of the visit whose cases are its own list (an old minimal dispute becomes a case)."""
     out = copy.deepcopy(visit)
-    out["dispute"] = {"status": "open", "opened": today, **({"note": note} if note else {})}
+    cases = copy.deepcopy(disputes.cases_of(visit))
+    out.pop("dispute", None)
+    out["cases"] = cases
+    return out, cases
+
+
+def _case(cases: list[dict], case_id: str) -> dict:
+    case = next((c for c in cases if c["id"] == case_id), None)
+    if case is None:
+        raise EditError("There is no such case on this visit.")
+    return case
+
+
+def open_case(visit: dict, today: str, findings: list[dict], lines: list[dict] = (), party: str | None = None,
+              note: str = "") -> tuple[dict, str]:
+    """Open a case about some of the visit's findings (or all of them, for a case about the visit), keeping a copy
+    of the findings and the lines that disagree as they are now (DSP-01). Returns the visit and the case id."""
+    out, cases = _with_cases(visit)
+    for f in findings:
+        if any(disputes.is_open(c) and any((g["code"], g["amount"]) == (f["code"], f["amount"])
+                                           for g in c.get("findings") or []) for c in cases):
+            raise EditError("That finding already has an open case.")
+    party = party or disputes.party_for(findings)
+    if party not in disputes.PARTIES:
+        raise EditError("Choose the provider or the insurer.")
+    n = len(cases) + 1
+    while any(c["id"] == f"case-{n}" for c in cases):
+        n += 1
+    case = {"id": f"case-{n}", "opened": today, "status": "open", "party": party,
+            "findings": [{k: f[k] for k in ("code", "kind", "amount", "detail") if f.get(k) not in (None, "")}
+                         for f in findings],
+            "history": [{"date": today, "status": "open"}]}
+    if lines:
+        case["lines"] = list(lines)
+    if note:
+        case["note"] = note
+    cases.append(case)
+    return out, case["id"]
+
+
+def set_case_status(visit: dict, case_id: str, status: str, today: str, note: str = "") -> dict:
+    """Move a case to open, contacted or waiting; each change is dated in its history (TC-DSP-04-1)."""
+    if status not in disputes.CASE_STATUSES or status == "resolved":
+        raise EditError("Choose open, contacted or waiting; resolve a case with its outcome.")
+    out, cases = _with_cases(visit)
+    case = _case(cases, case_id)
+    if case["status"] == "resolved":
+        raise EditError("This case is resolved. Reopen it first.")
+    if case["status"] != status:
+        case["status"] = status
+        case.setdefault("history", []).append({"date": today, "status": status, **({"note": note} if note else {})})
     return out
 
 
-def close_dispute(visit: dict, today: str, findings: list[tuple[str, int]], outcome: str = "") -> dict:
-    """Close the dispute; the findings still open are closed with it (the member accepts them as they are)."""
-    if (visit.get("dispute") or {}).get("status") != "open":
-        raise EditError("There is no open dispute on this visit.")
-    out = copy.deepcopy(visit)
-    out["dispute"].update(status="closed", closed=today, **({"outcome": outcome} if outcome else {}))
-    for code, amount in findings:
-        out = close_finding(out, code, amount, today, "dispute closed")
+def set_case_party(visit: dict, case_id: str, party: str) -> dict:
+    if party not in disputes.PARTIES:
+        raise EditError("Choose the provider or the insurer.")
+    out, cases = _with_cases(visit)
+    _case(cases, case_id)["party"] = party
     return out
 
+
+def set_follow_up(visit: dict, case_id: str, days: int | None) -> dict:
+    """DSP-04: days after the last contact before a reminder; None goes back to the default (30)."""
+    out, cases = _with_cases(visit)
+    case = _case(cases, case_id)
+    if days is None or days == disputes.FOLLOW_UP_DAYS:
+        case.pop("follow_up_days", None)
+    elif not 1 <= days <= 365:
+        raise EditError("The follow-up is a number of days from 1 to 365.")
+    else:
+        case["follow_up_days"] = days
+    return out
+
+
+def resolve_case(visit: dict, case_id: str, today: str, result: str, recovered: int, note: str = "") -> dict:
+    """DSP-07: close the case with its outcome and the dollars recovered (none when denied); the findings it is about
+    are closed with it."""
+    if result not in disputes.OUTCOMES:
+        raise EditError("Choose the outcome: corrected, refunded, written off or denied.")
+    if recovered < 0:
+        raise EditError("The amount recovered can't be negative.")
+    out, cases = _with_cases(visit)
+    case = _case(cases, case_id)
+    if case["status"] == "resolved":
+        raise EditError("This case is already resolved.")
+    recovered = 0 if result == "denied" else recovered
+    case["status"] = "resolved"
+    case["outcome"] = {"result": result, "recovered": recovered, "date": today, **({"note": note} if note else {})}
+    case.setdefault("history", []).append({"date": today, "status": "resolved",
+                                           "note": f"{disputes.OUTCOMES[result]}, ${recovered / 100:,.2f} recovered"})
+    how = f"case resolved: {disputes.OUTCOMES[result].lower()}"
+    for f in case.get("findings") or []:
+        out = close_finding(out, f["code"], f["amount"], today, how)
+    return out
+
+
+def reopen_case(visit: dict, case_id: str, today: str) -> dict:
+    """Reopen a resolved case: its outcome no longer counts (TC-DSP-07-3) and the findings it closed reopen."""
+    out, cases = _with_cases(visit)
+    case = _case(cases, case_id)
+    if case["status"] != "resolved":
+        raise EditError("This case is still open.")
+    was = case.pop("outcome", None)
+    case["status"] = "open"
+    note = "Reopened" + (f" (was {disputes.OUTCOMES[was['result']].lower()})" if was else "")
+    case.setdefault("history", []).append({"date": today, "status": "open", "note": note})
+    for f in case.get("findings") or []:
+        closed = next((c for c in out.get("closed_findings") or []
+                       if (c["code"], c["amount"]) == (f["code"], f["amount"])), None)
+        if closed and closed.get("how", "").startswith("case resolved"):
+            out = reopen_finding(out, f["code"], f["amount"])
+    return out
+
+
+def merge_cases(keep: dict, drop: dict) -> tuple[dict, dict[str, str]]:
+    """Merging visits: the dropped visit's cases move to the kept one, renamed where their ids clash. Returns the
+    kept visit and the renames, for the notes that belong to those cases."""
+    out, cases = _with_cases(keep)
+    renames = {}
+    for case in copy.deepcopy(disputes.cases_of(drop)):
+        n, new_id = len(cases) + 1, case["id"]
+        while any(c["id"] == new_id for c in cases):
+            new_id, n = f"case-{n}", n + 1
+        if new_id != case["id"]:
+            renames[case["id"]] = new_id
+            case["id"] = new_id
+        cases.append(case)
+    if not cases:
+        del out["cases"]
+    return out, renames
+
+
+# ---------- findings and the document checklist (REC-11, MAT-10) ----------
 
 def close_finding(visit: dict, code: str, amount: int, today: str, how: str = "marked dealt with") -> dict:
     out = copy.deepcopy(visit)

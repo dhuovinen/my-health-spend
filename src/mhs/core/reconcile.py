@@ -3,13 +3,15 @@
 Pure functions over plain record dicts (money in integer cents). No database or web imports.
 Release 0 rules are in docs/MVP_REQUIREMENTS.md section 5; Release 1 (phase 1.4) adds claims per visit, line
 pairing, the three money identities with the $1.00 tolerance, settlement and the nine statuses (ADR-009,
-ADR-014 to ADR-017, ADR-035).
+ADR-014 to ADR-017, ADR-035). Release 2 adds dispute cases with their follow-ups and deadlines (core/disputes.py,
+ADR-042) and the good-faith estimate check.
 """
 
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 
+from mhs.core import disputes
 from mhs.core.lines import (BUCKETS, TOLERANCE_CAP, LineMatch, add_buckets, adjustment_of, buckets,
                             claim_differences, duplicate_items, fmt, judge, pair_lines, self_pay_buckets,
                             self_pay_difference)
@@ -33,7 +35,7 @@ STATUS_LABELS = {
     "complete": "Complete",
 }
 STATUS_HELP = {
-    "in_dispute": "You opened a dispute with the provider or insurer. Close it here when it's settled.",
+    "in_dispute": "You opened a case with the provider or insurer. Resolve it with its outcome when it's settled.",
     "discrepancy": "The documents don't agree, or you paid more than you owe. The findings below say by how much.",
     "needs_review": "A document was matched to this visit with less certainty. Confirm it belongs here, or move it.",
     "balance_outstanding": "You still owe the provider money for this visit.",
@@ -54,6 +56,7 @@ CHECK_NAMES = {
     "C4": "Paid matches what you owe",
     "settlement": "Every dollar accounted for",
     "claim_filed": "Claim filed with insurance",
+    "estimate": "Bill within the good-faith estimate",
     "C6": "Balance outstanding",
 }
 FINDING_KINDS = {
@@ -64,10 +67,11 @@ FINDING_KINDS = {
     "duplicate_charge": "Duplicate charge",
     "unexplained": "Unexplained remainder",
     "not_filed": "Claim may not be filed",
+    "over_estimate": "Bill exceeds the good-faith estimate",
 }
 # A failing check in this set makes the visit "Discrepancy found"; claim_filed and C6 have their own statuses.
-DISCREPANCY_CODES = {"C1", "self_pay", "C2", "duplicate", "C3", "C4", "settlement"}
-STAKE_CODES = {"C1", "self_pay", "C2", "duplicate"}
+DISCREPANCY_CODES = {"C1", "self_pay", "C2", "duplicate", "C3", "C4", "settlement", "estimate"}
+STAKE_CODES = {"C1", "self_pay", "C2", "duplicate", "estimate"}
 DOCUMENT_LABELS = {"eob": "Insurance decision (EOB)", "bill": "Provider bill", "itemized_bill": "Itemized bill",
                    "receipt": "Receipt", "payment": "Payment proof"}
 
@@ -82,6 +86,7 @@ class Dataset:
     visits: list[dict] = field(default_factory=list)
     documents: list[dict] = field(default_factory=list)
     waiting_days: int = WAITING_DAYS  # REC-11 threshold, a household preference
+    notes: list[dict] = field(default_factory=list)  # provider notes: a case's contact log (DSP-03, DSP-04)
 
 
 @dataclass
@@ -181,6 +186,8 @@ class VisitResult:
     balance_age: int | None = None  # days since the member was first asked to pay an open balance
     notices: int = 0  # statements that list this visit with a balance owed
     notice_label: str = ""  # notice wording printed on the latest such statement, e.g. "Past due"
+    cases: list[disputes.CaseView] = field(default_factory=list)  # dispute cases, open first (ADR-042)
+    deadlines: list[disputes.Deadline] = field(default_factory=list)  # appeal and No Surprises Act (DSP-05)
 
     @property
     def id(self) -> str:
@@ -245,8 +252,13 @@ class VisitResult:
         return [c for c in self.checks if c.result == "cleared"]
 
     @property
-    def dispute(self) -> dict | None:
-        return self.visit.get("dispute")
+    def open_cases(self) -> list[disputes.CaseView]:
+        return [c for c in self.cases if c.open]
+
+    @property
+    def due(self) -> list[disputes.Due]:
+        """Follow-ups due and deadlines 14 days away or nearer: they raise the visit in the attention queue."""
+        return disputes.due_items(self.cases, self.deadlines)
 
     @property
     def awaiting_eob(self) -> bool:
@@ -339,6 +351,7 @@ class Report:
     limits: list[LimitProgress]
     years: list[int]
     waiting_days: int = WAITING_DAYS
+    recovered_lifetime: int = 0  # DSP-07: dollars recovered by resolved cases, every year
 
     def visit(self, visit_id: str) -> VisitResult | None:
         return next((v for g in self.groups for v in g.visits if v.id == visit_id), None)
@@ -371,6 +384,10 @@ class Report:
             "unexplained": sum(v.unexplained for g in self.groups for v in g.visits),
             "no_claim": sum(g.no_claim_payments for g in self.groups),
         }
+
+    @property
+    def cases(self) -> list[disputes.CaseView]:
+        return [c for v in self.visits for c in v.cases]
 
     @property
     def ledger_visits(self) -> list[VisitResult]:
@@ -551,8 +568,14 @@ def build_report(ds: Dataset, year: int, today: date) -> Report:
         for vr in g.visits:
             _settle(vr, is_hsa)
 
+    plans = {p["id"]: p for p in ds.plans}
+    notes_by_visit = defaultdict(list)
+    for n in ds.notes:
+        if n.get("case_id"):
+            notes_by_visit[n.get("visit_id")].append(n)
     for vr in results:
         _check_visit(vr, groups[vr.group_id], is_hsa, today)
+        _cases(vr, notes_by_visit[vr.id], plans.get(vr.visit.get("plan_id", "")), today)
 
     for g in groups.values():
         _summarize_group(g, is_hsa, ys)
@@ -566,6 +589,7 @@ def build_report(ds: Dataset, year: int, today: date) -> Report:
         limits=_limit_progress(ds, year, [c for cs in claims_by_visit.values() for c in cs], members),
         years=available_years(ds) or [year],
         waiting_days=ds.waiting_days,
+        recovered_lifetime=disputes.recovered(ds.visits),
     )
 
 
@@ -705,6 +729,9 @@ def _check_visit(vr: VisitResult, g: ProviderGroup, is_hsa, today: date) -> None
         checks.append(Check("C4", "na", "No payments applied"))
 
     checks.append(_settlement_check(vr, g))
+    estimate = _estimate_check(vr)
+    if estimate:
+        checks.append(estimate)
 
     if vr.insured and not vr.claims and latest and not vr.awaiting_eob:
         bill = latest[0]
@@ -761,6 +788,41 @@ def _check_visit(vr: VisitResult, g: ProviderGroup, is_hsa, today: date) -> None
     stake = max((c.amount for c in checks if c.result == "fail" and c.code in STAKE_CODES), default=0)
     overpaid = vr.overpaid if any(c.code == "C4" and c.result == "fail" for c in checks) else 0
     vr.at_stake = max(stake, overpaid)  # paying an inflated bill is the same dollars as the bill's excess
+
+
+def _estimate_check(vr: VisitResult) -> Check | None:
+    """A self-pay bill above the provider's good-faith estimate (No Surprises Act); $400 or more above it opens the
+    patient-provider dispute process (DSP-05, ADR-042)."""
+    gfe = vr.visit.get("good_faith_estimate")
+    if gfe is None or vr.insured or not vr.latest_line:
+        return None
+    asks = vr.latest_line[1]["patient_amount"]
+    excess = asks - gfe
+    if excess <= 0:
+        return Check("estimate", "pass", f"The bill asks {fmt(asks)}, within the good-faith estimate of {fmt(gfe)}")
+    result = judge(excess)
+    detail = f"the bill asks {fmt(asks)}, {fmt(excess)} more than the good-faith estimate of {fmt(gfe)}"
+    if result == "fail":
+        detail += (". Because it is $400.00 or more above the estimate, you can start the No Surprises Act "
+                   "patient-provider dispute process within 120 days of the first bill" if excess >= disputes.NSA_THRESHOLD
+                   else f". Ask {vr.provider['name']} to bill the estimate (the No Surprises Act dispute process "
+                        f"starts at $400.00 above it)")
+    return Check("estimate", result, detail, excess, "over_estimate")
+
+
+def _cases(vr: VisitResult, notes: list[dict], plan: dict | None, today: date) -> None:
+    """ADR-042: the visit's cases, and the deadlines that matter while a finding or a case is open. The appeal
+    deadline counts only when the insurer is involved: an insurer finding or a case with the insurer."""
+    cases = disputes.cases_of(vr.visit)
+    open_cases = [c for c in cases if disputes.is_open(c)]
+    findings = [{"code": c.code, "kind": c.kind} for c in vr.findings]
+    deadlines = []
+    if findings or open_cases:
+        insurer = any(disputes.LETTER_PARTY[disputes.letter_for(f)] == "insurer" for f in findings) \
+            or any(c.get("party") == "insurer" for c in open_cases)
+        deadlines = [d for d in disputes.visit_deadlines(vr, plan, today) if d.kind != "appeal" or insurer]
+    vr.deadlines = deadlines
+    vr.cases = disputes.case_views(vr, notes, plan, deadlines, today)
 
 
 def _claim_check(claim: dict, several: bool) -> Check:
@@ -974,7 +1036,8 @@ def _documents(vr: VisitResult) -> list[DocumentState]:
 
 def _status(vr: VisitResult, today: date) -> str:
     """REC-11: the first status that applies (ADR-009)."""
-    if (vr.dispute or {}).get("status") == "open":
+    cases = disputes.cases_of(vr.visit)
+    if any(disputes.is_open(c) for c in cases):
         return "in_dispute"
     if any(c.result == "fail" and c.code in DISCREPANCY_CODES for c in vr.checks):
         return "discrepancy"
@@ -993,7 +1056,7 @@ def _status(vr: VisitResult, today: date) -> str:
         return "awaiting_documents"
     if expected:
         return "missing_documents"
-    if any(c.result == "closed" for c in vr.checks) or (vr.dispute or {}).get("status") == "closed" \
+    if any(c.result == "closed" for c in vr.checks) or any(c["status"] == "resolved" for c in cases) \
             or (vr.surplus and vr.refunded and not vr.overpaid):
         return "resolved"
     return "complete"

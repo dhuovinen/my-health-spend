@@ -29,11 +29,11 @@ from mhs.data.records import HouseholdRecords
 from mhs.ingest.ocr import get_engine
 from mhs.ingest.scrub import scrubber_class
 from mhs.stack import AppConfig, load_app_config
-from mhs.vault.client import VaultClient
+from mhs.vault.client import VaultClient, VaultError
 from mhs.web.household import privacy, security
 from mhs.web.household.auth import AccountError, Accounts, Session
 from mhs.web.household.files import EncryptedFiles
-from mhs.web.household.intake import Intake, add_intake
+from mhs.web.household.intake import TOKEN, Intake, add_intake
 from mhs.web.household.qr import qr_svg
 from mhs.web.pages import VIEW_COOKIE, WEB, add_pages, make_templates
 
@@ -58,9 +58,10 @@ class HouseholdHost:
 
     path_import = False
 
-    def __init__(self, app_state, db: Database, keyring: Keyring, objects: ObjectStore, cookie_secure: bool):
+    def __init__(self, app_state, db: Database, keyring: Keyring, objects: ObjectStore, cookie_secure: bool,
+                 vault: VaultClient):
         self.state, self.db, self.keyring, self.objects = app_state, db, keyring, objects
-        self.cookie_secure = cookie_secure
+        self.cookie_secure, self.vault = cookie_secure, vault
 
     def session(self, request: Request) -> Session:
         return self.state.member(request)
@@ -71,6 +72,29 @@ class HouseholdHost:
 
     def record_view(self, request: Request, kind: str, record_id: str, action: str = "view") -> None:
         self.store(request).log(action, kind, record_id)
+
+    def identifiers(self, request: Request, store: HouseholdStore, visit) -> dict[str, str]:
+        """DSP-02 (ADR-022, ADR-042): the account number the visit's confirmed uploads were read with, back from the
+        vault here in the application tier. Only the tokens are in the records the worker can read."""
+        out: dict[str, str] = {}
+        documents = [b for b, _ in visit.bill_lines] + visit.claims + visit.receipts
+        for doc in documents:
+            upload_id = (doc.get("extensions") or {}).get("upload_id")
+            extraction = store.get("extraction", upload_id) if upload_id else None
+            for name in ("account_number", "member_number"):
+                value = (((extraction or {}).get("fields") or {}).get(name) or {}).get("value")
+                if name not in out and isinstance(value, str) and value.strip():
+                    real = TOKEN.sub(lambda m: self._detokenize(store.household_id, m.group(0)), value).strip()
+                    if real:
+                        out[name] = real
+        return out
+
+    def _detokenize(self, household_id: str, token: str) -> str:
+        try:
+            found = self.vault.detokenize(household_id, token)
+        except VaultError:
+            return ""  # the letter leaves a blank for the member to fill in rather than failing
+        return found[1] if found else ""
 
     def check_form(self, request: Request, form) -> None:
         self.state.check_csrf(self.session(request), form.get("csrf_token"))
@@ -404,7 +428,7 @@ def create_app(
 
     # --- the Release 0 pages, for the signed-in household ---
 
-    preview_import = add_pages(app, templates, HouseholdHost(app.state, db, keyring, objects, config.cookie_secure))
+    preview_import = add_pages(app, templates, HouseholdHost(app.state, db, keyring, objects, config.cookie_secure, vault))
     add_intake(app, templates, Intake(db, keyring, objects, vault, queue, member, check_csrf, accounts.household_name,
                                       preview_import, get_engine(config.ocr_engine),
                                       scrubber_class(config.scrubber), accounts.ai_extraction))

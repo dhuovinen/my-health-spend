@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, note_meta %}
+{% from "_macros.html" import badge, case_badge, due_text, note_meta %}
 {% block title %}{{ v.provider.name }} {{ v.visit.date }}{% endblock %}
 {% macro move_form(doc, label, items=None, reject=False) %}
 <details class="small move">
@@ -37,15 +37,11 @@
 <div class="alert warn">This provider is reconciled together with {{ group.providers|rejectattr('id', 'equalto', v.provider.id)|map(attribute='name')|join(', ') }} based on an unconfirmed match. <a href="/settings#relationships">Confirm or reject it</a>.</div>
 {% endif %}
 
-{% if v.dispute and v.dispute.status == 'open' %}
+{% for d in v.due %}<div class="alert warn">{{ due_text(d) }}</div>{% endfor %}
+{% if v.open_cases %}
 <div class="alert warn" id="dispute">
-  <strong>In dispute since {{ v.dispute.opened|nice_date }}.</strong>{% if v.dispute.note %} {{ v.dispute.note }}{% endif %}
-  <form method="post" action="/visits/{{ v.id }}/dispute" class="inline section">{{ csrf_input() }}
-    <input type="hidden" name="action" value="close">
-    <label class="check-label"><input type="radio" name="outcome" value="fixed" checked> The provider or insurer fixed it</label>
-    <label class="check-label"><input type="radio" name="outcome" value="accepted"> I accept it as it is</label>
-    <button class="btn small">Close the dispute</button>
-  </form>
+  <strong>In dispute:</strong>
+  {% for c in v.open_cases %}<a href="/visits/{{ v.id }}/cases/{{ c.id }}">a case with {{ c.party_name }}</a>, {{ c.label|lower }} on {{ (c.case.history|last).date|nice_date }}{{ '; ' if not loop.last else '.' }}{% endfor %}
 </div>
 {% endif %}
 
@@ -65,6 +61,7 @@
 
 <nav class="jump" aria-label="On this page">
   <a href="#findings">What's wrong{% if v.findings %} ({{ v.findings|length }}){% endif %}</a>
+  <a href="#cases">Cases{% if v.cases %} ({{ v.cases|length }}){% endif %}</a>
   <a href="#lines">Line by line</a>
   <a href="#allocation">Who pays what</a>
   <a href="#documents">Documents</a>
@@ -92,11 +89,23 @@
           <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}"><input type="hidden" name="action" value="reopen">
           <span class="muted">Closed by you on {{ c.closed.closed|nice_date }} ({{ c.closed.how }}).</span> <button class="btn small">Reopen</button>
         </form>
-        {% elif c.result == 'fail' and c.code not in ('C6', 'claim_filed') %}
-        <form method="post" action="/visits/{{ v.id }}/findings" class="inline small">{{ csrf_input() }}
+        {% elif c.result == 'fail' %}
+        <div class="actions small">
+        {% set in_case = v.open_cases|selectattr('findings', 'contains_finding', c)|list %}
+        {% if in_case %}<a class="btn small" href="/visits/{{ v.id }}/cases/{{ in_case[0].id }}">In a case with {{ in_case[0].party_name }}</a>
+        {% elif c.code != 'C6' %}
+        <form method="post" action="/visits/{{ v.id }}/cases" class="inline">{{ csrf_input() }}
+          <input type="hidden" name="finding" value="{{ c.code }}:{{ c.amount }}">
+          <button class="btn small primary">Open a case</button>
+        </form>
+        {% endif %}
+        {% if c.code not in ('C6', 'claim_filed') and not in_case %}
+        <form method="post" action="/visits/{{ v.id }}/findings" class="inline">{{ csrf_input() }}
           <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}">
           <button class="btn small">I've dealt with this</button>
         </form>
+        {% endif %}
+        </div>
         {% endif %}
       </div>
       <div class="num">{% if c.result in ('fail', 'closed') and c.amount %}{{ c.amount|money }}{% endif %}</div>
@@ -118,16 +127,6 @@
     </details>
     {% endif %}
     {% if v.missing %}<p class="small">Missing: {{ v.missing|join(', ') }}</p>{% endif %}
-    {% if v.findings and not (v.dispute and v.dispute.status == 'open') %}
-    <details class="small section">
-      <summary>Open a dispute</summary>
-      <form method="post" action="/visits/{{ v.id }}/dispute" class="inline section">{{ csrf_input() }}
-        <input type="hidden" name="action" value="open">
-        <label class="grow">What you did (optional)<input name="note" placeholder="Called billing, asked for a corrected bill"></label>
-        <button class="btn small">Mark as in dispute</button>
-      </form>
-    </details>
-    {% endif %}
     {% if v.hsa_flags %}
     <h3 class="section">HSA</h3>
     {% for f in v.hsa_flags %}<span class="chip">{{ f }}</span>{% endfor %}
@@ -170,6 +169,23 @@
     </ul>
     {% endif %}
   </div>
+</div>
+
+<div class="card section" id="cases">
+  <h2>Cases</h2>
+  {% for c in v.cases %}
+  <div class="case-row">
+    <a href="/visits/{{ v.id }}/cases/{{ c.id }}"><strong>With {{ c.party_name }}</strong></a> {{ case_badge(c.status) }}
+    <span class="muted small">opened {{ c.case.opened|nice_date }}{% if c.findings %} · {{ c.findings|map(attribute='kind')|map('kind_label')|join(', ') }}{% endif %}{% if c.amount %} · {{ c.amount|money }}{% endif %}{% if c.outcome %} · {{ OUTCOMES[c.outcome.result]|lower }}, {{ c.recovered|money }} recovered{% elif c.follow_up %} · follow up {{ c.follow_up.due|nice_date }}{% endif %}</span>
+  </div>
+  {% else %}<p class="muted small">No cases. Open one from a finding above to get a letter, a call script and reminders.</p>{% endfor %}
+  {% for d in v.deadlines %}<p class="small">{{ d.label }} by <strong>{{ d.due|nice_date }}</strong> ({{ 'passed' if d.passed else '%d days left' % d.days_left }}).</p>{% endfor %}
+  <form method="post" action="/visits/{{ v.id }}/cases" class="inline section">{{ csrf_input() }}
+    <input type="hidden" name="finding" value="all">
+    <label>A case about the whole visit, with<select name="party"><option value="">{{ 'The suggested party' if v.findings else v.provider.name }}</option><option value="provider">{{ v.provider.name }}</option><option value="insurer">{{ plan.insurer if plan else 'The insurer' }}</option></select></label>
+    <label class="grow">Note (optional)<input name="note" placeholder="Asked for an itemized bill"></label>
+    <button class="btn small">Open a case</button>
+  </form>
 </div>
 
 <div class="card section" id="lines">
@@ -315,6 +331,12 @@
     <label class="check-label"><input type="radio" name="path" value="self_pay" {{ 'checked' if v.visit.payment_path == 'self_pay' }}> Self-pay (no claim)</label>
     <button class="btn small">Save</button>
   </form>
+  {% if not v.insured %}
+  <form method="post" action="/visits/{{ v.id }}/estimate" class="inline section">{{ csrf_input() }}
+    <label>Good-faith estimate<input name="good_faith_estimate" inputmode="decimal" class="short" value="{{ '%.2f'|format(v.visit.get('good_faith_estimate') / 100) if v.visit.get('good_faith_estimate') is not none }}"></label>
+    <button class="btn small">Save</button> <span class="muted small">What the provider estimated before a self-pay visit (No Surprises Act). Leave empty if there was none.</span>
+  </form>
+  {% endif %}
   {% if others %}
   <form method="post" action="/visits/{{ v.id }}/merge" class="inline section" data-confirm="Move everything on that visit here and delete it?">{{ csrf_input() }}
     <label>Merge another visit into this one<select name="other" required>

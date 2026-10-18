@@ -575,16 +575,16 @@ def test_rec_11_3_lifecycle():
     docs = [asks, eob("v1", 10000, billed=18000, d="2026-10-01")]
     r = run(base(visits=[v], documents=docs))
     assert r.visit("v1").status == "discrepancy"
-    v = edits.open_dispute(v, "2026-10-02", "Called billing")
+    findings = [{"code": c.code, "kind": c.kind, "amount": c.amount} for c in r.visit("v1").findings]
+    v, case_id = edits.open_case(v, "2026-10-02", findings, note="Called billing")
     assert run(base(visits=[v], documents=docs)).visit("v1").status == "in_dispute"
     fixed = docs + [bill("s2", "2026-10-05", [{"visit_id": "v1", "patient_amount": 10000, "billed_charge": 18000,
                                                "adjustment": 8000}]), pay("p", "2026-10-06", 10000)]
-    assert run(base(visits=[v], documents=fixed)).visit("v1").status == "in_dispute"  # until the member closes it
-    closed = edits.close_dispute(v, "2026-10-07", [], "Corrected bill")
+    assert run(base(visits=[v], documents=fixed)).visit("v1").status == "in_dispute"  # until the member resolves it
+    closed = edits.resolve_case(v, case_id, "2026-10-07", "corrected", 8000)
     assert run(base(visits=[closed], documents=fixed)).visit("v1").status == "resolved"
-    # Accepting the difference instead closes the finding with the dispute.
-    findings = [(c.code, c.amount) for c in r.visit("v1").findings]
-    accepted = edits.close_dispute(v, "2026-10-07", findings, "Accepted")
+    # Resolving it as denied (the member pays as billed) closes the finding with the case.
+    accepted = edits.resolve_case(v, case_id, "2026-10-07", "denied", 0)
     after = run(base(visits=[accepted], documents=docs + [pay("p", "2026-10-06", 18000)])).visit("v1")
     assert after.status == "discrepancy"  # paying the inflated bill is a new finding (an overpayment)
     assert [c.code for c in after.checks if c.result == "closed"] == ["C2"]

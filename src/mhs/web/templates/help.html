@@ -4,7 +4,7 @@
 <div class="page-head"><h1>Help</h1><span class="muted small">How My Health Spend checks your health spending, and how to use it</span></div>
 
 <nav class="card section help-toc">
-  <a href="#idea">What it does</a> · <a href="#pages">Home, visits and household</a> · {% if not path_import %}<a href="#signin">Signing in</a> · <a href="#uploads">Uploading</a> · {% endif %}<a href="#import">Importing a file</a> · <a href="#statuses">Visit statuses</a> · <a href="#checks">The checks</a> · <a href="#hsa">HSA flags</a> · <a href="#settings">Settings</a>{% if not path_import %} · <a href="#data">Your data</a>{% endif %} · <a href="#limits">What it isn't</a>
+  <a href="#idea">What it does</a> · <a href="#pages">Home, visits and household</a> · {% if not path_import %}<a href="#signin">Signing in</a> · <a href="#uploads">Uploading</a> · {% endif %}<a href="#import">Importing a file</a> · <a href="#statuses">Visit statuses</a> · <a href="#checks">The checks</a> · <a href="#cases">Disputes</a> · <a href="#hsa">HSA flags</a> · <a href="#settings">Settings</a>{% if not path_import %} · <a href="#data">Your data</a>{% endif %} · <a href="#limits">What it isn't</a>
 </nav>
 
 <section class="card section" id="idea">
@@ -62,6 +62,18 @@
     {% endfor %}
   </ul>
   <p class="small muted">A difference under $1.00 is cleared within tolerance and isn't a finding; cleared amounts are added up per provider each year, and a provider past $5.00 is flagged (ADR-015, ADR-035). Balances owed and duplicate charges are never cleared. Every finding is shown with the numbers that disagree, on the visit's page.</p>
+</section>
+
+<section class="card section" id="cases">
+  <h2>Disputing a finding</h2>
+  <p class="small">On a visit, <em>Open a case</em> beside a finding (or for the whole visit) starts a dispute with the provider or the insurer. The case keeps the finding, the lines that disagree and the documents behind it, and lists what's missing.</p>
+  <ul class="small">
+    <li><strong>Letters.</strong> The case drafts an itemized bill request, a billing correction, a refund request, a claim resubmission or an appeal to the insurer, with your claim number, dates and amounts filled in{% if not path_import %} and your account number from your uploads{% endif %}. Drafts aren't saved and the app never sends anything: copy, print or download the letter, send it yourself, then log it.</li>
+    <li><strong>Calls.</strong> The call script says who to call, what to have ready, what to ask for and what to write down. Log each call with the person, the reference number and the outcome.</li>
+    <li><strong>Reminders and deadlines.</strong> If nothing comes back 30 days after you last sent something or called (you can change the days per case), the visit goes to the top of Home. So does an appeal deadline (180 days from the EOB unless your plan says otherwise) or, for a self-pay bill $400 or more over its good-faith estimate, the No Surprises Act dispute deadline (120 days from the first bill), once it's 14 days away.</li>
+    <li><strong>Outcomes.</strong> Resolve the case as corrected, refunded, written off or denied, with the dollars recovered. The findings close with it, and <a href="/cases">Cases</a> adds up what you've recovered.</li>
+  </ul>
+  <p class="small muted">Letters and scripts are information to help you, not legal or financial advice.</p>
 </section>
 
 <section class="card section" id="hsa">
