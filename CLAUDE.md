@@ -68,6 +68,7 @@ First-time setup and the converter's warnings are in `docs/SETUP.md`.
 
 ## Gotchas
 
+- Brand and UI standard: `docs/UI_GUIDE.md`. The app is not on it yet (still teal); new visual work follows the guide.
 - `data/` holds the owner's real health data and is git-ignored. Never import test files into it, never commit it, and don't read the source PDFs or statements unless the owner asks. To try the app, point `MHS_DATA_DIR` at a scratch folder and import `samples/example-ingest.json`.
 - Money is integer cents everywhere inside the app (`src/mhs/data/money.py`); ingest files use dollars.
 - `src/mhs/core/` is pure functions: no database or web imports, and never changed to suit the UI.
