@@ -353,8 +353,8 @@ How PLT-02's second target (at most 5% of findings dismissed by the member as wr
 
 **Consequences.** The ingest schema's closing entry gains four optional fields, so exports keep the verdicts and older files stay valid. The member's word is the measure (A-01): a member can mark a correct finding wrong, and the report can't tell. A finding whose amount changes after it was closed comes back open (findings are keyed by check and amount) and can be decided again, so it counts twice. Findings fixed by corrected documents without a case, and findings in a case resolved as denied, drop out without a verdict, which leaves some real problems out of the denominator and makes the rate read high, the safe side for a ceiling. `mhs.RELEASE` has to be changed when Release 2 is cut, or its verdicts are counted under Release 1.
 
-### ADR-045 · Repeat services across visits (Proposed)
-REC-14, split out of REC-10's changed-price rule and widened, because that rule compares only the price per code. A member on a repeating treatment can see the same treatment cost different amounts from month to month, and no check today looks across visits. Proposed on 2026-11-05 for the owner to accept; nothing is built.
+### ADR-045 · Repeat services across visits (Accepted)
+REC-14, split out of REC-10's changed-price rule and widened, because that rule compares only the price per code. A member on a repeating treatment can see the same treatment cost different amounts from month to month, and no check today looks across visits. Proposed on 2026-11-05 and accepted by the owner as written on 2026-11-06; nothing is built.
 
 **Decision.**
 - **Four changes are flagged:** the allowed amount, the billed amount, the member's share when the allowed amount is the same and the deductible being met between the visits doesn't explain it, and the set of codes on a visit in a series.
