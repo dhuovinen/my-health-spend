@@ -1,6 +1,6 @@
 # My Health Spend (MHS): Product Requirements
 
-Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026))
+Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026)); Nov 5, 2026 added REC-14
 
 ## Scope and sizing
 
@@ -12,7 +12,7 @@ The count is driven by multiplication: three parties (provider, insurer, member)
 | --- | --- | --- | --- |
 | Ingestion and capture | ING | 10 | Documents arrive in many formats, out of order, from many sources |
 | Data model and matching | MAT | 10 | Matching a bill to a claim to a payment is the hardest technical problem |
-| Reconciliation and discrepancies | REC | 13 | The core value: every check needs a defined rule and tolerance |
+| Reconciliation and discrepancies | REC | 14 | The core value: every check needs a defined rule and tolerance |
 | Charge allocation | ALC | 8 | Each line splits across insurer, member, accounts and adjustments |
 | HSA, FSA and tax | TAX | 10 | Distinct rules per account type, plan year and household member |
 | Pre-visit strategy | PRE | 7 | Priority two; needs plan and price data the core already collects |
@@ -122,10 +122,11 @@ The decision behind these identities (Oct 15, 2026): adjudication buckets (ALC-0
 | REC-07 | Track deductible and out-of-pocket accumulators per person and family from EOBs, and flag in-network covered cost-sharing charged after the out-of-pocket max is met (out-of-network and non-covered charges are still owed) | P1 |
 | REC-08 | Flag network status problems. Release 1: the bill, EOB and provider record disagree, or an in-network provider was processed as out-of-network. Release 2: a surprise out-of-network bill under the No Surprises Act | P1 |
 | REC-09 | Translate denial and adjustment codes into plain language, and flag denials that look appealable (e.g. missing information, coding error) | P2 |
-| REC-10 | Apply configurable tolerances: a difference under $1.00 per check auto-clears and is recorded as "cleared within tolerance" (visible on request). Cleared amounts at one provider are added up per plan year and flagged once they pass $5.00. A changed unit price is always flagged regardless of size: the same code from the same provider costing differently from an earlier bill or EOB in the plan year, or from the good faith estimate | P2 |
+| REC-10 | Apply configurable tolerances: a difference under $1.00 per check auto-clears and is recorded as "cleared within tolerance" (visible on request). Cleared amounts at one provider are added up per plan year and flagged once they pass $5.00. A changed price is always flagged regardless of size: the same code from the same provider costing differently from an earlier bill or EOB in the plan year (REC-14), or from the good faith estimate | P2 |
 | REC-11 | Give each visit one status, the first that applies in this order: In dispute (an open case, DSP-01) → Discrepancy found (a check failed) → Needs review (unconfirmed data or a conflicting new version) → Balance outstanding (still owed > 0) → Awaiting EOB (insured visit, no EOB yet, within the waiting threshold) → Awaiting documents (another expected document missing within the threshold) → Missing documents (an expected document missing past the threshold) → Resolved (had a finding, now closed) → Complete. The waiting threshold defaults to 30 days and is configurable | P1 |
 | REC-12 | Compare self-pay or cash price against the negotiated rate when both are known, and surface the cheaper option (your $105 vs. $125 case) | P2 |
 | REC-13 | Check identity 3 (settlement) per visit and per provider: every dollar of member responsibility must be paid, refunded, written off or still owed. Flag any unexplained remainder, such as a visit that drops off a statement with no matching payment | P1 |
+| REC-14 | Compare repeat services across visits. For the same person, provider group and plan within a plan year, compare each code (with its modifiers, per unit) with its most recent earlier occurrence, and flag: (a) a changed allowed amount; (b) a changed billed amount; (c) a changed member share when the allowed amount is unchanged and the deductible being met between the two visits (REC-07) doesn't explain it; (d) a changed set of codes on a visit in a series (three or more visits with the same codes). Each flag says "worth a closer look", shows both visits and the dollar difference, and names common reasons (a new contract, an added service, a different dose). It doesn't change the visit's status or the dollars at stake, because neither amount is known to be wrong. A change is flagged once, on the first visit it appears, and needs line detail on confirmed documents (ADR-045, proposed) | P2 |
 
 ## Charge allocation across parties
 
@@ -259,7 +260,7 @@ Release 1 was cut to a lean core on Oct 15, 2026 (owner decision): 49 of the 100
 | Priority | Count | Meaning |
 | --- | --- | --- |
 | P1 | 49 | Release 1: server-side post-visit reconciliation in a responsive web app, with the household |
-| P2 | 47 | Release 2: claim versions, cost-sharing checks, tolerance, tax, disputes, dashboards, compliance for other users, pre-visit, payer APIs |
+| P2 | 48 | Release 2: claim versions, cost-sharing checks, tolerance, tax, disputes, dashboards, compliance for other users, pre-visit, payer APIs |
 | P3 | 4 | Later: price transparency data, FSA expiry alerts, charity care, provider-facing |
 
 ### Release 1 scope

@@ -353,3 +353,16 @@ How PLT-02's second target (at most 5% of findings dismissed by the member as wr
 
 **Consequences.** The ingest schema's closing entry gains four optional fields, so exports keep the verdicts and older files stay valid. The member's word is the measure (A-01): a member can mark a correct finding wrong, and the report can't tell. A finding whose amount changes after it was closed comes back open (findings are keyed by check and amount) and can be decided again, so it counts twice. Findings fixed by corrected documents without a case, and findings in a case resolved as denied, drop out without a verdict, which leaves some real problems out of the denominator and makes the rate read high, the safe side for a ceiling. `mhs.RELEASE` has to be changed when Release 2 is cut, or its verdicts are counted under Release 1.
 
+### ADR-045 · Repeat services across visits (Proposed)
+REC-14, split out of REC-10's changed-price rule and widened, because that rule compares only the price per code. A member on a repeating treatment can see the same treatment cost different amounts from month to month, and no check today looks across visits. Proposed on 2026-11-05 for the owner to accept; nothing is built.
+
+**Decision.**
+- **Four changes are flagged:** the allowed amount, the billed amount, the member's share when the allowed amount is the same and the deductible being met between the visits doesn't explain it, and the set of codes on a visit in a series.
+- **A flag isn't a failed check.** It says "worth a closer look" and doesn't change the visit's status or the dollars at stake. A price can change for good reasons (a new contract, an added service, a different dose), and the comparison can't tell which of the two amounts is right. This narrows ADR-015's "always flagged": still flagged at any size, but not as a discrepancy. The member's share keeps the $1.00 tolerance; prices have none (ADR-015).
+- **What is compared:** same person, provider group and plan, within one plan year; same code with the same modifiers, per unit; against the most recent earlier occurrence. A new plan year starts over, since rates and deductibles reset.
+- **A series is three or more visits with the same codes,** so a one-off difference between two visits isn't called a coding change.
+- **Line detail on confirmed documents only.** Totals alone say too little, so a visit without line detail isn't compared.
+- **One flag per change,** on the first visit it appears. The member closes it as real or wrong like any finding (ADR-044).
+- **Priority stays P2,** and can be built ahead of Release 2, as disputes (ADR-042) and tax (ADR-043) were.
+
+**Consequences.** It's a new cross-visit check in `core/`, with no schema change, since EOB lines already hold code, units, billed, allowed and cost sharing. It adds no AI step. Because prices have no tolerance, small changes will show up; if members mark them wrong too often (ADR-044, the 5% target), reconsider that first.

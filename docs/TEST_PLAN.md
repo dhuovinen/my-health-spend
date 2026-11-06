@@ -1,10 +1,10 @@
 # My Health Spend (MHS): Test Plan
 
-Oct 15, 2026 · Revised Oct 15, 2026: all conflicts and ambiguities decided; P1 = Release 1 (49 requirements)
+Oct 15, 2026 · Revised Oct 15, 2026: all conflicts and ambiguities decided; P1 = Release 1 (49 requirements). Nov 5, 2026: REC-14 added
 
-**Covers:** all 100 requirements in the [Product Requirements](<My Health Spend (MHS) Product Requirements.md>) (the PRD). They are checked against [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) (agreed and built 2026-10-09) and the [Problem Statement & Plan](<My Health Spend (MHS) Problem Statement & Plan.md>).
+**Covers:** all 101 requirements in the [Product Requirements](<My Health Spend (MHS) Product Requirements.md>) (the PRD). They are checked against [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) (agreed and built 2026-10-09) and the [Problem Statement & Plan](<My Health Spend (MHS) Problem Statement & Plan.md>).
 
-**At a glance:** 326 test cases cover all 100 requirements; 183 are for Release 1 (P1), none of them blocked. All 16 conflicts and 14 ambiguities are decided. 3 Release 2 cases still wait on one PRD open question (does self-pay count toward the deductible). 22 cases are already partly or fully automated by the existing 32 tests.
+**At a glance:** 336 test cases cover all 101 requirements; 183 are for Release 1 (P1), none of them blocked. All 16 conflicts and 14 ambiguities are decided. 3 Release 2 cases still wait on one PRD open question (does self-pay count toward the deductible). 22 cases are already partly or fully automated by the existing 32 tests.
 
 **How to use it**
 
@@ -217,7 +217,7 @@ Severity: **High** means the build or existing tests would have to change, or tw
 | A-11 | CMP-06 | Process or software? | **Decided:** Process; tested by a review record plus versioned reference tables (PLT-01) |
 | A-12 | PRV-08 | What may a "pseudonymous event" contain? | **Decided:** An allow-list schema: event name, pseudonymous install ID, timestamp, app version; no amounts, providers or codes |
 | A-13 | DSP-04 | Default follow-up interval? | **Decided:** 30 days for providers and insurers; user-editable per case |
-| A-14 | REC-10 | A "changed unit price" relative to what? | **Decided (with X-06):** the same code from the same provider on an earlier bill or EOB within the plan year, or the GFE (PRE-06). Now in REC-10 |
+| A-14 | REC-10 | A "changed unit price" relative to what? | **Decided (with X-06):** the same code from the same provider on an earlier bill or EOB within the plan year, or the GFE (PRE-06). Now in REC-10 and REC-14 |
 
 ---
 
@@ -225,7 +225,7 @@ Severity: **High** means the build or existing tests would have to change, or tw
 
 ### 2.1 Scope
 
-- **In scope:** functional, data-integrity, UI, privacy/security, performance and compliance checks for the 100 PRD requirements.
+- **In scope:** functional, data-integrity, UI, privacy/security, performance and compliance checks for the 101 PRD requirements.
 - **Regression scope:** the built MVP (Appendix A).
 - **Out of scope:** the market and presentation data in the Problem Statement; legal sign-off itself, though CMP cases check that the inputs to that sign-off exist.
 
@@ -430,7 +430,7 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-REC-09-3 | REC-09 | Unknown code | Shown with "unknown code"; logged for table update; no crash | U | New |
 | TC-REC-10-1 | REC-10 | Difference of $0.50 | Auto-cleared; recorded as "cleared within tolerance" and visible on request | U | New |
 | TC-REC-10-2 | REC-10 | Differences of $0.99 and $1.00 | $0.99 clears; $1.00 is flagged | U | New |
-| TC-REC-10-3 | REC-10 | Code 99214 billed $150.00 in March and $150.10 in June by the same provider | Unit price change of $0.10 flagged despite the tolerance | U | New |
+| TC-REC-10-3 | REC-10 | Code 99214 billed $150.00 in March and $150.10 in June by the same provider | Unit price change of $0.10 flagged despite the tolerance (the rule is now REC-14) | U | New |
 | TC-REC-10-4 | REC-10 | Change the tolerance setting | Findings recompute with the new tolerance | I | New |
 | TC-REC-10-5 | REC-10 | Six $0.90 differences at one provider in a plan year | Each clears alone; the sixth takes the total to $5.40 and the provider is flagged | U | New |
 | TC-REC-11-1 | REC-11 | One fixture visit per status (9) | Each of In dispute, Discrepancy found, Needs review, Balance outstanding, Awaiting EOB, Awaiting documents, Missing documents, Resolved, Complete is reachable and shown | U | Exists: `test_r1_reconcile.py::test_rec_11_1_every_status_is_reachable` |
@@ -445,6 +445,16 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-REC-13-2 | REC-13 | Visit drops off a later statement with no matching payment | Unexplained remainder flagged with its amount | U | Exists: `test_visit_that_drops_off_a_later_statement_is_settled` |
 | TC-REC-13-3 | REC-13 | Responsibility $100.00; paid $120.00; then a $20.00 refund | Before the refund: credit due $20.00 (REC-03); after: still owed $0.00 | U | Exists: `test_r1_reconcile.py::test_rec_03_4_and_rec_13_3_refund_resolves_the_overpayment` |
 | TC-REC-13-4 | REC-13 | Provider with 4 visits | Provider-level settlement equals the sum of its visits | U | Exists: `test_r1_reconcile.py::test_rec_13_4_provider_settlement_is_the_sum_of_its_visits` |
+| TC-REC-14-1 | REC-14 | Same person, provider, plan and code in one plan year; deductible not met; allowed $400.00, then $250.00 | Flagged on the second visit: both dates, both amounts, difference $150.00, "worth a closer look". Status and dollars at stake unchanged | U | New |
+| TC-REC-14-2 | REC-14 | Code 99214 billed $150.00, then $150.10; allowed amount unchanged | Billed change of $0.10 flagged; no tolerance on price changes (ADR-015) | U | New |
+| TC-REC-14-3 | REC-14 | Allowed $400.00 on both visits; member share $400.00, then $80.00; the deductible was met between them | No flag; the later visit says the deductible explains the difference | U | New |
+| TC-REC-14-4 | REC-14 | Allowed $400.00 on both visits; deductible not met on either; member share $400.00, then $250.00 | Flagged as a changed member share, difference $150.00 | U | New |
+| TC-REC-14-5 | REC-14 | Same code and price change, but a different person; a different provider group; a different plan; the next plan year | No flag in any of the four | U | New |
+| TC-REC-14-6 | REC-14 | Same code at 2 units for $200.00, then 1 unit for $100.00; same code with a different modifier | Same price per unit, so no flag; with a different modifier the prices aren't compared | U | New |
+| TC-REC-14-7 | REC-14 | Four visits with codes A and B, then one with A, B and C; separately, only two earlier visits | Changed codes flagged on the visit with C, naming C; no flag without three visits in the series | U | New |
+| TC-REC-14-8 | REC-14 | Statement with no line detail; a document not yet confirmed | Not compared; no flag | U | New |
+| TC-REC-14-9 | REC-14 | Allowed $400.00 twice, then $250.00 three times; the member closes the flag as "It was wrong" | One flag, on the first $250.00 visit; it stays closed and counts on Finding accuracy (ADR-044) | U | New |
+| TC-REC-14-10 | REC-14 | Open a flagged visit at 375px and 1280px | Both visits shown side by side in words, with the common reasons and the next step; page stays CSP-clean | I | New |
 
 ### 3.4 Charge allocation (ALC)
 
@@ -675,7 +685,7 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 
 One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities that hold back at least one of its cases.
 
-**Totals:** 100 requirements, 326 test cases (P1 183, P2 134, P3 9). 3 cases (2 requirements) are blocked on a decision; 22 are already partly or fully automated.
+**Totals:** 101 requirements, 336 test cases (P1 183, P2 144, P3 9). 3 cases (2 requirements) are blocked on a decision; 22 are already partly or fully automated.
 
 | Req | Priority | Test cases | Levels | Blocked by | Automated today |
 | --- | --- | --- | --- | --- | --- |
@@ -712,6 +722,7 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | REC-11 | P1 | 1, 2, 3, 4, 5 (5) | EU | — | 1 partly |
 | REC-12 | P2 | 1, 2, 3 (3) | U | PRD open question | — |
 | REC-13 | P1 | 1, 2, 3, 4 (4) | U | — | 1 partly |
+| REC-14 | P2 | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 (10) | IU | — | — |
 | ALC-01 | P1 | 1, 2, 3, 4 (4) | U | — | — |
 | ALC-02 | P2 | 1, 2, 3, 4 (4) | U | — | — |
 | ALC-03 | P1 | 1, 2, 3 (3) | U | — | — |
