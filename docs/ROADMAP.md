@@ -32,7 +32,7 @@ Built Oct 9 to 15, 2026 from [MVP_REQUIREMENTS.md](MVP_REQUIREMENTS.md). A singl
 
 ## Release 2
 
-The 48 P2 requirements, grouped:
+The 49 P2 requirements, grouped:
 
 | Theme | Requirements |
 | --- | --- |
@@ -41,7 +41,7 @@ The 48 P2 requirements, grouped:
 | HSA and tax | TAX-01, TAX-02, TAX-03, TAX-06 to TAX-10. **Built and merged 2026-10-18 (ADR-043), with TAX-04's vault finished and B-17 fee flags:** "likely" tags per visit citing Publication 502, account rules (HSA, health FSA, LPFSA, HRA: grace period, carryover, run-out, who each may pay for), which account should pay, the receipt vault with reimbursement, contributions against the IRS limit by month (catch-up, last-month rule, FSA and Medicare conflicts), HSA payments to check with mistaken-distribution guidance, and a year-end summary per person; IRS limits and categories as dated tables (part of PLT-01); one HSA and tax page on both apps. All 35 cases for these requirements and TAX-04 automated (TESTING.md). Open: spouses' HSAs sharing one family limit; premiums and other deductible costs |
 | Disputes | DSP-01, DSP-02, DSP-04, DSP-05, DSP-07. **Built and merged 2026-10-18 (ADR-042):** a case per finding or per visit on the visit record, with the findings, the lines that disagree and the evidence (originals served by the application tier, missing evidence listed); four dated statuses (opened, contacted, waiting, resolved); five letters drafted on request in the application tier with the member's real identifiers (the account number re-identified from the vault), never stored or sent; DSP-03's call script and a call log with person, reference number and outcome; follow-up reminders 30 days after the last contact (editable per case), insurer appeal deadlines from the EOB date (180 days, or the plan's) and the No Surprises Act deadline for a self-pay bill $400 or more over its good-faith estimate (a new finding), raising the visit in the attention queue; outcomes with the dollars recovered closing the case's findings, and a Cases page with lifetime savings. Every DSP P2 test case automated (TESTING.md "Disputes"). Not merged |
 | Pre-visit strategy | PRE-01, PRE-02, PRE-04 to PRE-07 |
-| Experience | UX-07 dashboard, UX-08 export, UX-09 onboarding |
+| Experience | UX-07 dashboard, UX-08 export, UX-09 onboarding, UX-11 provider charges over time |
 | Privacy and compliance | PRV-05 for analytics (AI requests done in 1.3), PRV-09, PRV-10, CMP-01 to CMP-04, CMP-06 |
 | Platform and integrations | ING-09 payer FHIR API, PLT-05 performance, PLT-07 import layer, PLT-08 KPIs |
 

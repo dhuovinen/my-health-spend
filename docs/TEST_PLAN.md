@@ -1,10 +1,10 @@
 # My Health Spend (MHS): Test Plan
 
-Oct 15, 2026 · Revised Oct 15, 2026: all conflicts and ambiguities decided; P1 = Release 1 (49 requirements). Nov 5, 2026: REC-14 added
+Oct 15, 2026 · Revised Oct 15, 2026: all conflicts and ambiguities decided; P1 = Release 1 (49 requirements). Nov 5, 2026: REC-14 added. Nov 6, 2026: UX-11 added
 
-**Covers:** all 101 requirements in the [Product Requirements](<My Health Spend (MHS) Product Requirements.md>) (the PRD). They are checked against [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) (agreed and built 2026-10-09) and the [Problem Statement & Plan](<My Health Spend (MHS) Problem Statement & Plan.md>).
+**Covers:** all 102 requirements in the [Product Requirements](<My Health Spend (MHS) Product Requirements.md>) (the PRD). They are checked against [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) (agreed and built 2026-10-09) and the [Problem Statement & Plan](<My Health Spend (MHS) Problem Statement & Plan.md>).
 
-**At a glance:** 336 test cases cover all 101 requirements; 183 are for Release 1 (P1), none of them blocked. All 16 conflicts and 14 ambiguities are decided. 3 Release 2 cases still wait on one PRD open question (does self-pay count toward the deductible). 22 cases are already partly or fully automated by the existing 32 tests.
+**At a glance:** 349 test cases cover all 102 requirements; 183 are for Release 1 (P1), none of them blocked. All 16 conflicts and 14 ambiguities are decided. 3 Release 2 cases still wait on one PRD open question (does self-pay count toward the deductible). 22 cases are already partly or fully automated by the existing 32 tests.
 
 **How to use it**
 
@@ -225,7 +225,7 @@ Severity: **High** means the build or existing tests would have to change, or tw
 
 ### 2.1 Scope
 
-- **In scope:** functional, data-integrity, UI, privacy/security, performance and compliance checks for the 101 PRD requirements.
+- **In scope:** functional, data-integrity, UI, privacy/security, performance and compliance checks for the 102 PRD requirements.
 - **Regression scope:** the built MVP (Appendix A).
 - **Out of scope:** the market and presentation data in the Problem Statement; legal sign-off itself, though CMP cases check that the inputs to that sign-off exist.
 
@@ -604,6 +604,19 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-UX-09-2 | UX-09 | Quit the wizard midway and return | Resumes at the step left | E | New |
 | TC-UX-10-1 | UX-10 | 375px-wide phone: capture a photo and review the visit list | No horizontal scroll; camera capture works one-handed; tap targets ≥ 44px | E | New |
 | TC-UX-10-2 | UX-10 | 1280px desktop: full reconciliation of a 6-line visit | All panels usable without zooming | E | New |
+| TC-UX-11-1 | UX-11 | Two providers and 3 members in the current plan year | One dot per bill at its service date and amount billed; the dots and table rows are the same bills and their totals match | I | New |
+| TC-UX-11-2 | UX-11 | One provider serves 2 members; one member sees 2 providers | Each member has one color across providers, shown in a legend; the table and tooltip name the member, so color isn't the only signal | E | New |
+| TC-UX-11-3 | UX-11 | Hover, keyboard focus and a tap at 375px on a dot | Each shows provider, member, service date, amount billed, the member's share and status | E | New |
+| TC-UX-11-4 | UX-11 | Provider with 4 bills in the prior plan year | Hint says "4 earlier bills" and names the year; the control extends the chart and table, with the two years visibly separated; turning it off returns to the current year | E | New |
+| TC-UX-11-5 | UX-11 | Provider with no prior-year bills | No hint and no control | I | New |
+| TC-UX-11-6 | UX-11 | Bills from two plan years back | Not shown and not counted in the hint | I | New |
+| TC-UX-11-7 | UX-11 | Filter by provider, by member and by both; reload the URL | Chart, table and hint show only matching bills; the same filters are restored after reload | I | New |
+| TC-UX-11-8 | UX-11 | Filters that match no bills | Empty chart with "No bills match" and a clear-filters link | E | New |
+| TC-UX-11-9 | UX-11 | Expand a table row for a bill with 3 line items | Shows code, description, billed, allowed and the member's share per line; lines add up to the row's amount, or the difference is shown | E | New |
+| TC-UX-11-10 | UX-11 | Expand a row for a bill that shows only totals | Says the bill shows totals only; no empty line table | E | New |
+| TC-UX-11-11 | UX-11 | Visit with a payment but no billed amount | No dot; listed in the table with no amount and counted in a note under the chart | I | New |
+| TC-UX-11-12 | UX-11 | Two members with the same provider, date and amount | Both dots can be reached and read; neither hides the other | E | New |
+| TC-UX-11-13 | UX-11 | Open the page at 375px and 1280px | No horizontal scroll at 375px; no third-party requests; no inline styles or scripts (CSP clean) | S | New |
 
 ### 3.9 Privacy, security and pseudonymization (PRV)
 
@@ -685,7 +698,7 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 
 One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities that hold back at least one of its cases.
 
-**Totals:** 101 requirements, 336 test cases (P1 183, P2 144, P3 9). 3 cases (2 requirements) are blocked on a decision; 22 are already partly or fully automated.
+**Totals:** 102 requirements, 349 test cases (P1 183, P2 157, P3 9). 3 cases (2 requirements) are blocked on a decision; 22 are already partly or fully automated.
 
 | Req | Priority | Test cases | Levels | Blocked by | Automated today |
 | --- | --- | --- | --- | --- | --- |
@@ -765,6 +778,7 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | UX-08 | P2 | 1, 2, 3 (3) | IS | — | — |
 | UX-09 | P2 | 1, 2 (2) | E | — | — |
 | UX-10 | P1 | 1, 2 (2) | E | — | — |
+| UX-11 | P2 | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 (13) | EIS | — | — |
 | PRV-01 | P1 | 1, 2, 3 (3) | SU | — | — |
 | PRV-02 | P1 | 1, 2 (2) | U | — | — |
 | PRV-03 | P1 | 1, 2, 3 (3) | U | — | — |

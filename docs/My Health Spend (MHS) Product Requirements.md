@@ -1,6 +1,6 @@
 # My Health Spend (MHS): Product Requirements
 
-Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026)); Nov 5, 2026 added REC-14
+Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026)); Nov 5, 2026 added REC-14; Nov 6, 2026 added UX-11
 
 ## Scope and sizing
 
@@ -17,7 +17,7 @@ The count is driven by multiplication: three parties (provider, insurer, member)
 | HSA, FSA and tax | TAX | 10 | Distinct rules per account type, plan year and household member |
 | Pre-visit strategy | PRE | 7 | Priority two; needs plan and price data the core already collects |
 | Disputes and follow-up | DSP | 7 | Findings are worthless unless the member can act on them |
-| User experience | UX | 10 | Visit cards, household view, dashboards, exports |
+| User experience | UX | 11 | Visit cards, household view, dashboards, charges over time, exports |
 | Privacy and security | PRV | 11 | Pseudonymization and consumer health data obligations |
 | Regulatory and compliance | CMP | 6 | FTC, state health data laws, future HIPAA path |
 | Platform and non-functional | PLT | 8 | Integrations, accuracy targets, performance, auditability |
@@ -206,6 +206,7 @@ The visit card list from the original plan stays the home screen. The rest of th
 | UX-08 | Export a visit or a year as PDF and CSV (for taxes, a dispute or an advisor) | P2 |
 | UX-09 | Guided onboarding: add household, add plans and accounts, upload the first visit, see the first reconciliation | P2 |
 | UX-10 | Work well on a phone for capture and review, and on a desktop for detailed reconciliation: no horizontal scroll at 375px wide, capture and review possible one-handed, full detail at 1280px or wider | P1 |
+| UX-11 | Chart provider charges over time, with the service date across and the amount billed up. One dot for each bill (one person, one provider, one service date), covering every provider in the household. Each household member has their own dot color, the same across providers, with a legend. Hovering over a dot, focusing it or tapping it shows the provider, member, service date, amount billed, the member's share and the visit's status. The chart opens on the current plan year. When the filtered providers have bills in the prior plan year, a hint says so ("4 earlier bills in 2025") and a control extends the chart and table to include them; with none, neither appears. Nothing older than the prior plan year is shown. Filter by provider and by member, alone or together, with the chart, table and hint following the filters. Below the chart, a table has one row per dot with provider, member, service date and amount; expanding a row shows the bill's line items (code, description, billed, allowed, member's share), or says the bill shows totals only. A bill with no billed amount isn't plotted: it's listed in the table and counted in a note under the chart | P2 |
 
 ## Privacy, security and pseudonymization
 
@@ -260,7 +261,7 @@ Release 1 was cut to a lean core on Oct 15, 2026 (owner decision): 49 of the 100
 | Priority | Count | Meaning |
 | --- | --- | --- |
 | P1 | 49 | Release 1: server-side post-visit reconciliation in a responsive web app, with the household |
-| P2 | 48 | Release 2: claim versions, cost-sharing checks, tolerance, tax, disputes, dashboards, compliance for other users, pre-visit, payer APIs |
+| P2 | 49 | Release 2: claim versions, cost-sharing checks, tolerance, tax, disputes, dashboards, compliance for other users, pre-visit, payer APIs |
 | P3 | 4 | Later: price transparency data, FSA expiry alerts, charity care, provider-facing |
 
 ### Release 1 scope
