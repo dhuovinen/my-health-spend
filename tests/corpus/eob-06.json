@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Riley Novak",
+    "provider": "Bennett Radiology",
+    "claim_number": "C53513013",
+    "service_start": "2026-11-16",
+    "billed": 195300,
+    "adjustment": 116000,
+    "allowed": 79300,
+    "insurer_paid": 63500,
+    "patient_responsibility": 15800
+  }
+}

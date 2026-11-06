@@ -1,0 +1,10 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Avery Chen",
+    "provider": "Cedar Valley Labs",
+    "statement_date": "2026-04-08",
+    "balance_due": 36000,
+    "account_number": "312-4657"
+  }
+}

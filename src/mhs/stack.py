@@ -57,9 +57,11 @@ class AppConfig:
     session_max_hours: int = 12
     ocr_engine: str = "stub"  # MHS_OCR_ENGINE: stub | tesseract (ingest/ocr.py)
     scrubber: str = "rules"  # MHS_SCRUBBER: rules | presidio (ingest/scrub.py)
+    public_url: str = f"http://127.0.0.1:{APP_PORT}"  # MHS_PUBLIC_URL: where members open the app (enrolment links)
 
 
 def load_app_config() -> AppConfig:
+    port = int(os.environ.get("MHS_APP_PORT", str(APP_PORT)))
     return AppConfig(
         database_url=database_url(),
         objects_dir=Path(os.environ.get("MHS_OBJECTS_DIR", "/srv/objects")),
@@ -67,12 +69,13 @@ def load_app_config() -> AppConfig:
         vault_url=os.environ.get("MHS_VAULT_URL", f"http://vault:{VAULT_PORT}"),
         vault_token=secret("VAULT_TOKEN") or "",
         host=os.environ.get("MHS_HOST", "127.0.0.1"),
-        port=int(os.environ.get("MHS_APP_PORT", str(APP_PORT))),
+        port=port,
         cookie_secure=os.environ.get("MHS_COOKIE_SECURE", "") == "1",
         session_idle_minutes=int(os.environ.get("MHS_SESSION_IDLE_MINUTES", "15")),
         session_max_hours=int(os.environ.get("MHS_SESSION_MAX_HOURS", "12")),
         ocr_engine=os.environ.get("MHS_OCR_ENGINE", "stub"),
         scrubber=os.environ.get("MHS_SCRUBBER", "rules"),
+        public_url=os.environ.get("MHS_PUBLIC_URL", f"http://127.0.0.1:{port}").rstrip("/"),
     )
 
 

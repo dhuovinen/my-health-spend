@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Casey Brooks",
+    "provider": "Lakeside Family Medicine",
+    "claim_number": "C18103238",
+    "service_start": "2026-11-26",
+    "billed": 220100,
+    "adjustment": 77700,
+    "allowed": 142400,
+    "insurer_paid": 142400,
+    "patient_responsibility": 0
+  }
+}

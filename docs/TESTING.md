@@ -18,16 +18,16 @@ docker compose --profile test run --rm tests
 uv run --with pytest-cov pytest --cov=mhs
 ```
 
-## Current state (2026-10-16, phase 1.3 in progress, engines on `feat/r1-ingest-engines`)
+## Current state (2026-10-18, disputes, HSA and tax and false-positive tracking merged into `main`)
 
 | Measure | Value |
 | --- | --- |
-| Automated tests | 199 on the compose stack: 55 from the Release 0 suite (the 32 Appendix A tests plus one Settings regression, 22 of them run a second time against Release 1 with `[release1]` or `[postgres]` ids); 140 Release 1 tests (`tests/test_r1_*.py`, including 26 upload scenarios in `test_r1_scenarios.py`, 22 rule and scrubbing tests in `test_r1_extract.py`, 11 OCR tests in `test_r1_ocr.py`, 3 recall tests in `test_r1_scrub_recall.py` and 8 Claude extractor tests in `test_r1_ai.py`); 4 stack tests (`tests/stack/`). `uv run pytest` runs 187 and skips the 4 stack tests and 8 that need the tesseract binary |
-| Coverage, `core/` | 96% (target ≥ 80%) |
+| Automated tests | 527 on the compose stack (1 skipped: shellcheck isn't in the image); `uv run pytest` 510 with 17 skipped (stack tests and the ones that need the tesseract binary, Chromium or shellcheck), 2026-10-18 on `main` after the Google Cloud scripts merge. They include the dry-run tests of `tools/gcp/` (`test_gcp_scripts.py`). They include false-positive tracking (`test_false_positives.py`, TC-PLT-02-2), the HSA and tax tests (`test_tax.py`, `test_tax_pages.py`), phase 1.5's page and layout tests (`test_ux.py`, `test_ux_layout.py`), the 55 Release 0 tests (22 run a second time against Release 1), phase 1.4's core and page tests (`test_r1_reconcile.py`, `test_r1_reconcile_pages.py`), the other Release 1 tests in `tests/test_r1_*.py` and the stack tests in `tests/stack/` |
+| Coverage, `core/` | 92 to 99% per module: `tax.py` 99%, `reconcile.py` 97%, `lines.py` 94%, `matching.py` 99%, `edits.py` 92%, `accuracy.py` 100% (target ≥ 80%) |
 | Coverage, `data/` | 89 to 100% per module |
-| Coverage, `web/pages.py` (shared pages), `web/household/app.py`, `auth.py` | 85%, 95%, 98% |
+| Coverage, `web/pages.py` (shared pages), `web/household/app.py`, `auth.py` | 92%, 95%, 98% |
 | Coverage, `ingest/` (upload pipeline), `web/household/intake.py` | 72 to 100% per module under `uv run pytest` (OCR and worker paths run fully only on the stack) |
-| Coverage, total | 91% (`uv run pytest`) |
+| Coverage, total | 92% (`uv run pytest`) |
 
 **Appendix A on the server (phase 1.2 exit).** `tests/test_web.py` runs each Release 0 web test against both apps through the `web` fixture: Release 0 over SQLite, and the Release 1 application tier as a signed-in member, importing by upload, with CSRF tokens on every post. `tests/test_importer.py` runs each store-backed importer test against the SQLite store and a household's Postgres store (`store` fixture). The core tests (`test_reconcile.py`) are shared code. `tests/test_r1_pages.py` adds household isolation on every ported page, encrypted import attachments and `mhs-admin import`.
 
@@ -44,7 +44,7 @@ Release 1 test cases covered in phase 1.1:
 | TC-PRV-08-3 CSP; TC-PRV-08-1 (partial) first-party traffic only | `test_r1_csp.py`, `stack/test_stack.py::test_captured_traffic_stays_first_party` |
 | TC-PLT-06-2 CI on every change | `.github/workflows/ci.yml` (runs once the repo is on GitHub) |
 
-Not yet: TC-PRV-06-1 (TLS; staging), TC-PRV-07-3 (self-service MFA recovery; `mhs-admin reset-mfa` meanwhile), TC-PRV-08-2 (no analytics events exist).
+TC-PRV-07-3 (lost phone and password, recovered with a recovery code; data intact): `test_r1_recovery.py`. Not yet: TC-PRV-06-1 (TLS; staging), TC-PRV-08-2 (no analytics events exist).
 
 ## User scenarios (phase 1.3)
 
@@ -69,6 +69,82 @@ Each scenario is automated in `tests/test_r1_scenarios.py` (with the worker run 
 | 15 | AI extraction | `mhs-admin ai-extraction --household <id> on`; upload an EOB | The Uploads page says AI helps; the review names the model; a value the document doesn't show is marked "not found in the document text"; the member's correction is confirmed and the AI's value is kept beside it; the AI request holds tokens, never identifiers | ADR-028, PLT-04 TC-1/2 | `test_ai_extraction_for_a_household_that_turned_it_on`, `test_r1_ai.py`, stack (TC-PLT-04-1) |
 | 16 | AI unavailable | AI on, but no AI worker for a minute, or the AI declines | The layout rules read the document and the review says why | ADR-034 | `test_ai_jobs_are_read_by_the_rules_when_ai_is_unavailable` |
 | 17 | Dates sent to the AI are shifted | AI on; upload an EOB for a visit on 2026-12-30, and two EOBs for one patient 14 days apart | The AI request carries shifted dates, 14 days apart for the same person; the review and the visit keep 2026-12-30 (plan year 2026) | PRV-05 (TC-1, TC-2) | `test_r1_dates.py`, stack (`test_photo_read_by_ocr_scrubbed_and_extracted_by_ai`) |
+| 18 | Laptop demo (DEMO.md) | `mhs-admin demo-setup`; open the enrolment link and scan the QR code; sign in; upload the four files in `samples/demo/` in order | One household and member however often it runs, Settings restored, old password and link void; the QR decodes to the member's `otpauth://` URI and shows once; the Riverbend visit is a Discrepancy ($480.00 asked, $300.00 owed, $180.00 at stake), Lakeside $800.00 outstanding, deductible $1,100.00 of $1,700.00; no page scrolls sideways at 375 px | PRV-11, UX-10 | `test_r1_demo.py` (the photo through Tesseract on the stack, typed in elsewhere) |
+| 19 | A bare letterhead | With Presidio, upload a statement whose provider name sits right above its address with no heading between them ("Riverbend Orthopedics" over "455 River Road, Springfield"), or one from a practice named after a person ("Kessler Orthopedics") | The review names the provider from the letterhead on every upload; the address, account number, patient and phone are tokens | PRV-04, ING-03 | `test_a_bare_letterhead_survives_every_upload`, `test_a_practice_named_after_a_person_is_kept` |
+| 20 | Lost phone and password | Use a recovery code from enrolment on "Forgot your password or lost your phone?"; set a new password; scan the new QR code | Signed in with the new password and authenticator; old password, old sessions and old codes void; all visits still there; wrong codes lock the account like wrong passwords | PRV-07 (TC-3), ADR-037 | `test_r1_recovery.py` |
+| 21 | Export and delete | "Your data": download the export with the password; then delete the account with password, authenticator code and DELETE | The ZIP holds every record and file (manifest with SHA-256s) and imports again; as the last member, records, files and vault entries are gone at once and sign-in fails; as one of two members, only that account goes | PRV-09 (TC-1 to TC-3), ADR-038 | `test_r1_privacy.py` |
+| 22 | Copies and versions | Upload a second scan of an EOB you confirmed; a corrected EOB; a re-sent statement with a new date; a statement with a changed balance | "Looks like a copy" with "It's a copy: keep it filed" (nothing added); "A corrected EOB" naming the changed amounts; "A re-sent copy" whose amounts aren't counted twice; "A newer statement" naming the balance change | ING-07 (TC-2 to TC-4) | `test_r1_ingest_extras.py` |
+| 23 | Identifiers blanked on photos | Upload a photo of an EOB naming the patient and member ID | A blanked copy is stored sealed; read again by OCR it shows neither, and the rest of the page still reads | PRV-04 (TC-1) | `test_r1_ingest_extras.py` (Tesseract, on the stack) |
+| 24 | Photos and pages to check against | Open the review of a photo (HEIC included) or a PDF | The document shows above the fields: HEIC as JPEG, a PDF's first page; the stored original is unchanged | ING-01 (TC-2), ING-05 | `test_r1_ingest_extras.py` |
+| 25 | Help | Open Help (the ? icon) | Every visit status and check is explained in plain words; the server app covers signing in, recovery, uploads and your data; the laptop app covers import by path | UX-05, B-9 | `test_web.py::test_help_explains_statuses_checks_and_the_app` |
+| 26 | Forward an email | From your own address, forward an email with a PDF and a photo to the address on Uploads; then one whose body is a statement | One upload per attachment (others skipped), and one for the statement body, each read and ready to review; a stranger's mail and unknown addresses are refused at SMTP | ING-01 (TC-4), ADR-039 | `test_r1_mail.py`, stack (`test_forwarded_email_arrives_and_is_read`) |
+| 27 | Access log | Open a visit, download a statement, change a provider, add and delete a note, upload and review a file, export; then open "Your data" | Each action listed with who, what, which record and when; the log can't be changed by the app; another household's entries never show | PRV-10 (TC-1, TC-2), ADR-040 | `test_r1_access_log.py` |
+| 28 | Dispute a finding | On a visit with a missed adjustment, Open a case beside the finding; draft the billing correction (type your member ID under "Your details"); download it; log "I sent it"; 30 days on, see it at the top of Home; log their call with person, reference and outcome; resolve as refunded $75.00; open Cases | The case keeps the finding, the lines and the evidence, and lists anything missing; the letter has your name, account number, claim number, dates and amounts, and isn't saved anywhere; nothing is sent; the reminder clears when their reply is logged; resolving closes the findings and Cases shows $75.00 recovered; reopening takes it off | DSP-01 to DSP-05, DSP-07, ADR-042 | `test_r2_disputes.py` |
+| 29 | HSA and tax (Release 2) | Import `samples/tax-ingest.json` on the Import page; open HSA and tax for 2026; mark the eye exam reimbursed; mark the vitamins' HSA payment a mistake on its visit; set Jamie as a 2026 tax dependent; choose the last-month rule for 2026; choose "Save the HSA for later" | Summary: $474.00 of HSA distributions by person and purpose, adding up; vault $330.00, then $120.00 (a second reimbursement refused); contributions $7,875.00 over the $7,575.00 monthly limit by $300.00, then within $9,750.00 with the testing-period warning; the vitamins flagged, with return guidance only once marked; Jamie's urgent care flagged, then not; the vault reads "banked for later"; the disclaimer under every suggestion | TAX-01 to TAX-04, TAX-06 to TAX-10, CMP-04 (ADR-043) | `test_tax_pages.py`, `test_tax.py` |
+| 30 | Real problem or wrong | On a visit with findings, "Close this finding": mark one "It was wrong" with a reason and the other "It was a real problem"; open Finding accuracy; reopen one | Each closing shows how it was closed (and the reason) on the visit and in its case history; Finding accuracy shows each kind's real, wrong and rate, and 50% overall, above the 5% aim; a reopened finding counts as open again; `mhs-admin false-positives` prints the same counts and nothing else | PLT-02 (TC-PLT-02-2), ADR-044 | `test_false_positives.py` |
+
+**Scrubbing is deterministic (scenario 19).** Presidio reads each document's original text once, and its finds are placed in the rules' output wherever the rules left them whole. It used to run a second time on text that already held random vault tokens, so the same statement scrubbed differently from upload to upload: a bare letterhead above a tokenized address read as a person in about one upload in four (43 of 150 in `mhs:test`), and extraction took the table header as the provider. Names and places Presidio finds that hold a practice word (Orthopedics, Radiology, Clinic, Imaging, Pharmacy, Labs and the rest of `ORG_WORDS` in `ingest/scrub.py`), with any capitalized words after them on the line, are kept, because spaCy reads "Bennett Radiology" as a person even in the original text. The recall seed set is unchanged at 189 of 190 identifiers (99.5%).
+
+## Extraction accuracy (PLT-02, TC-ING-02-1, TC-ING-03-1)
+
+Two synthetic corpora with ground truth, made by `tools/make_corpus.py` (seeded): `tests/corpus/` (56 documents) is the development set the layout rules were fixed against; `tests/corpus-holdout/` (50 documents, other layouts and wording) was written once and is never used to tune them, so its result is the honest figure. Both cover all eight ING-02 types with at least 5 documents each. `tools/extraction_accuracy.py <corpus> [--extractor claude]` runs each document the way an upload goes (text layer, scrubbing, classification, extraction), compares it with the ground truth before any confirmation, and prints the report. `tests/test_r1_corpus.py` keeps the development set at the targets and the held-out set from getting worse.
+
+Layout rules, 2026-10-16:
+
+| Measure | Development (56) | Held-out (50) | Target |
+| --- | --- | --- | --- |
+| Classification | 100% | 80% (40 of 50) | 95% |
+| Amounts correct before confirmation | 100% | 61.5% (40 of 65) | 95% |
+| All header fields | 100% | 43.8% (70 of 160) | |
+
+On the held-out set, both statement layouts ("Invoice", "Billing Statement") were read as "other", and labels without a colon or in a two-column layout ("Claim   123", "Statement Dt  10/01/2026") weren't read. The rules only know the wording they were written for, so they won't reach PLT-02 on documents they haven't seen; Claude extraction (ADR-028, ADR-034) is the way to the target. Its run (`--extractor claude`, with an API key) hasn't been made yet. Before tuning anything on these results, generate a fresh held-out set; tuning on this one would make its figure meaningless. OCR accuracy (TC-PLT-02-1) is measured with Document AI in staging.
+
+## False-positive rate (PLT-02, TC-PLT-02-2)
+
+When a member closes a finding they say whether it was a real problem or wrong, with an optional reason; resolving a dispute case answers for its findings (corrected, refunded or written off counts them as real, "The findings were wrong" as wrong, denied leaves them unrated). The verdict is kept on the visit as a member edit with the finding's kind and the release (ADR-044). The false-positive rate is wrong ÷ (real + wrong) over the findings closed in a period, per kind and overall; findings still open and closings from before the question are listed beside it, not in it. The target is 5% or less (test plan A-01).
+
+- **Member:** "Finding accuracy" (`/accuracy`, linked from each visit's findings and from Help) shows a calendar year of closings.
+- **Owner:** counts only (no reasons, names, record ids, dates of service or amounts), over every household or one:
+
+```bash
+docker compose exec app mhs-admin false-positives --from 2026-10-01 --to 2026-10-31 --release release-1
+```
+
+Tests: `tests/test_false_positives.py` (the rate and the 5% boundary, period and release, open and unrated findings, the verdict on the pages of both apps and on re-import, case outcomes, and the owner's report against Postgres). Phase 1.6 measures it on a month of real visits: close every finding on them first, since open findings aren't in the rate.
+
+## Performance (PLT-05, TC-PLT-05-1)
+
+`tools/perf_run.py` times typical uploads on the running stack, one at a time, from the upload to a confirmed visit, leaving out the member's own review time: run it in the compose tests container with `docker compose --profile test run --rm tests python tools/perf_run.py --n 50`. The documents are synthetic: the development corpus's EOBs and statements, one in five as a phone photo read by Tesseract and some as 2 to 3 page PDFs. The stack suite runs 5 of them on every change.
+
+Local stack on the owner's Mac, 2026-10-17: 50 uploads, all confirmed; machine time p50 0.45 s, p95 0.85 s, slowest 1.05 s, against a 60-second target. Staging (Document AI, Cloud Run) is measured again in phase 1.6; AI extraction adds the model's response time when it is on.
+## Matching and reconciliation (phase 1.4)
+
+Every P1 case for MAT-01, MAT-05, MAT-06, MAT-10, REC-01 to REC-05, REC-11, REC-13 and ALC-01, plus the member's overrides in MAT-07 and ALC-04, is automated. Core cases (U) are in `tests/test_r1_reconcile.py`, with "today" pinned to 2026-10-09; integration and page cases (I, E) are in `tests/test_r1_reconcile_pages.py`, which runs each test against both apps (Release 0 over SQLite, Release 1 as a signed-in member) through the `web` fixture. Rules and choices: ADR-035.
+
+| Cases | Test |
+| --- | --- |
+| TC-MAT-01-1 two claims of three lines with allocations round-trip; 01-2 one payment across three visits; 01-3 HSA and card on one visit; 01-5 account transactions stay out of visit totals | `test_mat_01_1_*` (both stores), `test_mat_01_2_*`, `test_mat_01_3_*`, `test_mat_01_5_*` |
+| TC-MAT-01-4 a visit with documents can't be deleted; an empty one can, and stays deleted on re-import | `test_r1_reconcile_pages.py::test_mat_01_4_*` |
+| TC-MAT-05-1 to 05-4 scores, reasons, bands, two members, another provider | `test_mat_05_1_*` to `test_mat_05_4_*`; on the claims export: `test_claims_export_matches_by_score_and_keeps_rejections` |
+| TC-MAT-05-5, TC-MAT-07-1 a proposed match shows its reasons; confirming it | `test_mat_05_5_and_mat_07_1_*` |
+| TC-MAT-06-1 to 06-5 code, bundled (CARC 97), panel, unmatched, modifier | `test_mat_06_1_*` to `test_mat_06_5_*` |
+| TC-MAT-07-2 a rejected match is never proposed again | `test_mat_07_2_*` (core and pages), `test_claims_export_matches_by_score_and_keeps_rejections` |
+| TC-MAT-07-3 split a statement, merge visits; totals unchanged | `test_merge_and_split_keep_totals`, `test_mat_07_3_*` |
+| TC-MAT-10-1, 10-3, 10-4, 10-5 the document checklist (10-2 is Appendix A) | `test_mat_10_1_*`, `test_mat_10_3_*` (core), `test_mat_10_3_and_4_*` (pages, visit cards), `test_mat_10_5_*` |
+| TC-REC-01-1 to 01-6 identities per line and claim, other savings and second payer, self-pay (01-2 is Appendix A) | `test_rec_01_*` |
+| TC-ALC-01-1 to 01-4 buckets, denied line, write-off is settlement, 1,000 random lines | `test_rec_01_1_and_alc_01_1_*`, `test_alc_01_2_*`, `test_alc_01_3_*`, `test_alc_01_4_*` |
+| TC-REC-02-1 to 02-5 missed adjustment and balance billing, exact, before the EOB, asks less, charges differ | `test_rec_02_*` |
+| TC-REC-03-1, 03-3, 03-4, 03-5 (03-2 is Appendix A); the $5.00 cap | `test_rec_03_*`, `test_tolerance_cap_flags_the_provider` |
+| TC-REC-04-1, 04-2, 04-4 (04-3 is Appendix A) | `test_rec_04_*` |
+| TC-REC-05-1 to 05-3 (05-4 is Appendix A) | `test_rec_05_*` |
+| TC-REC-11-1 to 11-4 every status, precedence, lifecycle, threshold; 11-5 badges in words | `test_rec_11_*` (core), `test_rec_11_4_waiting_threshold_setting`, `test_rec_11_dispute_lifecycle_and_findings_on_the_pages` |
+| TC-REC-13-1, 13-3, 13-4 (13-2 is Appendix A, plus the statement-balance case) | `test_rec_13_*`, `test_rec_03_4_and_rec_13_3_*` |
+| TC-ALC-04-1, 04-2, 04-4 (04-3 is Appendix A) | `test_alc_04_1_*`, `test_alc_04_2_*` (core and pages), `test_alc_04_4_*` |
+| PRV-11 on the new routes | `test_another_household_cannot_change_these_records` |
+
+**Appendix A change.** `test_sample_statuses_match_the_notes_in_the_sample_file` (the one marked ⚠) now expects the nine statuses: Matched became Complete and Waiting became Awaiting EOB; `test_suspected_relationship_*` and `test_missing_eob_waits_then_becomes_missing` changed their status names the same way. The demo story (`test_r1_demo.py`) now expects the $180.00 paid on the inflated Riverbend bill to show on the visit as an overpayment (REC-03) besides the missed adjustment.
+
+**By hand.** Release 0 on a scratch data folder with the sample imported (`MHS_DATA_DIR=<scratch> uv run mhs`): a visit's findings, buckets, settlement and checklist; the ledger's split form; no page scrolls sideways at 375 px with every section opened.
 
 ## Levels
 
@@ -119,6 +195,99 @@ Defined 2026-10-16; built in phase 1.1. Environments and adapters are in [ARCHIT
 ### Production
 
 No test data and no test runs. Health checks, audit logs and the owner's acceptance in phase 1.6.
+
+## Web experience (phase 1.5)
+
+The P1 UX cases for UX-01, UX-02, UX-06 and UX-10 are automated with the synthetic three-person household in `samples/household-ingest.json` (`uv run tools/make_household_sample.py` rewrites it: the example sample plus Jordan, Alex and Sam Sample, and Sam's six-line well-child visit whose statement skips the discount on one line). `tests/test_ux.py` runs each page case against both apps through the `web` fixture; `tests/test_ux_layout.py` drives headless Chromium through Playwright at a 375 by 812 phone (touch, mobile) and a 1280 by 800 desktop, on both apps. Rules and choices: ADR-041.
+
+| Cases | Test |
+| --- | --- |
+| TC-UX-01-1 summary, then the attention queue, then cards with person, provider, date, badge, documents and amount at issue | `test_ux.py::test_tc_ux_01_1_home_order_and_cards` |
+| TC-UX-01-2 empty state (Release 1 offers Uploads) | `test_web.py::test_empty_home_has_hero_help_and_settings`, `test_ux.py::test_tc_ux_01_2_*` |
+| TC-UX-01-3 amount at issue is the open findings, the same dollars once; closing one takes it off | `test_tc_ux_01_3_*` (core), `test_card_amount_on_the_page_and_after_closing` |
+| TC-UX-02-1 documents, line comparison, allocation, findings and case history on one page | `test_tc_ux_02_1_*` |
+| TC-UX-02-2 lines that disagree are highlighted with the difference | `test_tc_ux_02_2_*`, `test_line_rows_and_case_history_units` |
+| TC-UX-06-1 per-person totals sum to the family total | `test_tc_ux_06_1_*`, `test_household_totals_without_members` |
+| TC-UX-06-2 switch individual and family; kept across pages; CSRF and sign-out | `test_tc_ux_06_2_*`, `test_view_switch_needs_the_csrf_token_and_ends_at_sign_out` |
+| TC-UX-10-1 375px: no sideways scroll on any page, tap targets at least 44px (links inside a sentence excepted, as WCAG 2.5.8 does), the bottom bar; on Release 1 a photo from "Take a photo" uploads by itself and the upload's review page fits | `test_ux_layout.py::test_tc_ux_10_1_*` (both apps) |
+| TC-UX-10-2 1280px: the six-line visit with every panel on screen, the line comparison whole, nothing scrolls sideways | `test_ux_layout.py::test_tc_ux_10_2_*` (both apps) |
+
+The layout tests skip where Playwright's Chromium isn't installed (`uv run playwright install chromium`); the compose `tests` image has it. `MHS_UX_SCREENSHOTS=<folder> uv run pytest tests/test_ux_layout.py` keeps a full-page screenshot of every page it checks (full-page captures drop the touch emulation, so Uploads' camera button doesn't show in them; the test checks it on the live page).
+
+**By hand.** The camera itself: on a real phone the "Take a photo" button opens the camera and the photo uploads when taken. The local stack binds 127.0.0.1 only, so this waits for staging (phase 1.6); the browser test covers everything but the camera app.
+
+## Disputes (Release 2)
+
+Every test case for DSP-01, DSP-02, DSP-04, DSP-05 and DSP-07 (all P2), and DSP-03's call script and log, is automated in `tests/test_r2_disputes.py`: core cases (U) with "today" pinned to 2026-10-09, page cases (I, E) against both apps through the `web` fixture on the real date, and the identifier case against the Release 1 upload pipeline (Postgres, vault, worker in-process). `tests/test_ux_layout.py` adds the Cases page and a case page to the phone checks. Rules and choices: ADR-042. On `feat/r2-disputes`, 2026-10-18: 423 tests on the compose stack (none skipped), `uv run pytest` 407 passed and 16 skipped.
+
+| Cases | Test |
+| --- | --- |
+| TC-DSP-01-1 a case from a REC-02 finding holds the bill, EOB, payment proof, lines and amounts | `test_tc_dsp_01_1_case_from_a_rec_02_finding_*` (core), `test_tc_dsp_01_1_and_01_2_on_the_pages` |
+| TC-DSP-01-2 evidence files are the originals (same SHA-256), served by the application tier | `test_tc_dsp_01_2_evidence_files_are_the_originals` |
+| TC-DSP-01-3 payment proof missing: the case opens and lists it | `test_tc_dsp_01_3_missing_payment_proof_is_listed`, `test_tc_dsp_01_3_on_the_pages` |
+| TC-DSP-02-1 each of the five drafts has the real claim number, dates, amounts and request; identifiers only in the application tier | `test_tc_dsp_02_1_each_draft_has_*`, `test_tc_dsp_02_1_balance_billing_duplicate_and_estimate_letters`, `test_tc_dsp_02_1_identifiers_only_in_the_application_tier` |
+| TC-DSP-02-2 never sent without the member | `test_tc_dsp_02_2_a_draft_is_never_sent_without_the_member` |
+| TC-DSP-03-1 call script for a refund case; TC-DSP-03-2 a call logged with person, reference and outcome; TC-DSP-03-3 no outcome, nothing saved | `test_tc_dsp_03_1_*`, `test_tc_dsp_03_2_and_03_3_log_a_call` |
+| TC-DSP-04-1 status changes dated; TC-DSP-04-2 reminders at 30 and 10 days rise in the queue; TC-DSP-04-3 a reply clears it | `test_tc_dsp_04_1_*`, `test_tc_dsp_04_2_*`, `test_tc_dsp_04_3_*`, `test_tc_dsp_04_on_the_pages` |
+| TC-DSP-05-1 appeal deadline 2026-08-28 from a 2026-03-01 EOB; TC-DSP-05-2 No Surprises Act deadline 120 days from the first bill; TC-DSP-05-3 14 days away rises in the queue | `test_tc_dsp_05_1_*`, `test_tc_dsp_05_2_*`, `test_tc_dsp_05_3_*`, `test_tc_dsp_05_on_the_pages` |
+| TC-DSP-07-1 refunded $75.00; TC-DSP-07-2 written off $200.00 and denied; TC-DSP-07-3 reopened and closed again counts once | `test_tc_dsp_07_1_*`, `test_tc_dsp_07_2_*`, `test_tc_dsp_07_3_*`, `test_tc_dsp_07_on_the_pages` |
+| ADR-042: an old minimal dispute reads as a case; cases survive re-import and move on merge; another household gets Not found on every case route; the schema takes the new fields | `test_an_old_minimal_dispute_reads_as_a_case`, `test_cases_survive_reimport_and_move_on_merge`, `test_another_household_cannot_reach_a_case`, `test_schema_accepts_a_case_and_the_new_note_fields` |
+
+**Changed test expectations.** The minimal dispute's route is gone: `test_rec_11_3_lifecycle` (core), `test_rec_11_dispute_lifecycle_and_findings_on_the_pages`, `test_decisions_on_another_visit_*`, `test_another_household_cannot_change_these_records` and `test_tc_ux_02_1_*` open and resolve a case instead; `test_attention_queue_ranks_by_dollars_then_age` gives its stand-in visits an empty `due`.
+
+**By hand.** Letters on paper: draft each of the five from a case, print the page, and read it as the provider or insurer would.
+
+## HSA and tax (Release 2, ADR-043)
+
+Every P2 case for TAX-01, TAX-02, TAX-03 and TAX-06 to TAX-10 is automated, plus TAX-04's vault cases (P1, which this
+work finishes). Core cases (U) are in `tests/test_tax.py`, with "today" pinned to 2026-10-09 (2026-10-18 for the
+sample household). Page cases (I, E) are in `tests/test_tax_pages.py`, which runs each one against both apps through
+the `web` fixture, using the synthetic household in `samples/tax-ingest.json` (`uv run tools/make_tax_sample.py`
+rewrites it). `/tax` is also in the phone layout check (`test_ux_layout.py`, 375px, both apps). The IRS limits and the
+Publication 502 categories are dated data in `src/mhs/data/reference/` (PLT-01).
+
+| Cases | Test |
+| --- | --- |
+| TC-TAX-01-1 office visit copay: likely qualified, citing "Physicians" | `test_tax.py::test_tc_tax_01_1_*` |
+| TC-TAX-01-2 vitamins likely not qualified; with a letter on file, "needs documentation" satisfied | `test_tc_tax_01_2_*`; on the visit page `test_tax_pages.py::test_member_category_and_letter_*` |
+| TC-TAX-01-3 massage therapy needs a letter of medical necessity | `test_tc_tax_01_3_*` |
+| TC-TAX-01-4 a new table version tags new expenses only; earlier ones and member choices keep theirs | `test_tc_tax_01_4_*`, `test_reference_tables_are_dated_data` |
+| TC-TAX-02-1 grace period: 2026 money pays a 2027-03-10 expense | `test_tc_tax_02_1_*` |
+| TC-TAX-02-2 $680 carryover of $1,000 unspent: $680 carried, $320 forfeited (capped by the IRS maximum) | `test_tc_tax_02_2_*` |
+| TC-TAX-02-3 claim filed 2027-04-02 after a 2027-03-31 run-out: past the deadline | `test_tc_tax_02_3_*` |
+| TC-TAX-02-4 limited-purpose FSA and a medical expense: not eligible | `test_tc_tax_02_4_*` |
+| TC-TAX-02-5 HRA pays only its listed expenses | `test_tc_tax_02_5_*` |
+| TC-TAX-03-1, 03-3 HSA by default, with an LPFSA available | `test_tc_tax_03_1_and_3_*` |
+| TC-TAX-03-2 "save HSA for later": pay another way, into the vault | `test_tc_tax_03_2_*` (core), `test_tc_tax_03_2_strategy_setting_*` (pages) |
+| TC-TAX-03-4 the LPFSA never recommended for a medical expense | `test_tc_tax_03_4_*` |
+| TC-TAX-03-5 dental, LPFSA $300.00 forfeits in 20 days: the LPFSA, with the HSA as the alternative | `test_tc_tax_03_5_*` |
+| TC-TAX-04-1 $120.00 paid outside the HSA after it opened: in the vault, running total | `test_tc_tax_04_1_*`, `test_tax_page_shows_the_year` |
+| TC-TAX-04-2 an expense before the HSA opened stays out | `test_tc_tax_04_2_*` |
+| TC-TAX-04-3 reimbursed: the total drops; the same entry can't be reimbursed twice; a part paid back leaves the rest open; an FSA reimbursement isn't HSA money | `test_tc_tax_04_3_*` (core and pages), `test_partial_and_fsa_reimbursements`, `test_a_payment_reimbursed_in_part_*` |
+| TC-TAX-04-4 the vault receipt is the unchanged original | `test_tax_pages.py::test_tc_tax_04_4_*` |
+| TC-TAX-06-1 family coverage, $8,000.00 in: $750.00 room | `test_tc_tax_06_1_*` |
+| TC-TAX-06-2 holder 55 or older: catch-up included | `test_tc_tax_06_2_*` |
+| TC-TAX-06-3 self-only then family: $6,575.00 monthly, $8,750.00 with the last-month rule and its warning (and a note when December isn't covered) | `test_tc_tax_06_3_*`, `test_last_month_rule_without_december_coverage_says_so`; on the page `test_account_rules_people_and_the_contribution_rule` |
+| TC-TAX-06-4 $300.00 over: excess contribution | `test_tc_tax_06_4_*`, `test_sample_household_*` |
+| TC-TAX-06-5 2025 and 2026 each against its own row (prior-year contributions by tax year) | `test_tc_tax_06_5_*` |
+| TC-TAX-07-1 a non-qualified HSA payment; return guidance only when marked a mistake; an earlier visit paid this year is checked this year | `test_tc_tax_07_1_*`, `test_an_earlier_visit_paid_from_the_hsa_*` |
+| TC-TAX-07-2 a "needs documentation" item asks for the letter and isn't called non-qualified | `test_tc_tax_07_2_*` |
+| TC-TAX-07-3 the guidance screen shows the disclaimer | `test_tax_pages.py::test_tc_tax_07_3_*` |
+| TC-TAX-08-1 a general-purpose FSA and HSA contributions: conflict | `test_tc_tax_08_1_*` |
+| TC-TAX-08-2 a limited-purpose FSA: no conflict | `test_tc_tax_08_2_*` |
+| TC-TAX-08-3 Medicare from 2026-06-01: later contributions flagged | `test_tc_tax_08_3_*` |
+| TC-TAX-09-1 the HSA pays for a spouse | `test_tc_tax_09_1_*` |
+| TC-TAX-09-2 a 24-year-old non-dependent: flagged from the HSA, allowed from a health FSA | `test_tc_tax_09_2_*` |
+| TC-TAX-09-3 dependent status per tax year | `test_tc_tax_09_3_*`; on the page `test_account_rules_people_and_the_contribution_rule` |
+| TC-TAX-10-1 distributions by person and purpose add up to the HSA's | `test_tc_tax_10_1_*` |
+| TC-TAX-10-2 unreimbursed line equals the vault at year end | `test_tc_tax_10_2_*` |
+| TC-TAX-10-3 medical spend for itemizing, with the disclaimer, no advice to itemize | `test_tc_tax_10_3_*`, `test_tax_page_shows_the_year` |
+| TC-CMP-04-1 (the tax screens) the disclaimer on every block that suggests an action | `test_tax_page_shows_the_year`, `test_tc_tax_07_3_*` |
+| PRV-11 on the new routes | `test_tax_page_and_forms_belong_to_their_household` |
+
+**By hand.** Release 0 on a scratch data folder (`MHS_DATA_DIR=<scratch> uv run mhs`, import `samples/tax-ingest.json`),
+or scenario 29 on the stack. The advice for the LPFSA depends on today's date (within 90 days of its year end it is
+suggested first for dental and vision care), so the page tests don't assert it.
 
 ## Release 1 additions
 

@@ -1,0 +1,9 @@
+{
+  "doc_type": "itemized_bill",
+  "fields": {
+    "patient": "Pat Example",
+    "provider": "Mercy General Hospital",
+    "statement_date": "2026-08-28",
+    "balance_due": 64700
+  }
+}

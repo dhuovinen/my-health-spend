@@ -1,0 +1,10 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Casey Brooks",
+    "provider": "Northgate Dermatology",
+    "statement_date": "2026-04-29",
+    "balance_due": 61200,
+    "account_number": "295-9826"
+  }
+}

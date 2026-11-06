@@ -1,0 +1,51 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 751 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+40 760 Td
+(Riverbend Orthopedics) Tj T*
+(PATIENT STATEMENT) Tj T*
+(455 River Road, Springfield) Tj T*
+(Statement date: 09/10/2026) Tj T*
+(Account number: 880142) Tj T*
+(Patient: Sample, Jordan) Tj T*
+(Phone: \(555\) 014-2290) Tj T*
+(Due date: 10/05/2026) Tj T*
+(Date        Code   Description                      Charges   Insurance   Adjustments   Payments   Balance) Tj T*
+(08/14/2026 99214 Office visit, established patient $260.00 $0.00 $0.00 $0.00 $260.00) Tj T*
+(08/14/2026 73562 X-ray, knee, 3 views $220.00 $0.00 $0.00 $0.00 $220.00) Tj T*
+(Total charges: $480.00) Tj T*
+(Insurance payments: $0.00) Tj T*
+(Amount due: $480.00) Tj T*
+(Make checks payable to Riverbend Orthopedics. We also accept HSA and FSA cards.) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000000987 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1113
+%%EOF

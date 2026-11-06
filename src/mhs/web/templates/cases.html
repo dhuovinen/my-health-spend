@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import case_badge, due_text %}
+{% block title %}Cases{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>Cases</h1>
+  <div class="muted">Disputes you opened with a provider or an insurer, from a visit's findings.</div>
+</div></div>
+
+<div class="grid tiles">
+  <div class="card tile"><div class="label">Open cases</div><div class="value">{{ open_rows|length }}</div></div>
+  <div class="card tile accent" id="savings"><div class="label">Recovered so far</div><div class="value">{{ lifetime|money }}</div><div class="muted small">Every resolved case, all years</div></div>
+  {% for year, amount in by_year[:2] %}<div class="card tile"><div class="label">Recovered in {{ year }}</div><div class="value">{{ amount|money }}</div></div>{% endfor %}
+</div>
+
+<section class="card section" id="open">
+  <h2>Open</h2>
+  {% if open_rows %}
+  <p class="muted small rule">Follow-ups that are due and deadlines 14 days away or nearer first, soonest first; then the oldest case.</p>
+  <ol class="queue">
+    {% for v, c in open_rows %}
+    <li><a href="/visits/{{ v.id }}/cases/{{ c.id }}">
+      <span class="q-head"><span class="provider">{{ v.provider.name }}</span>{{ case_badge(c.status) }}</span>
+      <span class="q-meta muted small">Visit of {{ v.visit.date|nice_date }}{% if v.member %} · {{ v.member.name }}{% endif %} · with {{ c.party_name }} · opened {{ c.case.opened|nice_date }}</span>
+      <span class="q-why small">{% if v.due %}{{ due_text(v.due[0]) }}{% elif c.follow_up %}Follow up on {{ c.follow_up.due|nice_date }}{% elif c.status == 'open' %}Not contacted yet{% else %}{{ CASE_LABELS[c.status] }}{% endif %}</span>
+      <span class="q-amount num">{% if c.amount %}<strong class="bad-ink">{{ c.amount|money }}</strong> at issue{% endif %}</span>
+    </a></li>
+    {% endfor %}
+  </ol>
+  {% else %}<p class="muted">No open cases. Open one from a finding on a visit.</p>{% endif %}
+</section>
+
+<section class="card section" id="resolved">
+  <h2>Resolved</h2>
+  {% if closed_rows %}
+  <div class="table-wrap"><table>
+    <tr><th>Visit</th><th>With</th><th>Outcome</th><th>Resolved</th><th class="num">Recovered</th></tr>
+    {% for v, c in closed_rows %}
+    <tr><td><a href="/visits/{{ v.id }}/cases/{{ c.id }}">{{ v.provider.name }} · {{ v.visit.date|nice_date }}</a></td><td>{{ c.party_name }}</td>
+      <td>{{ OUTCOMES[c.outcome.result] if c.outcome else 'Closed' }}</td><td>{{ (c.outcome.date if c.outcome else '')|nice_date }}</td><td class="num">{{ c.recovered|money }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="muted">None yet.</p>{% endif %}
+</section>
+{% endblock %}

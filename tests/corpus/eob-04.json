@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Morgan Lee",
+    "provider": "Bennett Radiology",
+    "claim_number": "C94637664",
+    "service_start": "2026-03-27",
+    "billed": 155000,
+    "adjustment": 68400,
+    "allowed": 86600,
+    "insurer_paid": 80600,
+    "patient_responsibility": 6000
+  }
+}

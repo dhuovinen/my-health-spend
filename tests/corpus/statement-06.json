@@ -1,0 +1,10 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Casey Brooks",
+    "provider": "Lakeside Family Medicine",
+    "statement_date": "2026-02-23",
+    "balance_due": 8100,
+    "account_number": "6635788"
+  }
+}

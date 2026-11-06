@@ -1,0 +1,10 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Pat Example",
+    "provider": "Riverbend Orthopedics",
+    "statement_date": "2026-09-13",
+    "balance_due": 30900,
+    "account_number": "982-4044"
+  }
+}

@@ -114,6 +114,36 @@ services:
       <<: *http-health
       test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:3063/health', timeout=2)"]
 
+  mail:
+    <<: *image
+    # Receives forwarded bills and EOBs (ADR-039) on the internal network; production uses an inbound-mail service.
+    command: ["mhs-mail"]
+    environment:
+      MHS_HOST: 0.0.0.0
+      MHS_MAIL_PORT: "2525"
+      MHS_INBOUND_DOMAIN: inbound.mhs.local
+      MHS_DB_HOST: postgres
+      MHS_DB_USER: mhs_app
+      MHS_DB_PASSWORD_FILE: /run/secrets/mhs/db_password
+      MHS_VAULT_URL: http://vault:8100
+      MHS_VAULT_TOKEN_FILE: /run/secrets/mhs/vault_token
+      MHS_KEY_FILE: /run/secrets/mhs/kek
+      MHS_OBJECTS_DIR: /srv/objects
+      MHS_OCR_ENGINE: tesseract
+      MHS_SCRUBBER: presidio
+    volumes:
+      - { <<: *secrets, volume: { subpath: app } }
+      - originals:/srv/objects
+    networks: [backend]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      vault: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 2525), 2).close()"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
   worker:
     <<: *image
     command: ["mhs-worker"]
@@ -166,6 +196,13 @@ services:
       migrate: { condition: service_completed_successfully }
       capture: { condition: service_started }
 
+  fake-gcs:
+    profiles: [test]
+    # Stands in for Cloud Storage so the GCS object store (ADR-036) is tested without a Google account.
+    image: fsouza/fake-gcs-server:1.50.2
+    command: ["-scheme", "http", "-port", "4443", "-backend", "memory", "-public-host", "fake-gcs:4443"]
+    networks: [frontend]
+
   tests:
     profiles: [test]
     image: mhs:test
@@ -179,6 +216,8 @@ services:
       MHS_TEST_DB_ADMIN_PASSWORD_FILE: /run/secrets/mhs-migrate/admin_password
       # Stack tests: the running app, reached through the capture proxy.
       MHS_STACK_URL: http://app:3063
+      MHS_TEST_GCS_ENDPOINT: http://fake-gcs:4443
+      MHS_STACK_MAIL: mail:2525
       MHS_STACK_PROXY: http://capture:8080
       MHS_STACK_CAPTURE_LOG: /captures/flows.jsonl
       MHS_STACK_OBJECTS_DIR: /srv/objects
@@ -197,6 +236,8 @@ services:
       worker: { condition: service_started }
       worker-ai: { condition: service_started }
       capture: { condition: service_started }
+      fake-gcs: { condition: service_started }
+      mail: { condition: service_healthy }
 
 networks:
   frontend: {}

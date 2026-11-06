@@ -1,9 +1,106 @@
 {% extends "base.html" %}
 {% block title %}Help{% endblock %}
 {% block content %}
-<div class="card empty">
-  <h1>Help is coming soon</h1>
-  <p class="muted">Documentation for importing data, reading the checks and using Settings will live here.</p>
-  <a class="btn" href="/">Back to home</a>
-</div>
+<div class="page-head"><h1>Help</h1><span class="muted small">How My Health Spend checks your health spending, and how to use it</span></div>
+
+<nav class="card section help-toc">
+  <a href="#idea">What it does</a> · <a href="#pages">Home, visits and household</a> · {% if not path_import %}<a href="#signin">Signing in</a> · <a href="#uploads">Uploading</a> · {% endif %}<a href="#import">Importing a file</a> · <a href="#statuses">Visit statuses</a> · <a href="#checks">The checks</a> · <a href="#cases">Disputes</a> · <a href="#accuracy">Closing a finding</a> · <a href="#hsa">HSA flags</a> · <a href="#settings">Settings</a>{% if not path_import %} · <a href="#data">Your data</a>{% endif %} · <a href="#limits">What it isn't</a>
+</nav>
+
+<section class="card section" id="idea">
+  <h2>What it does</h2>
+  <p>For every visit there are up to three documents: the provider's bill or statement, the insurer's decision (the EOB, explanation of benefits) and your payment, usually from your HSA. My Health Spend lines them up per visit and checks them against each other, so a bill that asks for more than the EOB says you owe, a payment made twice, or a balance nobody asked you about doesn't go unnoticed.</p>
+</section>
+
+<section class="card section" id="pages">
+  <h2>Home, visits and your household</h2>
+  <p><strong>Home</strong> starts with the year's totals and how many visits are in each status. Then <em>Needs your attention</em>: the visits that need you, the most dollars first (what's at stake plus what's still owed), then the oldest, each with the reason in a sentence. Then the year's visits as cards: who it was for, the provider and date, its status, how many of the documents it needs have arrived, and the amount at issue, which is the open findings on the visit, counting the same dollars once.</p>
+  <p><strong>A visit</strong> has everything on one page: what's wrong, the bill and the EOB line by line (a line that doesn't agree is highlighted with the difference), who pays what, the documents, and the case history from the visit to today.</p>
+  <p><strong>Household</strong> shows each person's visits and money for the year, and the family's, which is their sum. <em>Showing</em> (on Home, Household and Visits) switches between the family and one person; your choice stays while you move between pages, until you close the browser{% if not path_import %} or sign out{% endif %}.</p>
+  <p class="small muted">On a phone the pages are in the bar at the bottom of the screen; <em>Add</em> opens {{ 'Uploads, where Take a photo opens the camera' if not path_import else 'Import' }}.</p>
+</section>
+
+{% if not path_import %}
+<section class="card section" id="signin">
+  <h2>Signing in</h2>
+  <p>Sign in with your email and password, then the 6-digit code from your authenticator app. Sessions end after 15 minutes without activity. Five wrong tries lock the account for 15 minutes.</p>
+  <p><strong>Recovery codes.</strong> When you set up your authenticator you get ten recovery codes. Keep them away from your phone. If you forget your password or lose your phone, use one on <a href="/recover">Forgot your password or lost your phone?</a>: you choose a new password and set up your authenticator again. Your name in the header opens your account page, where you can make new codes.</p>
+</section>
+
+<section class="card section" id="uploads">
+  <h2>Uploading bills, EOBs and HSA statements</h2>
+  <ol class="small">
+    <li>On <a href="/uploads">Uploads</a>, choose a file and what it is, or let the app decide. On a phone, <em>Take a photo</em> opens the camera and uploads the photo as soon as you take it. PDFs and phone photos (JPG, PNG, HEIC) of bills, statements and EOBs are read for you; HSA and insurer exports (CSV, XLS, XLSX) go straight to a preview.</li>
+    <li>Names, member IDs, account numbers and other identifiers are replaced with codes before anything is read further; your own pages show the real values.</li>
+    <li>When the upload says <em>Review</em>, open it. The document is shown above the fields it was read into. Fields marked <span class="badge s-balance_outstanding">check</span> were read with less confidence or weren't found: compare them with the document and correct them.</li>
+    <li>Choose the provider, the patient, the plan and the visit, then confirm. Nothing reaches your visits before you do, and your corrections are kept beside what was read.</li>
+  </ol>
+  <p class="small">The same file twice is refused. A second scan of a document you already have, a re-sent statement or a corrected EOB is pointed out on the review page.</p>
+</section>
+{% endif %}
+
+<section class="card section" id="import">
+  <h2>Importing a file</h2>
+  <p class="small">An ingest file is a JSON file in the app's own format (<code>schema/mhs-ingest.schema.json</code>), usually made by the converter from your insurer's claims export, your HSA export and statement PDFs. {% if path_import %}Import it on <a href="/import">Import</a> by its path, so the statement PDFs it refers to are stored too.{% else %}Upload it on <a href="/import">Import</a> together with the PDFs it refers to.{% endif %} The preview shows what will be added or changed before anything is saved, and a file with errors saves nothing. Changes you made in the app are kept unless you tick "Replace my edits".</p>
+</section>
+
+<section class="card section" id="statuses">
+  <h2>Visit statuses</h2>
+  <p class="small">Each visit gets one status: the first one in this list that applies.</p>
+  <ul class="status-list">
+    {% for s in STATUS_ORDER %}
+    <li><span class="badge s-{{ s }}">{{ STATUS_LABELS[s] }}</span><span class="small">{{ STATUS_HELP.get(s, '') }}</span></li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="card section" id="checks">
+  <h2>The checks</h2>
+  <ul class="kv">
+    {% for code, name in CHECK_NAMES.items() %}
+    <li><strong>{{ name }}</strong><span class="small">{{ CHECK_HELP.get(code, '') }}</span></li>
+    {% endfor %}
+  </ul>
+  <p class="small muted">A difference under $1.00 is cleared within tolerance and isn't a finding; cleared amounts are added up per provider each year, and a provider past $5.00 is flagged (ADR-015, ADR-035). Balances owed and duplicate charges are never cleared. Every finding is shown with the numbers that disagree, on the visit's page.</p>
+</section>
+
+<section class="card section" id="cases">
+  <h2>Disputing a finding</h2>
+  <p class="small">On a visit, <em>Open a case</em> beside a finding (or for the whole visit) starts a dispute with the provider or the insurer. The case keeps the finding, the lines that disagree and the documents behind it, and lists what's missing.</p>
+  <ul class="small">
+    <li><strong>Letters.</strong> The case drafts an itemized bill request, a billing correction, a refund request, a claim resubmission or an appeal to the insurer, with your claim number, dates and amounts filled in{% if not path_import %} and your account number from your uploads{% endif %}. Drafts aren't saved and the app never sends anything: copy, print or download the letter, send it yourself, then log it.</li>
+    <li><strong>Calls.</strong> The call script says who to call, what to have ready, what to ask for and what to write down. Log each call with the person, the reference number and the outcome.</li>
+    <li><strong>Reminders and deadlines.</strong> If nothing comes back 30 days after you last sent something or called (you can change the days per case), the visit goes to the top of Home. So does an appeal deadline (180 days from the EOB unless your plan says otherwise) or, for a self-pay bill $400 or more over its good-faith estimate, the No Surprises Act dispute deadline (120 days from the first bill), once it's 14 days away.</li>
+    <li><strong>Outcomes.</strong> Resolve the case as corrected, refunded, written off, denied or "the findings were wrong", with the dollars recovered. The findings close with it, and <a href="/cases">Cases</a> adds up what you've recovered.</li>
+  </ul>
+  <p class="small muted">Letters and scripts are information to help you, not legal or financial advice.</p>
+</section>
+
+<section class="card section" id="accuracy">
+  <h2>Closing a finding</h2>
+  <p class="small">When you've dealt with a finding, close it on the visit's page and say which it was: <em>It was a real problem</em> (the provider or insurer got something wrong), or <em>It was wrong</em> (the app flagged something that was fine), with a reason if you like. Resolving a case answers it for the findings in the case: corrected, refunded or written off counts them as real, "The findings were wrong" counts them as wrong, and denied leaves them unrated (a denial doesn't say whether the finding was right). <a href="/accuracy">Finding accuracy</a> shows how many of the findings you decided were wrong, by kind; the aim is no more than 5%. You can reopen a finding to change your answer.</p>
+</section>
+
+<section class="card section" id="hsa">
+  <h2>HSA flags</h2>
+  <p class="small">The app assumes health spending is paid from your HSA. It flags what you owe that no HSA payment covers: <em>Unpaid: pay from HSA</em> when the provider still shows it owed, and <em>Paid outside the HSA</em> when it was paid some other way, which you may be able to reimburse yourself for from the HSA. An HSA payment with no claim, statement or receipt to match is flagged too. These are possibilities to look into, not rulings on what the HSA allows.</p>
+  <p class="small"><a href="/tax">HSA and tax</a> goes further. It tags each visit "likely qualified", "likely not qualified" or "needs documentation" (such as a letter of medical necessity), citing the IRS Publication 502 category; you can change the category on the visit. It keeps a <em>receipt vault</em> of likely-qualified expenses paid outside the HSA after it was opened, to reimburse yourself later; checks contributions against the IRS limit for the months you were covered (with the 55+ catch-up, and the last-month rule if you choose it); flags HSA payments for likely non-qualified expenses or for someone the HSA may not pay for; suggests which account should pay what you still owe; and sums up the year. You choose "Pay from the HSA now" or "Save the HSA for later". The IRS limits and categories are kept as dated tables. All of it is information, not legal, tax or medical advice.</p>
+</section>
+
+<section class="card section" id="settings">
+  <h2>Settings</h2>
+  <p class="small">Plans (with deductibles and out-of-pocket maximums), household members, payment accounts, providers and their other names, and which providers bill together. {% if path_import %}Changes are written to <code>data/settings.json</code>, which the converter reads.{% else %}Download <code>settings.json</code> from <a href="/settings">Settings</a> for the converter.{% endif %}</p>
+</section>
+
+{% if not path_import %}
+<section class="card section" id="data">
+  <h2>Your data</h2>
+  <p class="small"><a href="/data">Your data</a> downloads everything as a ZIP you can keep or import again, and deletes your account. If you're the last member of your household, deleting your account deletes all of its data at once.</p>
+</section>
+{% endif %}
+
+<section class="card section" id="limits">
+  <h2>What it isn't</h2>
+  <p class="small">Information to help you check your bills: not medical, legal, tax or financial advice. Confirm anything you act on with your provider, insurer or HSA administrator.</p>
+</section>
 {% endblock %}

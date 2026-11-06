@@ -42,7 +42,20 @@ CUES = {
 }
 
 MONEY = r"\(?-?\$?\s?[\d,]+\.\d{2}\)?(?:\s*CR)?"
-DATE = r"(?:\d{1,2}/\d{1,2}/\d{2,4}|\d{4}-\d{2}-\d{2})"
+DATE = (r"(?:\d{1,2}/\d{1,2}/\d{2,4}|\d{4}-\d{2}-\d{2}|"
+        r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.? \d{1,2}, \d{4})")
+# Column headers of a table-style EOB (a header row, then service rows and a totals row), as field names.
+EOB_COLUMNS = {
+    "billed": r"billed|charges?|amount billed|provider charged",
+    "adjustment": r"discount|plan discount|network discount|adjustments?",
+    "allowed": r"allowed|allowed amount|amount allowed",
+    "insurer_paid": r"plan paid|paid by plan|insurance paid|plan payment|plan pays",
+    "deductible": r"deductible",
+    "copay": r"copay",
+    "coinsurance": r"coinsurance",
+    "not_covered": r"not covered|non-?covered",
+    "patient_responsibility": r"you owe|your responsibility|patient responsibility|your cost|your share|you pay",
+}
 EOB_LABELS = {
     "billed": r"amount billed|billed amount|provider charged|total charges|amount charged|charges|billed",
     "adjustment": r"plan discount|network discount|discount|provider adjustment|adjustment",
@@ -111,7 +124,8 @@ def _money_field(text: str, labels: str) -> Field:
 
 
 def _text_field(text: str, labels: str, confidence: float = 0.9) -> Field:
-    m = re.search(rf"(?im)^\s*(?:{labels})\s*[:#]\s*([^\n]+?)\s*(?:\s{{3,}}.*)?$", text)
+    # The label starts a line or a column (after a wide gap): "Guarantor: Pat Example      Account #: 556677".
+    m = re.search(rf"(?im)(?:^|\s{{3,}}|\t)\s*(?:{labels})\s*[:#]\s*([^\n]+?)\s*(?:\s{{3,}}.*)?$", text)
     value = m.group(1).strip() if m else None
     return Field(value, confidence, "") if value else Field(None, 0.0, "not on document")
 
@@ -174,13 +188,48 @@ def extract_eob(text: str) -> Extraction:
     network = ("out_of_network" if re.search(r"out[- ]of[- ]network", low)
                else "in_network" if re.search(r"\bin[- ]network\b", low) else None)
     f["network_status"] = Field(network, 0.8) if network else Field(None, 0.0, "not on document")
+    columns = _table_columns(text)
     for line in _lines(text):
         a = line.pop("amounts")
-        keys = ["billed", "allowed", "insurer_paid", "patient_responsibility"]
+        keys = columns if columns and len(columns) == len(a) else ["billed", "allowed", "insurer_paid",
+                                                                     "patient_responsibility"]
         line.update({k: v for k, v in zip(keys, a)})
         x.lines.append(line)
+    if columns and (totals := _totals_row(text, len(columns))):
+        for name, cents in zip(columns, totals):  # a table-style EOB: the totals row holds the header amounts
+            if f[name].value is None:
+                f[name] = Field(cents, 0.9, "from the totals row")
+    if f["service_start"].value is None and x.lines and x.lines[0].get("service_date"):
+        dates = sorted(l["service_date"] for l in x.lines if l.get("service_date"))
+        f["service_start"], f["service_end"] = Field(dates[0], 0.85, "from the service lines"), Field(dates[-1], 0.85)
     _check_eob(x)
     return x
+
+
+def _table_columns(text: str) -> list[str]:
+    """The money columns of a table header row, in order, e.g. Billed, Discount, Allowed, Plan Paid, You Owe."""
+    for line in text.splitlines():
+        found = []
+        for name, labels in EOB_COLUMNS.items():
+            for m in re.finditer(rf"(?i)(?<![a-z])(?:{labels})(?![a-z])", line):
+                found.append((m.start(), name))
+                break
+        if len({n for _, n in found}) >= 3:
+            ordered, seen = [], set()
+            for _, name in sorted(found):
+                if name not in seen:
+                    ordered.append(name)
+                    seen.add(name)
+            return ordered
+    return []
+
+
+def _totals_row(text: str, count: int) -> list[int] | None:
+    m = re.search(rf"(?im)^\s*(?:claim )?totals?\b[^\n$\d(-]*((?:{MONEY}\s*)+)$", text)
+    if not m:
+        return None
+    amounts = [parse_amount(a) for a in re.findall(MONEY, m.group(1))]
+    return amounts if len(amounts) == count and None not in amounts else None
 
 
 def _check_eob(x: Extraction) -> None:

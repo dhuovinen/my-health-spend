@@ -1,0 +1,5 @@
+<div class="recovery-codes">
+  <h2>Recovery codes</h2>
+  <p class="small">Save these somewhere safe, away from your phone (printed, or in a password manager). Each works once, in place of your password and authenticator. They're shown only now.</p>
+  <ul class="codes">{% for c in codes %}<li><code>{{ c }}</code></li>{% endfor %}</ul>
+</div>

@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Sam Ortiz",
+    "provider": "Riverbend Orthopedics",
+    "claim_number": "H73363680",
+    "service_start": "2026-01-06",
+    "billed": 161650,
+    "adjustment": 56750,
+    "allowed": 104900,
+    "insurer_paid": 84000,
+    "patient_responsibility": 20900
+  }
+}

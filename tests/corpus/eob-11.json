@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Riley Novak",
+    "provider": "Northgate Dermatology",
+    "claim_number": "C34621337",
+    "service_start": "2026-01-12",
+    "billed": 229450,
+    "adjustment": 57350,
+    "allowed": 172100,
+    "insurer_paid": 166100,
+    "patient_responsibility": 6000
+  }
+}

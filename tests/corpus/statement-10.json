@@ -1,0 +1,10 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Pat Example",
+    "provider": "Lakeside Family Medicine",
+    "statement_date": "2026-08-17",
+    "balance_due": 14500,
+    "account_number": "7259524"
+  }
+}

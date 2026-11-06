@@ -1,0 +1,9 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Casey Brooks",
+    "provider": "Maple Street Pediatrics",
+    "statement_date": "2026-11-30",
+    "balance_due": 4500
+  }
+}

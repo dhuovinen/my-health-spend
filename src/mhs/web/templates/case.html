@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% from "_macros.html" import case_badge, due_text, note_meta %}
+{% block title %}Case · {{ v.provider.name }} {{ v.visit.date }}{% endblock %}
+{% block content %}
+<p class="small"><a class="back" href="/visits/{{ v.id }}#cases">← Visit of {{ v.visit.date|nice_date }}</a> · <a href="/cases">All cases</a></p>
+<div class="page-head">
+  <div>
+    <h1>Case with {{ case.party_name }}</h1>
+    <div class="muted">{{ v.provider.name }} · visit of {{ v.visit.date|nice_date }}{% if v.member %} · {{ v.member.name }}{% endif %} · opened {{ case.case.opened|nice_date }}</div>
+    {% if case.case.note %}<div class="small">{{ case.case.note }}</div>{% endif %}
+  </div>
+  {{ case_badge(case.status) }}
+</div>
+<p class="status-help">{{ help[case.status] }}</p>
+{% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
+
+{% if case.open %}
+{% for d in v.due %}<div class="alert warn">{{ due_text(d) }}</div>{% endfor %}
+{% elif case.outcome %}
+<div class="alert good" id="outcome">
+  <strong>Resolved {{ case.outcome.date|nice_date }}: {{ OUTCOMES[case.outcome.result] }}</strong>, {{ case.recovered|money }} recovered.{% if case.outcome.note %} {{ case.outcome.note }}{% endif %}
+  <form method="post" action="/visits/{{ v.id }}/cases/{{ case.id }}/reopen" class="inline">{{ csrf_input() }}
+    <button class="btn small">Reopen the case</button>
+  </form>
+</div>
+{% endif %}
+
+<nav class="jump" aria-label="On this page">
+  <a href="#evidence">What it's about</a>
+  {% if case.open %}<a href="#letter">Letters</a><a href="#call">Call script</a>{% endif %}
+  <a href="#log">Contact log</a>
+  <a href="#status">Status and dates</a>
+</nav>
+
+<div class="grid two">
+  <div class="card" id="evidence">
+    <h2>What it's about</h2>
+    {% for f in case.findings %}
+    <div class="check fail"><div class="mark">✕</div>
+      <div><strong>{{ FINDING_KINDS.get(f.kind) or f.code }}</strong>{% if f.detail %}<div class="small muted">{{ f.detail[:1]|upper }}{{ f.detail[1:] }}</div>{% endif %}</div>
+      <div class="num">{{ f.amount|money }}</div></div>
+    {% else %}
+    <p class="muted small">The whole visit: no finding was open when the case was opened.</p>
+    {% endfor %}
+    {% if case.case.lines %}
+    <h3 class="section">Lines that disagreed</h3>
+    <div class="table-wrap"><table class="small">
+      <tr><th>Line</th><th class="num">Charge</th><th class="num">Insurer billed</th><th class="num">Asks you</th><th class="num">EOB: you owe</th></tr>
+      {% for l in case.case.lines %}
+      <tr><td>{{ l.code or '' }} {{ l.description or '' }}{% if l.note %}<div class="muted">{{ l.note }}</div>{% endif %}</td>
+        <td class="num">{{ l.charge|money }}</td><td class="num">{{ l.billed|money }}</td><td class="num">{{ l.patient_amount|money }}</td><td class="num">{{ l.patient_responsibility|money }}</td></tr>
+      {% endfor %}
+    </table></div>
+    {% endif %}
+    <h3 class="section">Evidence</h3>
+    <ul class="evidence">
+      {% for kind, doc in case.evidence.documents %}
+      <li><span class="chip idle">{{ {'bill': 'Statement', 'eob': 'EOB', 'receipt': 'Receipt', 'payment': 'Payment', 'refund': 'Refund'}[kind] }}</span>
+        {{ doc.date|nice_date }}{% if kind == 'eob' and doc.claim_number %} · claim {{ doc.claim_number }}{% endif %}{% if kind in ('payment', 'refund', 'receipt') %} · {{ (doc.amount if kind != 'receipt' else doc.total)|money }}{% endif %}
+        {% if doc.stored_file %} · <a href="/files/{{ doc.id }}" target="_blank">Open the original</a>{% if doc.file_sha256 %} <span class="muted small hash" title="SHA-256 of the stored original">SHA-256 {{ doc.file_sha256[:12] }}…</span>{% endif %}{% endif %}</li>
+      {% else %}<li class="muted">No documents on this visit yet.</li>{% endfor %}
+    </ul>
+    {% if case.evidence.missing %}<p class="small warn-ink" id="missing">Missing evidence: {{ case.evidence.missing|join(', ') }}. Add it on the visit's documents, or ask {{ case.party_name }} for it.</p>{% endif %}
+  </div>
+
+  <div class="card" id="status">
+    <h2>Status and dates</h2>
+    <ul class="kv">
+      <li><span>With</span><span>{{ case.party_name }}</span></li>
+      <li><span>At issue</span><span class="num">{{ case.amount|money }}</span></li>
+      {% if case.last_contact %}<li><span>Last contact</span><span>{{ case.last_contact.date|nice_date }}</span></li>{% endif %}
+      {% if case.follow_up %}<li><span>Follow up {% if case.reminder %}<span class="chip bad">due</span>{% endif %}</span><span>{{ case.follow_up.due|nice_date }}</span></li>{% endif %}
+      {% for d in case.deadlines %}<li><span>{{ d.label }} {% if d.passed %}<span class="chip idle">passed</span>{% elif d.soon %}<span class="chip bad">{{ d.days_left }} days left</span>{% endif %}</span><span>by {{ d.due|nice_date }}</span></li>{% endfor %}
+    </ul>
+    {% if case.open %}
+    <form method="post" action="/visits/{{ v.id }}/cases/{{ case.id }}/status" class="inline section">{{ csrf_input() }}
+      <label>Status<select name="status">{% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s == case.status }}>{{ CASE_LABELS[s] }}</option>{% endfor %}</select></label>
+      <label>With<select name="party"><option value="provider" {{ 'selected' if case.party == 'provider' }}>{{ v.provider.name }}</option><option value="insurer" {{ 'selected' if case.party == 'insurer' }}>{{ plan.insurer if plan else 'The insurer' }}</option></select></label>
+      <label class="grow">Note (optional)<input name="note"></label>
+      <button class="btn small">Save</button>
+    </form>
+    <form method="post" action="/visits/{{ v.id }}/cases/{{ case.id }}/follow-up" class="inline section">{{ csrf_input() }}
+      <label>Remind me after<input name="days" type="number" min="1" max="365" value="{{ case.follow_up_days }}" class="short"> days without a reply</label>
+      <button class="btn small">Set</button>
+    </form>
+    <p class="muted small">A reminder comes {{ follow_up_default }} days after the last thing you sent or a call you made, unless you log their reply. Deadlines 14 days away or nearer move the visit to the top of Home.</p>
+    {% endif %}
+    <h3 class="section">History</h3>
+    <ol class="timeline">
+      {% for h in (case.case.history or [])|reverse %}
+      <li><span class="when muted small">{{ h.date|nice_date }}</span><span class="what">{{ CASE_LABELS[h.status] }}</span>{% if h.note %}<span class="detail muted small">{{ h.note }}</span>{% endif %}</li>
+      {% endfor %}
+    </ol>
+  </div>
+</div>
+
+{% if case.open %}
+<div class="grid two section">
+  <div class="card" id="letter">
+    <h2>Letters</h2>
+    <p class="muted small">The app drafts the letter here with your details; it isn't saved or sent. Copy it, print it or download it, send it yourself, then say so below.</p>
+    <form method="post" action="/visits/{{ v.id }}/cases/{{ case.id }}/letter" class="section stack">{{ csrf_input() }}
+      <label>Letter<select name="kind">
+        {% for k, label in LETTERS.items() %}<option value="{{ k }}" {{ 'selected' if k == case.letter }}>{{ label }}{{ ' (suggested)' if k == case.letter }}</option>{% endfor %}
+      </select></label>
+      <details class="small">
+        <summary>Your details for the letter</summary>
+        <p class="muted">Used for this draft only and not kept. Leave blank to fill in by hand.</p>
+        {% for key, label in identifier_fields.items() %}
+        <label>{{ label }}<input name="{{ key }}" autocomplete="off" value="{{ ids.get(key, '') if key != 'name' else (ids.get('name') or (v.member.name if v.member else '')) }}"></label>
+        {% endfor %}
+      </details>
+      <button class="btn primary">Draft the letter</button>
+    </form>
+    <form method="post" action="/visits/{{ v.id }}/cases/{{ case.id }}/sent" class="inline section">{{ csrf_input() }}
+      <label>I sent<select name="kind">{% for k, label in LETTERS.items() %}<option value="{{ k }}" {{ 'selected' if k == case.letter }}>{{ label }}</option>{% endfor %}</select></label>
+      <label>By<select name="channel">{% for c in ('letter', 'email', 'portal') %}<option value="{{ c }}">{{ c|humanize }}</option>{% endfor %}</select></label>
+      <label>On<input type="date" name="date" value="{{ today }}"></label>
+      <button class="btn small">Log it</button>
+    </form>
+  </div>
+
+  <div class="card" id="call">
+    <h2>Call script</h2>
+    <p><strong>Call:</strong> {{ script.who }}</p>
+    <h3>Have ready</h3>
+    <ul class="kv">{% for label, value in script.ready %}<li><span>{{ label }}</span><span>{{ value }}</span></li>{% endfor %}</ul>
+    <h3 class="section">Say</h3>
+    <p>{{ script.say }}</p>
+    <h3>Ask them to</h3>
+    <ul>{% for a in script.ask %}<li>{{ a }}</li>{% endfor %}</ul>
+    <h3>Write down</h3>
+    <ul>{% for r in script.record %}<li>{{ r }}</li>{% endfor %}</ul>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid two section">
+  <div class="card" id="log">
+    <h2>Contact log</h2>
+    {% for n in case.contacts %}
+    <div class="note">
+      <div class="note-head">{{ note_meta(n, {}, false) }}{% if n.party == 'insurer' %} <span class="chip idle">insurer</span>{% endif %}</div>
+      <div class="note-text">{{ n.text }}</div>
+    </div>
+    {% else %}<p class="muted">Nothing logged yet.</p>{% endfor %}
+  </div>
+  {% if case.open %}
+  <div class="card">
+    <h2>Log a call or a reply</h2>
+    <form method="post" action="/visits/{{ v.id }}/cases/{{ case.id }}/contacts" class="stack">{{ csrf_input() }}
+      <label>Date<input type="date" name="date" value="{{ contact.date or today }}" required></label>
+      <label>How<select name="channel">{% for c in channels %}<option value="{{ c }}" {{ 'selected' if (contact.channel or 'phone') == c }}>{{ c|humanize }}</option>{% endfor %}</select></label>
+      <label>Direction<select name="direction">
+        <option value="sent" {{ 'selected' if contact.direction != 'received' }}>I called or sent it</option>
+        <option value="received" {{ 'selected' if contact.direction == 'received' }}>They called or replied</option></select></label>
+      <label>Person you spoke with<input name="person" value="{{ contact.person or '' }}"></label>
+      <label>Reference number<input name="reference" value="{{ contact.reference or '' }}"></label>
+      <label>Outcome (required for a call)<input name="outcome" value="{{ contact.outcome or '' }}" placeholder="Will send a corrected bill within 2 weeks"></label>
+      <label>Notes<textarea name="text" rows="3">{{ contact.text or '' }}</textarea></label>
+      <button class="btn primary">Save to the log</button>
+    </form>
+  </div>
+  <div class="card" id="resolve">
+    <h2>Resolve the case</h2>
+    <form method="post" action="/visits/{{ v.id }}/cases/{{ case.id }}/resolve" class="stack">{{ csrf_input() }}
+      <label>Outcome<select name="result">{% for k, label in OUTCOMES.items() %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select></label>
+      <label>Dollars recovered<input name="recovered" inputmode="decimal" value="{{ '%.2f'|format(case.amount / 100) }}"></label>
+      <label>Note (optional)<input name="note"></label>
+      <p class="muted small">Recovered: what you no longer pay or got back (a corrected bill, a refund, a write-off). Denied counts $0.00. The case's findings close with it.</p>
+      <button class="btn">Resolve</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

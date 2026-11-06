@@ -1,22 +1,31 @@
-"""`mhs-admin`: create households and members, reset a member's MFA, import an ingest file. Run inside the app
-container:
+"""`mhs-admin`: create households and members, reset a member's MFA, import an ingest file, set up the demo.
+Run inside the app container:
 
     docker compose exec app mhs-admin create-household "Example household"
     docker compose exec -it app mhs-admin add-member --household <id> --email a@example.com --name "A Member"
     docker compose exec app mhs-admin import --household <id> /srv/mhs/samples/example-ingest.json --yes
+    docker compose exec app mhs-admin demo-setup
+    docker compose exec app mhs-admin false-positives --from 2026-10-01 --to 2026-10-31
 """
 
 import argparse
 import getpass
 import json
+import secrets
 import sys
+from datetime import date
 from pathlib import Path
 
+from mhs.core.accuracy import TARGET, Accuracy, accuracy, open_findings, percent
+from mhs.core.reconcile import available_years, build_report
 from mhs.data import importer
 from mhs.data.db import Database
 from mhs.data.household_store import HouseholdStore
-from mhs.data.keys import LocalKeyFile, db_keyring
-from mhs.data.objects import LocalObjectStore
+from mhs.data.keys import db_keyring, keys_from_env
+from mhs.data.money import to_dollars
+from mhs.data.objects import object_store_from_env
+from mhs.data.repository import load_dataset
+from mhs.ingest.resolve import slug
 from mhs.stack import load_app_config
 from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.auth import AccountError, Accounts
@@ -25,7 +34,7 @@ from mhs.web.household.auth import AccountError, Accounts
 def accounts_from_env() -> tuple[Database, Accounts]:
     config = load_app_config()
     db = Database(config.database_url, max_size=2)
-    return db, Accounts(db, db_keyring(db, LocalKeyFile(config.key_file), "app.household_keys"))
+    return db, Accounts(db, db_keyring(db, keys_from_env(config.key_file), "app.household_keys"))
 
 
 def import_file(accounts: Accounts, household_id: str, path: Path, commit: bool, replace_edits: bool) -> None:
@@ -53,9 +62,56 @@ def import_file(accounts: Accounts, household_id: str, path: Path, commit: bool,
         print("Preview only: run again with --yes to save.")
         return
     config = load_app_config()
-    files = EncryptedFiles(LocalObjectStore(config.objects_dir), accounts.keyring, household_id)
+    files = EncryptedFiles(object_store_from_env(config.objects_dir), accounts.keyring, household_id)
     summary = importer.commit(plan, store, files, replace_edits=replace_edits)
     print(f"saved: {json.dumps(summary)}")
+
+
+def household_accuracy(accounts: Accounts, household_id: str, start: str | None, end: str | None,
+                       release: str | None, today: date) -> Accuracy:
+    ds = load_dataset(HouseholdStore(accounts.db, household_id))
+    open_now = open_findings([build_report(ds, y, today) for y in available_years(ds)])
+    return accuracy(ds.visits, open_now, start, end, release)
+
+
+def false_positives(accounts: Accounts, start: str | None = None, end: str | None = None, release: str | None = None,
+                    household_id: str | None = None, today: date | None = None) -> str:
+    """PLT-02, TC-PLT-02-2: the false-positive rate of findings over the households, as counts only (ADR-044):
+    no reasons, names, record ids, dates of service or amounts."""
+    for d in (start, end):
+        if d:
+            try:
+                date.fromisoformat(d)
+            except ValueError:
+                raise AccountError(f"Not a date: {d} (use YYYY-MM-DD).") from None
+    if household_id:
+        if accounts.household_name(household_id) is None:
+            raise AccountError("No such household.")
+        households = [household_id]
+    else:
+        with accounts.db.tx() as c:
+            households = [str(r["id"]) for r in c.execute("SELECT id FROM app.households ORDER BY created_at, id")]
+    total = Accuracy()
+    for hid in households:
+        total = total + household_accuracy(accounts, hid, start, end, release, today or date.today())
+    t = total.total
+    width = max([len(k.label) for k in total.rows] + [len("All findings")])
+    lines = [f"False-positive rate of findings (PLT-02: at most {TARGET:.0%} dismissed by the member as wrong)",
+             f"Households read: {len(households)}. Findings closed {start or 'any time'} to {end or 'today'}; "
+             f"release: {release or 'all'}.",
+             "",
+             f"{'Finding':<{width}}  {'real':>5}  {'wrong':>5}  {'rate':>6}  {'open':>5}"]
+    for k in total.rows:
+        lines.append(f"{k.label:<{width}}  {k.real:>5}  {k.wrong:>5}  {percent(k.rate):>6}  {k.open:>5}")
+    verdict = ("nothing decided yet" if t.rate is None else
+               "meets the target" if t.meets_target else "ABOVE the target")
+    lines += [f"{'All findings':<{width}}  {t.real:>5}  {t.wrong:>5}  {percent(t.rate):>6}  {t.open:>5}",
+              "",
+              f"Overall: {t.wrong} wrong of {t.decided} decided, {percent(t.rate)}: {verdict}.",
+              f"Still open now (not in the rate): {t.open}. Closed without a verdict (not in the rate): {t.unrated}."]
+    if total.releases:
+        lines.append("Decided by release: " + ", ".join(f"{r} {n}" for r, n in sorted(total.releases.items())) + ".")
+    return "\n".join(lines)
 
 
 def read_password(from_stdin: bool) -> str:
@@ -68,9 +124,63 @@ def read_password(from_stdin: bool) -> str:
 
 
 def show_totp(accounts: Accounts, email: str, totp_secret: str) -> None:
+    link = f"{load_app_config().public_url}/enrol/{accounts.create_enrolment_link(email)}"
     print("Add this to an authenticator app (shown once):")
-    print(f"  secret: {totp_secret}")
-    print(f"  uri:    {accounts.provisioning_uri(email, totp_secret)}")
+    print(f"  QR code: {link}")
+    print("           (opens once, within 15 minutes; or type the secret below into the app)")
+    print(f"  secret:  {totp_secret}")
+    print(f"  uri:     {accounts.provisioning_uri(email, totp_secret)}")
+
+
+# --- the demo household (docs/DEMO.md; documents in samples/demo/, made by tools/make_demo_pack.py) ---
+
+DEMO_HOUSEHOLD = "Sample household"
+DEMO_EMAIL = "demo@example.com"
+DEMO_NAME = "Jordan Sample"
+DEMO_YEAR = 2026  # the year of the demo documents
+
+
+def demo_settings(name: str = DEMO_NAME, year: int = DEMO_YEAR) -> list[tuple[str, str, dict]]:
+    """What a member would enter in Settings before uploading: themselves, the year's plan and the HSA.
+    (kind, definition, record) with money in cents, as the Settings page saves them."""
+    member_id = f"mbr-{slug(name)}"  # as the Settings page names members
+    first, *rest = name.split()
+    plan = {"id": f"plan-{year}-example-hdhp-1700", "plan_year": year, "insurer": "Example Health",
+            "plan_name": "Example HDHP 1700", "coverage_order": "primary", "coverage_start": f"{year}-01-01",
+            "coverage_end": f"{year}-12-31", "hsa_eligible_plan": True, "coinsurance_rate": 0.2,
+            "member_ids": [member_id],
+            "limits": [{"type": "deductible", "network": "in_network", "level": "individual", "amount": 170000},
+                       {"type": "out_of_pocket_max", "network": "in_network", "level": "individual",
+                        "amount": 500000}]}
+    return [
+        ("member", "member", {"id": member_id, "name": name, "relationship": "self",
+                              "aliases": [name, f"{' '.join(rest)}, {first}" if rest else name]}),
+        ("plan", "plan", plan),
+        ("account", "account", {"id": "acct-hsa", "name": "HSA", "type": "hsa"}),
+    ]
+
+
+def demo_setup(accounts: Accounts, password: str, household: str = DEMO_HOUSEHOLD, email: str = DEMO_EMAIL,
+               name: str = DEMO_NAME) -> tuple[str, str]:
+    """Create (or refresh) the demo household and member and its Settings. Safe to rerun: the household and
+    member are reused, the member gets this password and a new authenticator secret, and the Settings records
+    are put back as they started. Returns the household id and the new TOTP secret."""
+    household_id = accounts.find_household(household) or accounts.create_household(household)
+    current = accounts.member_household(email)
+    if current is None:
+        _, totp_secret = accounts.add_member(household_id, email, name, password)
+    elif current != household_id:
+        raise AccountError(f"{email} is a member of another household; choose another --email.")
+    else:
+        accounts.set_password(email, password)
+        totp_secret = accounts.reset_mfa(email)
+    store = HouseholdStore(accounts.db, household_id)
+    for kind, definition, record in demo_settings(name):
+        errors = importer.record_errors(definition, to_dollars(record))
+        if errors:
+            raise AccountError(f"Demo {kind} is invalid: {'; '.join(errors)}")
+        store.upsert(kind, record, edited=True)  # as if entered in Settings (ADR-011)
+    return household_id, totp_secret
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -90,9 +200,20 @@ def main(argv: list[str] | None = None) -> None:
     i.add_argument("path", type=Path)
     i.add_argument("--yes", action="store_true", help="save; without it, only preview")
     i.add_argument("--replace-edits", action="store_true", help="let the file overwrite edits made in the app")
+    d = sub.add_parser("demo-setup", help="create or refresh the demo household and member (docs/DEMO.md)")
+    d.add_argument("--household", default=DEMO_HOUSEHOLD, help=f"household name (default {DEMO_HOUSEHOLD!r})")
+    d.add_argument("--email", default=DEMO_EMAIL, help=f"member email (default {DEMO_EMAIL})")
+    d.add_argument("--name", default=DEMO_NAME, help=f"member name (default {DEMO_NAME!r})")
+    d.add_argument("--password-stdin", action="store_true", help="read the password from stdin instead of "
+                                                                 "generating one")
     a = sub.add_parser("ai-extraction", help="let Claude read this household's scrubbed documents (ADR-028, ADR-034)")
     a.add_argument("--household", required=True)
     a.add_argument("state", choices=["on", "off", "status"])
+    f = sub.add_parser("false-positives", help="the false-positive rate of findings, counts only (PLT-02, ADR-044)")
+    f.add_argument("--from", dest="start", metavar="DATE", help="first closing date counted (YYYY-MM-DD)")
+    f.add_argument("--to", dest="end", metavar="DATE", help="last closing date counted (YYYY-MM-DD)")
+    f.add_argument("--release", help="only findings shown by this release, e.g. release-1")
+    f.add_argument("--household", help="one household (default: all)")
     args = parser.parse_args(argv)
 
     db, accounts = accounts_from_env()
@@ -106,8 +227,21 @@ def main(argv: list[str] | None = None) -> None:
             show_totp(accounts, member.email, totp_secret)
         elif args.command == "reset-mfa":
             show_totp(accounts, args.email, accounts.reset_mfa(args.email))
+        elif args.command == "demo-setup":
+            password = read_password(True) if args.password_stdin else secrets.token_urlsafe(12)
+            household_id, totp_secret = demo_setup(accounts, password, args.household, args.email, args.name)
+            print(f"Demo household {args.household!r} ({household_id}) is ready, with {args.name} in Settings, "
+                  f"the {DEMO_YEAR} plan and the HSA.")
+            print(f"Sign in at {load_app_config().public_url}")
+            print(f"  email:    {args.email}")
+            if not args.password_stdin:
+                print(f"  password: {password}")
+            show_totp(accounts, args.email, totp_secret)
+            print("Upload the files in samples/demo/ in order; docs/DEMO.md has the walkthrough.")
         elif args.command == "import":
             import_file(accounts, args.household, args.path, args.yes, args.replace_edits)
+        elif args.command == "false-positives":
+            print(false_positives(accounts, args.start, args.end, args.release, args.household))
         elif args.command == "ai-extraction":
             if args.state != "status":
                 accounts.set_ai_extraction(args.household, args.state == "on")

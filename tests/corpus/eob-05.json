@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Pat Example",
+    "provider": "Maple Street Pediatrics",
+    "claim_number": "H18786093",
+    "service_start": "2026-07-02",
+    "billed": 173000,
+    "adjustment": 50500,
+    "allowed": 122500,
+    "insurer_paid": 120000,
+    "patient_responsibility": 2500
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Avery Chen",
+    "provider": "Maple Street Pediatrics",
+    "claim_number": "K13422389",
+    "service_start": "2026-09-04",
+    "billed": 199550,
+    "adjustment": 50250,
+    "allowed": 149300,
+    "insurer_paid": 144800,
+    "patient_responsibility": 4500
+  }
+}

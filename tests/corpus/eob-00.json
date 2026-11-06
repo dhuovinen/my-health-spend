@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Jordan Rivera",
+    "provider": "Summit Eye Associates",
+    "claim_number": "B23225344",
+    "service_start": "2026-06-05",
+    "billed": 230500,
+    "adjustment": 94900,
+    "allowed": 135600,
+    "insurer_paid": 135600,
+    "patient_responsibility": 0
+  }
+}

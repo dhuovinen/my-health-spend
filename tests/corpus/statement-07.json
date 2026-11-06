@@ -1,0 +1,10 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Pat Example",
+    "provider": "Bennett Radiology",
+    "statement_date": "2026-07-12",
+    "balance_due": 55800,
+    "account_number": "8689265"
+  }
+}

@@ -4,6 +4,7 @@ Single owner on their own laptop, bound to 127.0.0.1, no sign-in. Settings chang
 data/settings.json so the converter picks them up.
 """
 
+import secrets
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -21,10 +22,12 @@ class LocalHost:
     """PagesHost for Release 0."""
 
     path_import = True
+    cookie_secure = False  # loopback http
 
     def __init__(self, config: Config):
         self.config = config
         self._store = Store(config.db_path)
+        self._previews: dict[str, dict] = {}
 
     def store(self, request: Request) -> Store:
         return self._store
@@ -43,8 +46,19 @@ class LocalHost:
     def document_files(self, request: Request) -> FolderFiles:
         return FolderFiles(self.config.documents_dir)
 
-    def scope(self, request: Request) -> str:
-        return "owner"
+    def save_preview(self, request: Request, preview: dict) -> str:
+        token = secrets.token_urlsafe(16)
+        self._previews = {token: preview}  # one owner, one preview at a time
+        return token
+
+    def load_preview(self, request: Request, token: str) -> dict | None:
+        return self._previews.pop(token, None)
+
+    def record_view(self, request: Request, kind: str, record_id: str, action: str = "view") -> None:
+        pass  # one owner on their own laptop: no access log
+
+    def identifiers(self, request: Request, store: Store, visit) -> dict[str, str]:
+        return {}  # no uploads or vault in Release 0: letters leave the account number blank
 
     def default_import_path(self) -> str:
         candidates = sorted(self.config.data_dir.glob("ingest-*.json"))

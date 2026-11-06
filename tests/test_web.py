@@ -212,3 +212,17 @@ def test_a_new_plan_shows_on_settings(web):
                                                  "plan_name": "Medical"})
     assert r.status_code == 200 and "Example Health" in r.text
     assert web.store.get("plan", "plan-2026-medical")["plan_year"] == 2026
+
+
+def test_help_explains_statuses_checks_and_the_app(web):
+    """UX-05: the Help page explains every status and check the engine has, in plain words."""
+    from mhs.core.reconcile import CHECK_NAMES, STATUS_LABELS
+
+    page = web.client.get("/help").text
+    for label in [*STATUS_LABELS.values(), *CHECK_NAMES.values()]:
+        assert label in page, label
+    assert "not medical, legal, tax or financial advice" in page
+    if isinstance(web, ReleaseZero):
+        assert "by its path" in page and "Recovery codes" not in page
+    else:
+        assert "Recovery codes" in page and 'href="/uploads"' in page and 'href="/data"' in page

@@ -336,11 +336,11 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 
 | TC | Req | Scenario | Expected result | Level | Status |
 | --- | --- | --- | --- | --- | --- |
-| TC-MAT-01-1 | MAT-01 | Create a visit with 2 claims, 3 lines each, with allocations; reload | Full tree round-trips; no orphan records | U | New |
-| TC-MAT-01-2 | MAT-01 | One $300.00 payment to a provider with 3 open visits | Payment belongs to the provider; allocated across the 3 visits per ALC-04; parts sum to $300.00 | U | New |
-| TC-MAT-01-3 | MAT-01 | One visit paid by an HSA card swipe and a personal card | Both payments linked to the visit | U | New |
-| TC-MAT-01-4 | MAT-01 | Delete a visit that has lines and allocations | Blocked with a message, or cascades with confirmation; never leaves orphans | I | New |
-| TC-MAT-01-5 | MAT-01 | HSA contribution, interest and fee transactions | Stored as account transactions with no visit; excluded from visit totals | U | New |
+| TC-MAT-01-1 | MAT-01 | Create a visit with 2 claims, 3 lines each, with allocations; reload | Full tree round-trips; no orphan records | U | Exists: `test_r1_reconcile.py::test_mat_01_1_visit_with_two_claims_three_lines_each_round_trips` |
+| TC-MAT-01-2 | MAT-01 | One $300.00 payment to a provider with 3 open visits | Payment belongs to the provider; allocated across the 3 visits per ALC-04; parts sum to $300.00 | U | Exists: `test_r1_reconcile.py::test_mat_01_2_one_payment_across_three_open_visits` |
+| TC-MAT-01-3 | MAT-01 | One visit paid by an HSA card swipe and a personal card | Both payments linked to the visit | U | Exists: `test_r1_reconcile.py::test_mat_01_3_one_visit_paid_by_hsa_and_card` |
+| TC-MAT-01-4 | MAT-01 | Delete a visit that has lines and allocations | Blocked with a message, or cascades with confirmation; never leaves orphans | I | Exists: `test_r1_reconcile_pages.py::test_mat_01_4_a_visit_with_documents_cannot_be_deleted` |
+| TC-MAT-01-5 | MAT-01 | HSA contribution, interest and fee transactions | Stored as account transactions with no visit; excluded from visit totals | U | Exists: `test_r1_reconcile.py::test_mat_01_5_account_transactions_stay_out_of_visit_totals` |
 | TC-MAT-02-1 | MAT-02 | Add self, spouse and 2 dependents, each with coverage, accounts and visits | All saved; each visit belongs to exactly one member | I | New |
 | TC-MAT-02-2 | MAT-02 | Dependent's visit | Never counted in another member's totals | U | New |
 | TC-MAT-02-3 | MAT-02 | Remove a member (child ages off the plan) | History and visits kept; member hidden from new-entry lists | U | New |
@@ -352,19 +352,19 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-MAT-04-2 | MAT-04 | Same NPI with "ABC Med Grp" and "ABC Medical Group" | One provider | U | New |
 | TC-MAT-04-3 | MAT-04 | Similar names, different NPIs | Not merged; proposed as a suspected relationship for the owner to confirm | U | Exists: `test_suspected_relationship_joins_ledgers_and_flags_until_confirmed` |
 | TC-MAT-04-4 | MAT-04 | Card merchant "SQ *ABC MED" | Mapped to the provider through its alias | U | New |
-| TC-MAT-05-1 | MAT-05 | Bill and EOB with same person, provider, DOS and claim # | Linked with a high score and reasons listed: same claim #, same DOS, same provider, same person | U | New |
-| TC-MAT-05-2 | MAT-05 | Match scores of 0.95, 0.75 and 0.5 | 0.95 links automatically and can be undone; 0.75 is proposed for the member; 0.5 stays unmatched | U | New |
-| TC-MAT-05-3 | MAT-05 | Two members see the same provider on the same day | Each document matched to the right member's visit | U | New |
-| TC-MAT-05-4 | MAT-05 | Same amount and date, different provider | No match | U | New |
-| TC-MAT-05-5 | MAT-05 | Open a proposed match | Reasons shown in plain language beside the score | E | New |
-| TC-MAT-06-1 | MAT-06 | Bill lines 99214, 85025, 80053 vs EOB lines with the same codes | Each bill line paired with its EOB line | U | New |
-| TC-MAT-06-2 | MAT-06 | Bill line 80053 vs EOB 80053 plus a component denied as bundled (CARC 97) | One-to-many pairing; bundling noted | U | New |
-| TC-MAT-06-3 | MAT-06 | Bill has 3 separate lab lines; EOB has 1 panel line | Many-to-one pairing | U | New |
-| TC-MAT-06-4 | MAT-06 | Bill line with no EOB counterpart | Reported as unmatched with its amount | U | New |
-| TC-MAT-06-5 | MAT-06 | 99214 on the bill, 99214-25 on the EOB | Paired; modifier difference noted | U | New |
-| TC-MAT-07-1 | MAT-07 | Confirm a proposed match | Saved as confirmed by the user | E | New |
-| TC-MAT-07-2 | MAT-07 | Reject a proposed match, then re-run matching | The rejected pair is never proposed again | I | New |
-| TC-MAT-07-3 | MAT-07 | Split one document across two visits; merge two visits | Lines and allocations move; totals unchanged | I | New |
+| TC-MAT-05-1 | MAT-05 | Bill and EOB with same person, provider, DOS and claim # | Linked with a high score and reasons listed: same claim #, same DOS, same provider, same person | U | Exists: `test_r1_reconcile.py::test_mat_05_1_same_person_provider_date_and_claim_links_with_reasons` |
+| TC-MAT-05-2 | MAT-05 | Match scores of 0.95, 0.75 and 0.5 | 0.95 links automatically and can be undone; 0.75 is proposed for the member; 0.5 stays unmatched | U | Exists: `test_r1_reconcile.py::test_mat_05_2_score_bands` |
+| TC-MAT-05-3 | MAT-05 | Two members see the same provider on the same day | Each document matched to the right member's visit | U | Exists: `test_r1_reconcile.py::test_mat_05_3_two_members_same_provider_same_day` |
+| TC-MAT-05-4 | MAT-05 | Same amount and date, different provider | No match | U | Exists: `test_r1_reconcile.py::test_mat_05_4_same_amount_and_date_other_provider_never_matches` |
+| TC-MAT-05-5 | MAT-05 | Open a proposed match | Reasons shown in plain language beside the score | E | Exists: `test_r1_reconcile_pages.py::test_mat_05_5_and_mat_07_1_proposed_match_is_confirmed` |
+| TC-MAT-06-1 | MAT-06 | Bill lines 99214, 85025, 80053 vs EOB lines with the same codes | Each bill line paired with its EOB line | U | Exists: `test_r1_reconcile.py::test_mat_06_1_lines_pair_by_code` |
+| TC-MAT-06-2 | MAT-06 | Bill line 80053 vs EOB 80053 plus a component denied as bundled (CARC 97) | One-to-many pairing; bundling noted | U | Exists: `test_r1_reconcile.py::test_mat_06_2_bundled_component_pairs_one_to_many` |
+| TC-MAT-06-3 | MAT-06 | Bill has 3 separate lab lines; EOB has 1 panel line | Many-to-one pairing | U | Exists: `test_r1_reconcile.py::test_mat_06_3_separate_bill_lines_one_panel_line` |
+| TC-MAT-06-4 | MAT-06 | Bill line with no EOB counterpart | Reported as unmatched with its amount | U | Exists: `test_r1_reconcile.py::test_mat_06_4_unmatched_bill_line_is_reported_with_its_amount` |
+| TC-MAT-06-5 | MAT-06 | 99214 on the bill, 99214-25 on the EOB | Paired; modifier difference noted | U | Exists: `test_r1_reconcile.py::test_mat_06_5_modifier_difference_is_noted` |
+| TC-MAT-07-1 | MAT-07 | Confirm a proposed match | Saved as confirmed by the user | E | Exists: `test_r1_reconcile_pages.py::test_mat_05_5_and_mat_07_1_proposed_match_is_confirmed` |
+| TC-MAT-07-2 | MAT-07 | Reject a proposed match, then re-run matching | The rejected pair is never proposed again | I | Exists: `test_r1_reconcile_pages.py::test_mat_07_2_rejected_match_stays_rejected_on_reimport` |
+| TC-MAT-07-3 | MAT-07 | Split one document across two visits; merge two visits | Lines and allocations move; totals unchanged | I | Exists: `test_r1_reconcile_pages.py::test_mat_07_3_split_a_statement_and_merge_visits` |
 | TC-MAT-07-4 | MAT-07 | Member edits a record (R0: a provider in Settings), then re-imports a file with different values | Member's version kept; preview lists the record and the differing fields | I | Exists: `test_reimport_keeps_settings_edits_unless_replaced` |
 | TC-MAT-07-5 | MAT-07 | Re-import with "Replace my edits with the file's values" ticked | File values win; the records are no longer marked as member edits | I | Exists: `test_reimport_keeps_settings_edits_unless_replaced` |
 | TC-MAT-08-1 | MAT-08 | Original EOB, then a reprocessed EOB with the same claim # | Latest is current; original visible in history; reconciliation uses the latest | U | New |
@@ -376,39 +376,39 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-MAT-09-2 | MAT-09 | Personal card payment later reimbursed from the HSA | Reimbursement linked to the card payment; no HSA gap | U | Exists: `test_hsa_flags` (lab visit) |
 | TC-MAT-09-3 | MAT-09 | Check payment manually linked to two lines | Both lines show their part; parts ≤ payment | I | New |
 | TC-MAT-09-4 | MAT-09 | Payment allocated to visits and lines | Allocated parts never exceed the payment; any surplus is a credit at the provider | U | New |
-| TC-MAT-10-1 | MAT-10 | Visit with bill and EOB, no payment | Bill present, EOB present, payment proof expected | U | New |
+| TC-MAT-10-1 | MAT-10 | Visit with bill and EOB, no payment | Bill present, EOB present, payment proof expected | U | Exists: `test_r1_reconcile.py::test_mat_10_1_bill_and_eob_without_payment` |
 | TC-MAT-10-2 | MAT-10 | Supplement purchase | EOB not applicable; receipt required | U | Exists: `test_sample_statuses_match_the_notes_in_the_sample_file` (vitamins visit) |
-| TC-MAT-10-3 | MAT-10 | User marks the itemized bill "not applicable" | Completeness counts it as satisfied | I | New |
-| TC-MAT-10-4 | MAT-10 | Visit card | Completeness shown per document kind | E | New |
-| TC-MAT-10-5 | MAT-10 | Visit marked self-pay | EOB not applicable; bill or receipt and payment proof expected | U | New |
+| TC-MAT-10-3 | MAT-10 | User marks the itemized bill "not applicable" | Completeness counts it as satisfied | I | Exists: `test_r1_reconcile_pages.py::test_mat_10_3_and_4_document_checklist` |
+| TC-MAT-10-4 | MAT-10 | Visit card | Completeness shown per document kind | E | Exists: `test_r1_reconcile_pages.py::test_mat_10_3_and_4_document_checklist` |
+| TC-MAT-10-5 | MAT-10 | Visit marked self-pay | EOB not applicable; bill or receipt and payment proof expected | U | Exists: `test_r1_reconcile.py::test_mat_10_5_self_pay_visit` |
 
 ### 3.3 Reconciliation and discrepancies (REC)
 
 | TC | Req | Scenario | Expected result | Level | Status |
 | --- | --- | --- | --- | --- | --- |
-| TC-REC-01-1 | REC-01 | Line: billed $250.00, adjustment $125.00, insurer $80.00, member $45.00 | Pass | U | New |
+| TC-REC-01-1 | REC-01 | Line: billed $250.00, adjustment $125.00, insurer $80.00, member $45.00 | Pass | U | Exists: `test_r1_reconcile.py::test_rec_01_1_and_alc_01_1_line_identity_and_buckets` |
 | TC-REC-01-2 | REC-01 | Claim: billed $1,332.00 with parts summing to $1,275.21 | Fail with remainder $56.79 | U | Exists: `test_eob_that_does_not_add_up_fails_c1` |
-| TC-REC-01-3 | REC-01 | All lines pass but claim totals ≠ sum of lines | Claim-level fail with the difference | U | New |
-| TC-REC-01-4 | REC-01 | Member responsibility $45.00 = deductible $20.00 + copay $25.00 | Pass; with copay $30.00 instead, fail by $5.00 | U | New |
-| TC-REC-01-5 | REC-01 | EOB with other savings $10.00 and a secondary payer paying $15.00 | Pass when billed = adjustment + other savings + primary paid + secondary paid + member responsibility | U | New |
-| TC-REC-01-6 | REC-01 | Self-pay visit: billed $250.00, self-pay discount $145.00, member $105.00, no EOB | Pass; no EOB expected | U | New |
-| TC-REC-02-1 | REC-02 | EOB member responsibility $100.00; provider asks $180.00 | Finding: provider asks $80.00 more than the EOB | U | Exists: `test_bill_vs_eob_discrepancy_and_provider_overpayment` |
+| TC-REC-01-3 | REC-01 | All lines pass but claim totals ≠ sum of lines | Claim-level fail with the difference | U | Exists: `test_r1_reconcile.py::test_rec_01_3_lines_pass_but_claim_totals_differ` |
+| TC-REC-01-4 | REC-01 | Member responsibility $45.00 = deductible $20.00 + copay $25.00 | Pass; with copay $30.00 instead, fail by $5.00 | U | Exists: `test_r1_reconcile.py::test_rec_01_4_cost_sharing_identity` |
+| TC-REC-01-5 | REC-01 | EOB with other savings $10.00 and a secondary payer paying $15.00 | Pass when billed = adjustment + other savings + primary paid + secondary paid + member responsibility | U | Exists: `test_r1_reconcile.py::test_rec_01_5_other_savings_and_secondary_payer` |
+| TC-REC-01-6 | REC-01 | Self-pay visit: billed $250.00, self-pay discount $145.00, member $105.00, no EOB | Pass; no EOB expected | U | Exists: `test_r1_reconcile.py::test_rec_01_6_self_pay_visit_adds_up_without_an_eob` |
+| TC-REC-02-1 | REC-02 | EOB member responsibility $100.00; provider asks $180.00 | Finding: provider asks $80.00 more than the EOB | U | Exists: `test_bill_vs_eob_discrepancy_and_provider_overpayment`; `test_r1_reconcile.py::test_rec_02_1_two_finding_types` |
 | TC-REC-02-2 | REC-02 | Provider asks exactly the EOB amount | No finding | U | Exists: `test_sample_statuses_match_the_notes_in_the_sample_file` |
-| TC-REC-02-3 | REC-02 | Bill arrives, no EOB yet | No finding; status Awaiting EOB | U | New |
-| TC-REC-02-4 | REC-02 | Provider asks less than the EOB amount | No overcharge finding; informational note only | U | New |
-| TC-REC-02-5 | REC-02 | Statement billed amount differs from the claim's billed amount | Finding: charges sent to the insurer not shown to the member (MVP C2 second rule) | U | New |
-| TC-REC-03-1 | REC-03 | Responsibility $45.00; paid $45.00 by HSA and $45.00 by card to the same provider | Overpayment $45.00 at the provider, shown on the visit the surplus was allocated to | U | New |
+| TC-REC-02-3 | REC-02 | Bill arrives, no EOB yet | No finding; status Awaiting EOB | U | Exists: `test_r1_reconcile.py::test_rec_02_3_bill_before_the_eob_waits` |
+| TC-REC-02-4 | REC-02 | Provider asks less than the EOB amount | No overcharge finding; informational note only | U | Exists: `test_r1_reconcile.py::test_rec_02_2_and_4_asks_exactly_or_less` |
+| TC-REC-02-5 | REC-02 | Statement billed amount differs from the claim's billed amount | Finding: charges sent to the insurer not shown to the member (MVP C2 second rule) | U | Exists: `test_r1_reconcile.py::test_rec_02_5_statement_charges_differ_from_the_claim` |
+| TC-REC-03-1 | REC-03 | Responsibility $45.00; paid $45.00 by HSA and $45.00 by card to the same provider | Overpayment $45.00 at the provider, shown on the visit the surplus was allocated to | U | Exists: `test_r1_reconcile.py::test_rec_03_1_paid_twice_by_two_methods` |
 | TC-REC-03-2 | REC-03 | Provider-level: should owe $240.00, paid $320.00 | Overpaid $80.00 | U | Exists: `test_bill_vs_eob_discrepancy_and_provider_overpayment` |
-| TC-REC-03-3 | REC-03 | Responsibility paid across 3 methods summing exactly | No finding | U | New |
-| TC-REC-03-4 | REC-03 | Overpayment, then a $45.00 refund recorded | Finding resolved | U | New |
-| TC-REC-03-5 | REC-03 | Overpayment of $0.40 | Cleared within tolerance and recorded; counts toward the $5.00 provider cap | U | New |
-| TC-REC-04-1 | REC-04 | Same code, DOS and provider twice on one statement | Duplicate-charge finding for the second line's amount | U | New |
-| TC-REC-04-2 | REC-04 | Same charge on two successive statements with identical amounts | Not a duplicate charge (near-duplicate statement, ING-07) | U | New |
+| TC-REC-03-3 | REC-03 | Responsibility paid across 3 methods summing exactly | No finding | U | Exists: `test_r1_reconcile.py::test_rec_03_3_three_methods_summing_exactly` |
+| TC-REC-03-4 | REC-03 | Overpayment, then a $45.00 refund recorded | Finding resolved | U | Exists: `test_r1_reconcile.py::test_rec_03_4_and_rec_13_3_refund_resolves_the_overpayment` |
+| TC-REC-03-5 | REC-03 | Overpayment of $0.40 | Cleared within tolerance and recorded; counts toward the $5.00 provider cap | U | Exists: `test_r1_reconcile.py::test_rec_03_5_small_overpayment_clears_within_tolerance` |
+| TC-REC-04-1 | REC-04 | Same code, DOS and provider twice on one statement | Duplicate-charge finding for the second line's amount | U | Exists: `test_r1_reconcile.py::test_rec_04_1_same_code_date_and_provider_twice` |
+| TC-REC-04-2 | REC-04 | Same charge on two successive statements with identical amounts | Not a duplicate charge (near-duplicate statement, ING-07) | U | Exists: `test_r1_reconcile.py::test_rec_04_2_same_charge_on_successive_statements_is_not_a_duplicate` |
 | TC-REC-04-3 | REC-04 | Two payments of $18.53 to the same provider 3 days apart for one visit | Probable duplicate payment; overpaid $18.53 | U | Exists: `test_possible_duplicate_payments` |
-| TC-REC-04-4 | REC-04 | Same code twice with modifier 76/77, or 2 units | No duplicate finding (or marked low confidence) | U | New |
-| TC-REC-05-1 | REC-05 | Bill with no claim for an insured visit, past the waiting threshold | Finding "provider may not have filed with insurance" | U | New |
-| TC-REC-05-2 | REC-05 | EOB with no provider bill | No finding; $0 at stake; status Complete when nothing is owed, Balance outstanding when member responsibility is unpaid | U | New |
-| TC-REC-05-3 | REC-05 | Self-pay visit, supplement or cash-price prescription with a receipt and payment, no claim | No finding; visit Complete | U | New |
+| TC-REC-04-4 | REC-04 | Same code twice with modifier 76/77, or 2 units | No duplicate finding (or marked low confidence) | U | Exists: `test_r1_reconcile.py::test_rec_04_4_repeat_modifiers_and_units_are_not_duplicates` |
+| TC-REC-05-1 | REC-05 | Bill with no claim for an insured visit, past the waiting threshold | Finding "provider may not have filed with insurance" | U | Exists: `test_r1_reconcile.py::test_rec_05_1_bill_with_no_claim_past_the_threshold` |
+| TC-REC-05-2 | REC-05 | EOB with no provider bill | No finding; $0 at stake; status Complete when nothing is owed, Balance outstanding when member responsibility is unpaid | U | Exists: `test_r1_reconcile.py::test_rec_05_2_eob_without_a_bill_is_not_an_error` |
+| TC-REC-05-3 | REC-05 | Self-pay visit, supplement or cash-price prescription with a receipt and payment, no claim | No finding; visit Complete | U | Exists: `test_r1_reconcile.py::test_rec_05_3_claim_free_visits_are_complete_with_receipt_and_payment` |
 | TC-REC-05-4 | REC-05 | Visit missing the EOB: 8 days old vs 130 days old | Waiting vs Missing documents | U | Exists: `test_missing_eob_waits_then_becomes_missing` |
 | TC-REC-06-1 | REC-06 | Plan specialist copay $60.00; EOB applies $75.00 | Finding: copay $15.00 too high | U | New |
 | TC-REC-06-2 | REC-06 | Deductible met; coinsurance 20%; allowed $500.00; EOB coinsurance $150.00 | Finding: should be $100.00, difference $50.00 | U | New |
@@ -433,27 +433,27 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-REC-10-3 | REC-10 | Code 99214 billed $150.00 in March and $150.10 in June by the same provider | Unit price change of $0.10 flagged despite the tolerance | U | New |
 | TC-REC-10-4 | REC-10 | Change the tolerance setting | Findings recompute with the new tolerance | I | New |
 | TC-REC-10-5 | REC-10 | Six $0.90 differences at one provider in a plan year | Each clears alone; the sixth takes the total to $5.40 and the provider is flagged | U | New |
-| TC-REC-11-1 | REC-11 | One fixture visit per status (9) | Each of In dispute, Discrepancy found, Needs review, Balance outstanding, Awaiting EOB, Awaiting documents, Missing documents, Resolved, Complete is reachable and shown | U | New |
-| TC-REC-11-2 | REC-11 | Visits meeting several conditions: open case + failed check; failed check + balance owed; balance owed + missing EOB | In dispute; Discrepancy found; Balance outstanding (first in the REC-11 order wins) | U | Exists for the R0 order: `test_sample_statuses_match_the_notes_in_the_sample_file` |
-| TC-REC-11-3 | REC-11 | Lifecycle: Awaiting EOB → Discrepancy found → In dispute → Resolved | Each transition happens on the triggering event only; Resolved only after a finding was closed | U | New |
-| TC-REC-11-4 | REC-11 | Waiting threshold changed from 30 to 45 days; insured visit 40 days old with no EOB | Threshold 45 days: Awaiting EOB. Threshold 30 days: Missing documents | U | New |
-| TC-REC-11-5 | REC-11 | Status badges on cards | Badge text matches status; not conveyed by color alone | E | New |
+| TC-REC-11-1 | REC-11 | One fixture visit per status (9) | Each of In dispute, Discrepancy found, Needs review, Balance outstanding, Awaiting EOB, Awaiting documents, Missing documents, Resolved, Complete is reachable and shown | U | Exists: `test_r1_reconcile.py::test_rec_11_1_every_status_is_reachable` |
+| TC-REC-11-2 | REC-11 | Visits meeting several conditions: open case + failed check; failed check + balance owed; balance owed + missing EOB | In dispute; Discrepancy found; Balance outstanding (first in the REC-11 order wins) | U | Exists for the R0 order: `test_sample_statuses_match_the_notes_in_the_sample_file`; `test_r1_reconcile.py::test_rec_11_2_first_status_in_the_order_wins` |
+| TC-REC-11-3 | REC-11 | Lifecycle: Awaiting EOB → Discrepancy found → In dispute → Resolved | Each transition happens on the triggering event only; Resolved only after a finding was closed | U | Exists: `test_r1_reconcile.py::test_rec_11_3_lifecycle` |
+| TC-REC-11-4 | REC-11 | Waiting threshold changed from 30 to 45 days; insured visit 40 days old with no EOB | Threshold 45 days: Awaiting EOB. Threshold 30 days: Missing documents | U | Exists: `test_r1_reconcile.py::test_rec_11_4_waiting_threshold_is_configurable` |
+| TC-REC-11-5 | REC-11 | Status badges on cards | Badge text matches status; not conveyed by color alone | E | Exists: `test_r1_reconcile_pages.py::test_rec_11_dispute_lifecycle_and_findings_on_the_pages` |
 | TC-REC-12-1 | REC-12 | Self-pay $105.00 vs negotiated $125.00 | Shows self-pay cheaper by $20.00 | U | New |
 | TC-REC-12-2 | REC-12 | Deductible not met; self-pay does not count toward it | Comparison shows the effect on the deductible | U | Blocked: PRD open question (self-pay toward deductible) |
 | TC-REC-12-3 | REC-12 | Only one of the two prices known | No comparison shown | U | New |
-| TC-REC-13-1 | REC-13 | Member responsibility $100.00; paid $60.00; provider write-off $10.00 | Still owed $30.00; identity 3 holds | U | New |
+| TC-REC-13-1 | REC-13 | Member responsibility $100.00; paid $60.00; provider write-off $10.00 | Still owed $30.00; identity 3 holds | U | Exists: `test_r1_reconcile.py::test_rec_13_1_still_owed_after_payment_and_write_off` |
 | TC-REC-13-2 | REC-13 | Visit drops off a later statement with no matching payment | Unexplained remainder flagged with its amount | U | Exists: `test_visit_that_drops_off_a_later_statement_is_settled` |
-| TC-REC-13-3 | REC-13 | Responsibility $100.00; paid $120.00; then a $20.00 refund | Before the refund: credit due $20.00 (REC-03); after: still owed $0.00 | U | New |
-| TC-REC-13-4 | REC-13 | Provider with 4 visits | Provider-level settlement equals the sum of its visits | U | New |
+| TC-REC-13-3 | REC-13 | Responsibility $100.00; paid $120.00; then a $20.00 refund | Before the refund: credit due $20.00 (REC-03); after: still owed $0.00 | U | Exists: `test_r1_reconcile.py::test_rec_03_4_and_rec_13_3_refund_resolves_the_overpayment` |
+| TC-REC-13-4 | REC-13 | Provider with 4 visits | Provider-level settlement equals the sum of its visits | U | Exists: `test_r1_reconcile.py::test_rec_13_4_provider_settlement_is_the_sum_of_its_visits` |
 
 ### 3.4 Charge allocation (ALC)
 
 | TC | Req | Scenario | Expected result | Level | Status |
 | --- | --- | --- | --- | --- | --- |
-| TC-ALC-01-1 | ALC-01 | Line billed $250.00: adjustment $125.00, insurer $80.00, deductible $20.00, copay $25.00 | Buckets shown with those amounts; sum $250.00 | U | New |
-| TC-ALC-01-2 | ALC-01 | Line fully denied as not covered | 100% in "not covered" | U | New |
-| TC-ALC-01-3 | ALC-01 | $45.00 responsibility, $30.00 paid, then a $5.00 prompt-pay write-off | ALC-01 buckets unchanged and still sum to billed; ALC-03 shows paid $30.00, write-off $5.00, still owed $10.00 | U | New |
-| TC-ALC-01-4 | ALC-01 | Property test: 1,000 random valid EOB lines | Every cent of billed lands in exactly one adjudication bucket; no settlement item appears in ALC-01 | U | New |
+| TC-ALC-01-1 | ALC-01 | Line billed $250.00: adjustment $125.00, insurer $80.00, deductible $20.00, copay $25.00 | Buckets shown with those amounts; sum $250.00 | U | Exists: `test_r1_reconcile.py::test_rec_01_1_and_alc_01_1_line_identity_and_buckets` |
+| TC-ALC-01-2 | ALC-01 | Line fully denied as not covered | 100% in "not covered" | U | Exists: `test_r1_reconcile.py::test_alc_01_2_fully_denied_line_is_all_not_covered` |
+| TC-ALC-01-3 | ALC-01 | $45.00 responsibility, $30.00 paid, then a $5.00 prompt-pay write-off | ALC-01 buckets unchanged and still sum to billed; ALC-03 shows paid $30.00, write-off $5.00, still owed $10.00 | U | Exists: `test_r1_reconcile.py::test_alc_01_3_write_off_is_a_settlement_item_not_a_bucket` |
+| TC-ALC-01-4 | ALC-01 | Property test: 1,000 random valid EOB lines | Every cent of billed lands in exactly one adjudication bucket; no settlement item appears in ALC-01 | U | Exists: `test_r1_reconcile.py::test_alc_01_4_every_cent_lands_in_exactly_one_bucket` |
 | TC-ALC-02-1 | ALC-02 | $45.00 member share paid $30.00 by HSA card and $15.00 by personal card | Share split by source with those amounts | U | New |
 | TC-ALC-02-2 | ALC-02 | Payment plan of 3 installments | Each installment attributed to "payment plan" and to the visit | U | New |
 | TC-ALC-02-3 | ALC-02 | One payment from each source type (HSA card, HSA reimbursement, FSA, LPFSA, HRA, personal card, check, payment plan) | All 8 recognized and reported | U | New |
@@ -461,10 +461,10 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-ALC-03-1 | ALC-03 | Owe $45.00; pay $30.00; then pay $30.00 | Owed $15.00, then credit due from provider $15.00 | U | New |
 | TC-ALC-03-2 | ALC-03 | Qualified $45.00 paid by personal card | "Pay from HSA now": reimbursement due from HSA $45.00. "Save HSA for later": receipt-vault entry, nothing due | U | New |
 | TC-ALC-03-3 | ALC-03 | Per-visit balances for one provider | Sum equals the provider ledger balance (MVP PL-2) | U | New |
-| TC-ALC-04-1 | ALC-04 | $300.00 lump sum; provider statement applies $200.00 to visit A and $100.00 to B | Allocation follows the statement | U | New |
-| TC-ALC-04-2 | ALC-04 | Lump sum with no statement split; member changes the default split | Member's split saved and used; kept on re-import (ADR-011) | I | New |
+| TC-ALC-04-1 | ALC-04 | $300.00 lump sum; provider statement applies $200.00 to visit A and $100.00 to B | Allocation follows the statement | U | Exists: `test_r1_reconcile.py::test_alc_04_1_statement_split_wins_over_oldest_first` |
+| TC-ALC-04-2 | ALC-04 | Lump sum with no statement split; member changes the default split | Member's split saved and used; kept on re-import (ADR-011) | I | Exists: `test_r1_reconcile_pages.py::test_alc_04_2_members_split_is_saved_used_and_kept` |
 | TC-ALC-04-3 | ALC-04 | Lump sum with no statement split and no member override | Oldest visit first, up to what each visit was billed | U | Exists: `test_visit_that_drops_off_a_later_statement_is_settled` |
-| TC-ALC-04-4 | ALC-04 | Lump sum exceeds everything outstanding | Leftover shown as credit at the provider | U | New |
+| TC-ALC-04-4 | ALC-04 | Lump sum exceeds everything outstanding | Leftover shown as credit at the provider | U | Exists: `test_r1_reconcile.py::test_alc_04_4_lump_sum_beyond_everything_owed_is_a_credit` |
 | TC-ALC-05-1 | ALC-05 | Billed $200.00; primary pays $80.00, secondary $15.00, adjustment $100.00, member $5.00 | All parts shown; identity 1 holds | U | New |
 | TC-ALC-05-2 | ALC-05 | Primary EOB in, secondary EOB not yet | Member remainder pending; status Awaiting EOB | U | New |
 | TC-ALC-05-3 | ALC-05 | Coverage order in settings | Primary and secondary applied in that order | U | New |
@@ -481,44 +481,44 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 
 | TC | Req | Scenario | Expected result | Level | Status |
 | --- | --- | --- | --- | --- | --- |
-| TC-TAX-01-1 | TAX-01 | Office visit copay | Tagged "likely qualified" citing Pub 502 "Physicians" | U | New |
-| TC-TAX-01-2 | TAX-01 | General vitamins; then the same with a letter of medical necessity on file | "Likely not qualified"; then "needs documentation" satisfied | U | New |
-| TC-TAX-01-3 | TAX-01 | Massage therapy | Needs documentation (letter of medical necessity) | U | New |
-| TC-TAX-01-4 | TAX-01 | Category table updated to a new version | Existing tags keep their old version; new tags use the new one (PLT-01) | U | New |
-| TC-TAX-02-1 | TAX-02 | Health FSA with a 2.5-month grace period; expense on 2027-03-10 | 2026 funds usable | U | New |
-| TC-TAX-02-2 | TAX-02 | FSA with $680 carryover; $1,000 unspent at year end | $680 carried; $320 forfeited | U | New |
-| TC-TAX-02-3 | TAX-02 | Run-out deadline 2027-03-31; claim filed 2027-04-02 | Marked past deadline | U | New |
-| TC-TAX-02-4 | TAX-02 | Limited-purpose FSA and a medical (non-dental, non-vision) expense | Not eligible from the LPFSA | U | New |
-| TC-TAX-02-5 | TAX-02 | HRA with employer-defined eligible list | Only listed expenses eligible | U | New |
-| TC-TAX-03-1 | TAX-03 | HSA-eligible member, qualified expense, default setting, HSA and LPFSA balances available | Recommend the HSA | U | New |
-| TC-TAX-03-2 | TAX-03 | Setting "save HSA for later" | Recommend paying another way and adding the expense to the receipt vault | U | New |
-| TC-TAX-03-3 | TAX-03 | Setting "pay from HSA now" | Recommend HSA | U | New |
-| TC-TAX-03-4 | TAX-03 | Medical expense with only an LPFSA and HSA | LPFSA never recommended for it | U | New |
-| TC-TAX-03-5 | TAX-03 | Dental expense; LPFSA balance $300.00 forfeits in 20 days; HSA also available | Suggest the LPFSA (forfeiture rule), with the HSA as the alternative | U | New |
-| TC-TAX-04-1 | TAX-04 | Qualified $120.00 paid outside the HSA after the HSA open date | Vault entry; running total +$120.00; receipt attached; shown as a reimbursement opportunity ("pay now") or banked savings ("save for later") | U | Exists (R0 flag only): `test_hsa_flags` |
-| TC-TAX-04-2 | TAX-04 | Qualified expense dated before the HSA was established | Not added to the vault | U | New |
-| TC-TAX-04-3 | TAX-04 | Vault entry reimbursed from the HSA | Running total decreases; the same entry cannot be reimbursed twice | U | New |
-| TC-TAX-04-4 | TAX-04 | Vault receipt | Original kept unchanged and viewable (ING-10) | I | New |
+| TC-TAX-01-1 | TAX-01 | Office visit copay | Tagged "likely qualified" citing Pub 502 "Physicians" | U | Exists: `test_tax.py::test_tc_tax_01_1_*` |
+| TC-TAX-01-2 | TAX-01 | General vitamins; then the same with a letter of medical necessity on file | "Likely not qualified"; then "needs documentation" satisfied | U | Exists: `test_tax.py::test_tc_tax_01_2_*` |
+| TC-TAX-01-3 | TAX-01 | Massage therapy | Needs documentation (letter of medical necessity) | U | Exists: `test_tax.py::test_tc_tax_01_3_*` |
+| TC-TAX-01-4 | TAX-01 | Category table updated to a new version | Existing tags keep their old version; new tags use the new one (PLT-01) | U | Exists: `test_tax.py::test_tc_tax_01_4_*` |
+| TC-TAX-02-1 | TAX-02 | Health FSA with a 2.5-month grace period; expense on 2027-03-10 | 2026 funds usable | U | Exists: `test_tax.py::test_tc_tax_02_1_*` |
+| TC-TAX-02-2 | TAX-02 | FSA with $680 carryover; $1,000 unspent at year end | $680 carried; $320 forfeited | U | Exists: `test_tax.py::test_tc_tax_02_2_*` |
+| TC-TAX-02-3 | TAX-02 | Run-out deadline 2027-03-31; claim filed 2027-04-02 | Marked past deadline | U | Exists: `test_tax.py::test_tc_tax_02_3_*` |
+| TC-TAX-02-4 | TAX-02 | Limited-purpose FSA and a medical (non-dental, non-vision) expense | Not eligible from the LPFSA | U | Exists: `test_tax.py::test_tc_tax_02_4_*` |
+| TC-TAX-02-5 | TAX-02 | HRA with employer-defined eligible list | Only listed expenses eligible | U | Exists: `test_tax.py::test_tc_tax_02_5_*` |
+| TC-TAX-03-1 | TAX-03 | HSA-eligible member, qualified expense, default setting, HSA and LPFSA balances available | Recommend the HSA | U | Exists: `test_tax.py::test_tc_tax_03_1_*` |
+| TC-TAX-03-2 | TAX-03 | Setting "save HSA for later" | Recommend paying another way and adding the expense to the receipt vault | U | Exists: `test_tax.py::test_tc_tax_03_2_*` |
+| TC-TAX-03-3 | TAX-03 | Setting "pay from HSA now" | Recommend HSA | U | Exists: `test_tax.py::test_tc_tax_03_3_*` |
+| TC-TAX-03-4 | TAX-03 | Medical expense with only an LPFSA and HSA | LPFSA never recommended for it | U | Exists: `test_tax.py::test_tc_tax_03_4_*` |
+| TC-TAX-03-5 | TAX-03 | Dental expense; LPFSA balance $300.00 forfeits in 20 days; HSA also available | Suggest the LPFSA (forfeiture rule), with the HSA as the alternative | U | Exists: `test_tax.py::test_tc_tax_03_5_*` |
+| TC-TAX-04-1 | TAX-04 | Qualified $120.00 paid outside the HSA after the HSA open date | Vault entry; running total +$120.00; receipt attached; shown as a reimbursement opportunity ("pay now") or banked savings ("save for later") | U | Exists: `test_tax.py::test_tc_tax_04_1_*` |
+| TC-TAX-04-2 | TAX-04 | Qualified expense dated before the HSA was established | Not added to the vault | U | Exists: `test_tax.py::test_tc_tax_04_2_*` |
+| TC-TAX-04-3 | TAX-04 | Vault entry reimbursed from the HSA | Running total decreases; the same entry cannot be reimbursed twice | U | Exists: `test_tax.py::test_tc_tax_04_3_*` |
+| TC-TAX-04-4 | TAX-04 | Vault receipt | Original kept unchanged and viewable (ING-10) | I | Exists: `test_tax_pages.py::test_tc_tax_04_4_vault_receipt_is_the_unchanged_original` |
 | TC-TAX-05-1 | TAX-05 | FSA balance $500.00, 30 days to plan year end, $200.00 eligible unclaimed | Alert: $500.00 at risk, 30 days left, $200.00 claimable now | U | New |
 | TC-TAX-05-2 | TAX-05 | Same, with $680 carryover available | At-risk amount accounts for the carryover ($0.00 here) | U | New |
 | TC-TAX-05-3 | TAX-05 | FSA balance $0.00 | No alert | U | New |
-| TC-TAX-06-1 | TAX-06 | Family coverage, $8,000.00 contributed in 2026 | Under the $8,750 limit; $750.00 room left | U | New |
-| TC-TAX-06-2 | TAX-06 | Account holder aged 55 or older | Limit includes the $1,000 catch-up | U | New |
-| TC-TAX-06-3 | TAX-06 | Self-only Jan to Jun, family Jul to Dec 2026, default rule | Limit = 6/12 × $4,400 + 6/12 × $8,750 = $6,575.00; switching to the last-month rule gives $8,750.00 with the testing-period warning | U | New |
-| TC-TAX-06-4 | TAX-06 | Contributions exceed the limit by $300.00 | Finding: excess contribution $300.00 | U | New |
-| TC-TAX-06-5 | TAX-06 | 2025 vs 2026 contributions | Each year checked against its own reference table row | U | New |
-| TC-TAX-07-1 | TAX-07 | HSA paid $40.00 for a non-qualified item the member marks as a mistake | Finding with mistaken-distribution guidance and the CMP-04 disclaimer; without the mistake mark, no return guidance | U | New |
-| TC-TAX-07-2 | TAX-07 | HSA paid for a "needs documentation" item | Prompt to get a letter of medical necessity; not labeled non-qualified | U | New |
-| TC-TAX-07-3 | TAX-07 | Guidance screen | Disclaimer present | E | New |
-| TC-TAX-08-1 | TAX-08 | Member has a general-purpose FSA and makes HSA contributions | Eligibility conflict flagged | U | New |
-| TC-TAX-08-2 | TAX-08 | Limited-purpose FSA with HSA | No conflict | U | New |
-| TC-TAX-08-3 | TAX-08 | Medicare enrollment date 2026-06-01; HSA contributions after | Contributions after enrollment flagged | U | New |
-| TC-TAX-09-1 | TAX-09 | HSA pays a spouse's expense | Allowed | U | New |
-| TC-TAX-09-2 | TAX-09 | HSA pays for a 24-year-old child who is not a tax dependent | Flagged; the same expense from a health FSA is allowed | U | New |
-| TC-TAX-09-3 | TAX-09 | Dependent status changes between tax years | Each year uses its own status | U | New |
-| TC-TAX-10-1 | TAX-10 | Year-end summary | HSA distributions by person and purpose sum to account distributions | U | New |
-| TC-TAX-10-2 | TAX-10 | Unreimbursed qualified expenses line | Equals the vault total at year end | U | New |
-| TC-TAX-10-3 | TAX-10 | Medical spend total for itemizing | Total shown with the disclaimer; no advice to itemize | U | New |
+| TC-TAX-06-1 | TAX-06 | Family coverage, $8,000.00 contributed in 2026 | Under the $8,750 limit; $750.00 room left | U | Exists: `test_tax.py::test_tc_tax_06_1_*` |
+| TC-TAX-06-2 | TAX-06 | Account holder aged 55 or older | Limit includes the $1,000 catch-up | U | Exists: `test_tax.py::test_tc_tax_06_2_*` |
+| TC-TAX-06-3 | TAX-06 | Self-only Jan to Jun, family Jul to Dec 2026, default rule | Limit = 6/12 × $4,400 + 6/12 × $8,750 = $6,575.00; switching to the last-month rule gives $8,750.00 with the testing-period warning | U | Exists: `test_tax.py::test_tc_tax_06_3_*` |
+| TC-TAX-06-4 | TAX-06 | Contributions exceed the limit by $300.00 | Finding: excess contribution $300.00 | U | Exists: `test_tax.py::test_tc_tax_06_4_*` |
+| TC-TAX-06-5 | TAX-06 | 2025 vs 2026 contributions | Each year checked against its own reference table row | U | Exists: `test_tax.py::test_tc_tax_06_5_*` |
+| TC-TAX-07-1 | TAX-07 | HSA paid $40.00 for a non-qualified item the member marks as a mistake | Finding with mistaken-distribution guidance and the CMP-04 disclaimer; without the mistake mark, no return guidance | U | Exists: `test_tax.py::test_tc_tax_07_1_*` |
+| TC-TAX-07-2 | TAX-07 | HSA paid for a "needs documentation" item | Prompt to get a letter of medical necessity; not labeled non-qualified | U | Exists: `test_tax.py::test_tc_tax_07_2_*` |
+| TC-TAX-07-3 | TAX-07 | Guidance screen | Disclaimer present | E | Exists: `test_tax_pages.py::test_tc_tax_07_3_guidance_only_after_the_member_marks_a_mistake_with_the_disclaimer` |
+| TC-TAX-08-1 | TAX-08 | Member has a general-purpose FSA and makes HSA contributions | Eligibility conflict flagged | U | Exists: `test_tax.py::test_tc_tax_08_1_*` |
+| TC-TAX-08-2 | TAX-08 | Limited-purpose FSA with HSA | No conflict | U | Exists: `test_tax.py::test_tc_tax_08_2_*` |
+| TC-TAX-08-3 | TAX-08 | Medicare enrollment date 2026-06-01; HSA contributions after | Contributions after enrollment flagged | U | Exists: `test_tax.py::test_tc_tax_08_3_*` |
+| TC-TAX-09-1 | TAX-09 | HSA pays a spouse's expense | Allowed | U | Exists: `test_tax.py::test_tc_tax_09_1_*` |
+| TC-TAX-09-2 | TAX-09 | HSA pays for a 24-year-old child who is not a tax dependent | Flagged; the same expense from a health FSA is allowed | U | Exists: `test_tax.py::test_tc_tax_09_2_*` |
+| TC-TAX-09-3 | TAX-09 | Dependent status changes between tax years | Each year uses its own status | U | Exists: `test_tax.py::test_tc_tax_09_3_*` |
+| TC-TAX-10-1 | TAX-10 | Year-end summary | HSA distributions by person and purpose sum to account distributions | U | Exists: `test_tax.py::test_tc_tax_10_1_*` |
+| TC-TAX-10-2 | TAX-10 | Unreimbursed qualified expenses line | Equals the vault total at year end | U | Exists: `test_tax.py::test_tc_tax_10_2_*` |
+| TC-TAX-10-3 | TAX-10 | Medical spend total for itemizing | Total shown with the disclaimer; no advice to itemize | U | Exists: `test_tax.py::test_tc_tax_10_3_*` |
 
 ### 3.6 Pre-visit strategy (PRE)
 
@@ -545,25 +545,25 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 
 | TC | Req | Scenario | Expected result | Level | Status |
 | --- | --- | --- | --- | --- | --- |
-| TC-DSP-01-1 | DSP-01 | Create a case from a REC-02 finding | Case holds the bill, EOB, payment proof, the lines and amounts | I | New |
-| TC-DSP-01-2 | DSP-01 | Evidence files in the case | Same originals as ING-10 (hash match), served from the application tier only | I | New |
-| TC-DSP-01-3 | DSP-01 | Finding with the payment proof missing | Case created; missing evidence listed | I | New |
-| TC-DSP-02-1 | DSP-02 | Draft each of: itemized bill request, billing correction, refund request, claim resubmission, insurer appeal | Each draft has the real claim #, DOS, amounts and request, filled in by the application tier; the back-end tier only ever sees tokens | U | New |
-| TC-DSP-02-2 | DSP-02 | Any draft | Never sent without an explicit user action; no auto-send | E | New |
-| TC-DSP-03-1 | DSP-03 | Open a call script for a refund case | Script includes what to ask for and the reference numbers to record | U | New |
-| TC-DSP-03-2 | DSP-03 | Log a call: date, person, reference #, outcome | Saved and shown in the case history | I | Exists (provider-level log): `test_provider_notes_can_be_added_edited_and_deleted` |
-| TC-DSP-03-3 | DSP-03 | Log a call with no outcome | Validation message; nothing saved | I | New |
-| TC-DSP-04-1 | DSP-04 | Case status changes open → waiting on provider → resolved | Each change dated and shown | U | New |
-| TC-DSP-04-2 | DSP-04 | Case with no response logged 30 days after the last contact; another with a 10-day override | Reminders appear in the attention queue at 30 and 10 days respectively | U | New |
-| TC-DSP-04-3 | DSP-04 | Response logged | Reminder cleared | U | New |
-| TC-DSP-05-1 | DSP-05 | EOB dated 2026-03-01, 180-day appeal window | Deadline 2026-08-28 shown (real dates in the back-end tier) | U | New |
-| TC-DSP-05-2 | DSP-05 | Self-pay bill exceeds GFE | No Surprises Act dispute deadline 120 days from the bill date | U | New |
-| TC-DSP-05-3 | DSP-05 | Deadline within 14 days | Item rises in the attention queue | U | New |
+| TC-DSP-01-1 | DSP-01 | Create a case from a REC-02 finding | Case holds the bill, EOB, payment proof, the lines and amounts | I | Automated: `test_r2_disputes.py::test_tc_dsp_01_1_*` (core and pages) |
+| TC-DSP-01-2 | DSP-01 | Evidence files in the case | Same originals as ING-10 (hash match), served from the application tier only | I | Automated: `test_tc_dsp_01_2_evidence_files_are_the_originals` |
+| TC-DSP-01-3 | DSP-01 | Finding with the payment proof missing | Case created; missing evidence listed | I | Automated: `test_tc_dsp_01_3_*` (core and pages) |
+| TC-DSP-02-1 | DSP-02 | Draft each of: itemized bill request, billing correction, refund request, claim resubmission, insurer appeal | Each draft has the real claim #, DOS, amounts and request, filled in by the application tier; the back-end tier only ever sees tokens | U | Automated: `test_tc_dsp_02_1_*` (each draft; identifiers re-identified in the application tier, tokens only in records and jobs) |
+| TC-DSP-02-2 | DSP-02 | Any draft | Never sent without an explicit user action; no auto-send | E | Automated: `test_tc_dsp_02_2_a_draft_is_never_sent_without_the_member` |
+| TC-DSP-03-1 | DSP-03 | Open a call script for a refund case | Script includes what to ask for and the reference numbers to record | U | Automated: `test_tc_dsp_03_1_call_script_for_a_refund_case` |
+| TC-DSP-03-2 | DSP-03 | Log a call: date, person, reference #, outcome | Saved and shown in the case history | I | Automated: `test_tc_dsp_03_2_and_03_3_log_a_call` (per case, shown on the case, visit and provider log) |
+| TC-DSP-03-3 | DSP-03 | Log a call with no outcome | Validation message; nothing saved | I | Automated: `test_tc_dsp_03_2_and_03_3_log_a_call` |
+| TC-DSP-04-1 | DSP-04 | Case status changes open → waiting on provider → resolved | Each change dated and shown | U | Automated: `test_tc_dsp_04_1_status_changes_are_dated`, `test_tc_dsp_04_on_the_pages` |
+| TC-DSP-04-2 | DSP-04 | Case with no response logged 30 days after the last contact; another with a 10-day override | Reminders appear in the attention queue at 30 and 10 days respectively | U | Automated: `test_tc_dsp_04_2_reminders_at_30_and_10_days_rise_in_the_queue` |
+| TC-DSP-04-3 | DSP-04 | Response logged | Reminder cleared | U | Automated: `test_tc_dsp_04_3_a_reply_clears_the_reminder`, `test_tc_dsp_04_on_the_pages` |
+| TC-DSP-05-1 | DSP-05 | EOB dated 2026-03-01, 180-day appeal window | Deadline 2026-08-28 shown (real dates in the back-end tier) | U | Automated: `test_tc_dsp_05_1_appeal_deadline_from_the_eob_date` |
+| TC-DSP-05-2 | DSP-05 | Self-pay bill exceeds GFE | No Surprises Act dispute deadline 120 days from the bill date | U | Automated: `test_tc_dsp_05_2_*`, `test_tc_dsp_05_on_the_pages` ($400.00 threshold, ADR-042) |
+| TC-DSP-05-3 | DSP-05 | Deadline within 14 days | Item rises in the attention queue | U | Automated: `test_tc_dsp_05_3_a_deadline_within_14_days_rises_in_the_queue` |
 | TC-DSP-06-1 | DSP-06 | Hospital bill; household income below the hospital's assistance threshold | Screen says "may qualify" with a link to the hospital's application | U | New |
 | TC-DSP-06-2 | DSP-06 | Non-hospital provider | Screen not offered | U | New |
-| TC-DSP-07-1 | DSP-07 | Case closed as refunded $75.00 | Lifetime savings +$75.00 | U | New |
-| TC-DSP-07-2 | DSP-07 | Closed as written off $200.00; another closed as denied | +$200.00 and +$0.00 | U | New |
-| TC-DSP-07-3 | DSP-07 | Case reopened and closed again | Savings counted once | U | New |
+| TC-DSP-07-1 | DSP-07 | Case closed as refunded $75.00 | Lifetime savings +$75.00 | U | Automated: `test_tc_dsp_07_1_refunded_75_adds_75`, `test_tc_dsp_07_on_the_pages` |
+| TC-DSP-07-2 | DSP-07 | Closed as written off $200.00; another closed as denied | +$200.00 and +$0.00 | U | Automated: `test_tc_dsp_07_2_written_off_and_denied` |
+| TC-DSP-07-3 | DSP-07 | Case reopened and closed again | Savings counted once | U | Automated: `test_tc_dsp_07_3_reopened_and_closed_again_counts_once`, `test_tc_dsp_07_on_the_pages` |
 
 ### 3.8 User experience and reporting (UX)
 
@@ -657,7 +657,7 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-PLT-01-2 | PLT-01 | Update a reference table | Past findings keep the version they used | U | New |
 | TC-PLT-01-3 | PLT-01 | Inspect the code | No IRS limits, codes or categories hard-coded outside the tables | R | New |
 | TC-PLT-02-1 | PLT-02 | Each release: held-out sample of ≥ 50 documents graded by hand before confirmation | Extracted amounts ≥ 95% correct | M | New |
-| TC-PLT-02-2 | PLT-02 | Findings dismissed by the member as wrong | False-positive rate computed per release and ≤ 5% | U | New |
+| TC-PLT-02-2 | PLT-02 | Findings dismissed by the member as wrong | False-positive rate computed per release and ≤ 5% | U | Exists: `test_false_positives.py` (the computation; the ≤ 5% result is measured on real visits in phase 1.6, ADR-044) |
 | TC-PLT-03-1 | PLT-03 | Any finding or recommendation | Stores rule ID, rule version and source document IDs; "why" view shows them | U | New |
 | TC-PLT-03-2 | PLT-03 | Rule changes to a new version | Old findings still show the old version | U | New |
 | TC-PLT-04-1 | PLT-04 | Capture AI extraction calls from the back-end tier | Only pseudonymized content sent | S | New |
@@ -720,16 +720,16 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | ALC-06 | P1 | 1, 2 (2) | U | — | — |
 | ALC-07 | P2 | 1, 2, 3 (3) | E | — | — |
 | ALC-08 | P2 | 1, 2, 3 (3) | U | — | — |
-| TAX-01 | P2 | 1, 2, 3, 4 (4) | U | — | — |
-| TAX-02 | P2 | 1, 2, 3, 4, 5 (5) | U | — | — |
-| TAX-03 | P2 | 1, 2, 3, 4, 5 (5) | U | — | — |
-| TAX-04 | P1 | 1, 2, 3, 4 (4) | IU | — | 1 partly |
+| TAX-01 | P2 | 1, 2, 3, 4 (4) | U | — | all (ADR-043) |
+| TAX-02 | P2 | 1, 2, 3, 4, 5 (5) | U | — | all (ADR-043) |
+| TAX-03 | P2 | 1, 2, 3, 4, 5 (5) | U | — | all (ADR-043) |
+| TAX-04 | P1 | 1, 2, 3, 4 (4) | IU | — | all (ADR-043) |
 | TAX-05 | P3 | 1, 2, 3 (3) | U | — | — |
-| TAX-06 | P2 | 1, 2, 3, 4, 5 (5) | U | — | — |
-| TAX-07 | P2 | 1, 2, 3 (3) | EU | — | — |
-| TAX-08 | P2 | 1, 2, 3 (3) | U | — | — |
-| TAX-09 | P2 | 1, 2, 3 (3) | U | — | — |
-| TAX-10 | P2 | 1, 2, 3 (3) | U | — | — |
+| TAX-06 | P2 | 1, 2, 3, 4, 5 (5) | U | — | all (ADR-043) |
+| TAX-07 | P2 | 1, 2, 3 (3) | EU | — | all (ADR-043) |
+| TAX-08 | P2 | 1, 2, 3 (3) | U | — | all (ADR-043) |
+| TAX-09 | P2 | 1, 2, 3 (3) | U | — | all (ADR-043) |
+| TAX-10 | P2 | 1, 2, 3 (3) | U | — | all (ADR-043) |
 | PRE-01 | P2 | 1, 2, 3 (3) | EIU | — | — |
 | PRE-02 | P2 | 1, 2, 3 (3) | U | — | — |
 | PRE-03 | P3 | 1, 2, 3 (3) | IU | — | — |
@@ -784,11 +784,11 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 
 ## Appendix A. Existing automated tests (regression baseline)
 
-`uv run pytest` runs these 32 tests today. They are the Release 0 regression suite. One test (marked ⚠) encodes Release 0 behavior that Release 1 extends, and will change when that work is built.
+`uv run pytest` runs these 32 tests today. They are the Release 0 regression suite. One test encoded Release 0's five statuses; phase 1.4 updated it to the nine statuses (2026-10-17).
 
 | Test | MVP requirement | PRD requirement | Note |
 | --- | --- | --- | --- |
-| `test_reconcile.py::test_sample_statuses_match_the_notes_in_the_sample_file` | Section 5 status order, D5 | REC-11, MAT-10 | ⚠ X-03: Release 1 adds 4 statuses; update when built |
+| `test_reconcile.py::test_sample_statuses_match_the_notes_in_the_sample_file` | Section 5 status order, D5 | REC-11, MAT-10 | Updated 2026-10-17 (phase 1.4, X-03): expects the nine REC-11 statuses; Matched is Complete, Waiting is Awaiting EOB |
 | `test_reconcile.py::test_bill_vs_eob_discrepancy_and_provider_overpayment` | C2, C4 | REC-02, REC-03 | Provider-level overpayment (X-07) |
 | `test_reconcile.py::test_hsa_flags` | C5, D11 | MAT-09, TAX-03, TAX-04 | Consistent with X-02 decision (HSA by default) |
 | `test_reconcile.py::test_limit_progress_uses_eob_deductible` | HR-8 | REC-07 | |

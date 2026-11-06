@@ -1,0 +1,9 @@
+{
+  "doc_type": "itemized_bill",
+  "fields": {
+    "patient": "Avery Chen",
+    "provider": "Mercy General Hospital",
+    "statement_date": "2026-04-25",
+    "balance_due": 55400
+  }
+}

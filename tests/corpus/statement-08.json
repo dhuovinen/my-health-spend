@@ -1,0 +1,9 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Sam Ortiz",
+    "provider": "Lakeside Family Medicine",
+    "statement_date": "2026-09-08",
+    "balance_due": 4500
+  }
+}

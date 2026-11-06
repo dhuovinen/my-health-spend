@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Recover your account{% endblock %}
+{% block content %}
+<section class="card auth">
+  <h1>Recover your account</h1>
+  {% if gone %}
+  <p class="alert bad">This recovery has expired or was already finished. Start again with another recovery code.</p>
+  <p><a href="/recover">Start again</a></p>
+  {% elif token %}
+  <p>Your recovery code worked. Choose a new password; next you'll set up your authenticator again and get new recovery codes.</p>
+  {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
+  <form method="post" action="/recover/{{ token }}" class="stack">
+    <label>New password (12 or more characters) <input type="password" name="password" autocomplete="new-password" minlength="12" required autofocus></label>
+    <label>The same password again <input type="password" name="password2" autocomplete="new-password" minlength="12" required></label>
+    <button class="btn primary" type="submit">Set password and continue</button>
+  </form>
+  {% else %}
+  <p>Forgot your password, or lost the phone with your authenticator? Use one of the recovery codes you saved when you set up your account. Each code works once.</p>
+  {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
+  <form method="post" action="/recover" class="stack">
+    <label>Email <input type="email" name="email" value="{{ email or '' }}" autocomplete="username" required autofocus></label>
+    <label>Recovery code <input name="code" autocomplete="one-time-code" placeholder="XXXXX-XXXXX" required></label>
+    <button class="btn primary" type="submit">Continue</button>
+  </form>
+  <p class="muted small">No recovery codes left? Ask whoever set up your account to reset it.</p>
+  {% endif %}
+  <p class="small"><a href="/signin">Back to sign in</a></p>
+</section>
+{% endblock %}

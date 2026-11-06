@@ -1,0 +1,9 @@
+{
+  "doc_type": "itemized_bill",
+  "fields": {
+    "patient": "Sam Ortiz",
+    "provider": "St. Example Medical Center",
+    "statement_date": "2026-06-11",
+    "balance_due": 62000
+  }
+}

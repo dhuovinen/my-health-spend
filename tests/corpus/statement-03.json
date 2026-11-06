@@ -1,0 +1,10 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Morgan Lee",
+    "provider": "Cedar Valley Labs",
+    "statement_date": "2026-11-07",
+    "balance_due": 20300,
+    "account_number": "6636981"
+  }
+}

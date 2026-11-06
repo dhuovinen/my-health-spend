@@ -64,6 +64,24 @@ class VaultStore:
         value = self.keyring.decrypt(household_id, bytes(row["sealed"]), f"vault:{token}:{row['kind']}")
         return row["kind"], value.decode()
 
+    def entries(self, household_id: str) -> list[dict]:
+        """Every token of a household with its value, for the member's export (PRV-09)."""
+        household_id = str(household_id)
+        with self.db.tx(household_id) as c:
+            rows = c.execute("SELECT token, kind, sealed FROM vault.entries WHERE household_id = %s ORDER BY token",
+                             (household_id,)).fetchall()
+        return [{"token": r["token"], "kind": r["kind"],
+                 "value": self.keyring.decrypt(household_id, bytes(r["sealed"]), f"vault:{r['token']}:{r['kind']}").decode()}
+                for r in rows]
+
+    def delete_household(self, household_id: str) -> int:
+        """Delete a household's entries and its data key (PRV-09). Returns how many entries went."""
+        household_id = str(household_id)
+        with self.db.tx(household_id) as c:
+            n = c.execute("DELETE FROM vault.entries WHERE household_id = %s", (household_id,)).rowcount
+            c.execute("DELETE FROM vault.household_keys WHERE household_id = %s", (household_id,))
+        return n
+
     def count(self) -> int:
         """Entries across all households (for backup checks); counts household by household under RLS."""
         total = 0

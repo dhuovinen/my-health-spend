@@ -1,10 +1,11 @@
-"""The Release 0 pages: home, visits, providers and ledgers, notes, import, settings, help (ADR-032).
+"""The Release 0 pages: home, visits, providers and ledgers, notes, dispute cases, import, settings, help (ADR-032).
 
 Both apps mount these routes. Release 0 (web/app.py) hosts them over its SQLite store on the owner's laptop;
 the Release 1 application tier (web/household/app.py) hosts them behind MFA sign-in over the signed-in
 household's Postgres store. A PagesHost supplies everything that differs between the two.
 """
 
+import base64
 import json
 import re
 import secrets
@@ -19,17 +20,25 @@ from fastapi.templating import Jinja2Templates
 from jinja2 import pass_context
 from markupsafe import Markup, escape
 
-from mhs.core.reconcile import STATUS_LABELS, STATUS_ORDER, Report, available_years, build_report
+from mhs import RELEASE
+from mhs.core import disputes, edits
+from mhs.core.accuracy import NOT_CLOSABLE, TARGET, accuracy, open_findings, percent
+from mhs.core.household import NOBODY, household_totals, visits_for
+from mhs.core.lines import BUCKETS, LineMatch
+from mhs.core.reconcile import (ATTENTION, CHECK_NAMES, DOCUMENT_LABELS, FINDING_KINDS, STATUS_HELP, STATUS_LABELS,
+                                STATUS_ORDER, Report, VisitResult, available_years, build_report)
 from mhs.data import importer
-from mhs.data.importer import DocumentFiles, FileSource, UploadedSource
+from mhs.data.importer import BOOKKEEPING, DocumentFiles, FileSource, UploadedSource
 from mhs.data.money import cents, to_dollars
-from mhs.data.repository import load_dataset
+from mhs.data.repository import PREFERENCE, RECONCILIATION, load_dataset, waiting_days
 from mhs.data.settings_file import settings_document
 from mhs.data.store import Store
+from mhs.web import letters
+from mhs.web.tax_pages import add_tax_pages, visit_tax
 
 WEB = Path(__file__).parent
 CATEGORIES = ["provider_visit", "service", "supplements", "rx", "equipment"]
-ACCOUNT_TYPES = ["hsa", "fsa", "credit_card", "debit_card", "bank", "cash", "other"]
+ACCOUNT_TYPES = ["hsa", "fsa", "lpfsa", "hra", "credit_card", "debit_card", "bank", "cash", "other"]
 PROVIDER_KINDS = ["physician_practice", "hospital", "lab", "imaging", "pharmacy", "retailer", "other"]
 NETWORK_STATUSES = ["in_network", "out_of_network", "not_applicable", "unknown"]
 RELATIONSHIPS = ["self", "spouse", "child", "other"]
@@ -37,11 +46,36 @@ LIMIT_TYPES = ["deductible", "out_of_pocket_max", "annual_maximum"]
 LIMIT_NETWORKS = ["in_network", "out_of_network", "combined"]
 NOTE_CHANNELS = ["email", "phone", "portal", "in_person", "letter", "other"]
 NOTE_DIRECTIONS = ["sent", "received", "note"]
+CLOSED_HOW = {"real": "marked dealt with", "wrong": "marked wrong"}
+VERDICT_TEXT = {"real": "a real problem", "wrong": "the finding was wrong"}
 # Visit-list filters behind the home page's HSA totals: query value -> (VisitResult attribute, label)
 HSA_FILTERS = {
     "unpaid": ("remaining", "Unpaid — pay from HSA"),
     "outside_hsa": ("outside_hsa", "Paid outside the HSA"),
     "unexplained": ("unexplained", "Settled by provider, no matching payment"),
+}
+VIEW_COOKIE = "mhs_view"  # the household view's member (UX-06, ADR-041); absent for the family
+HOME_CARDS = 12
+HOME_ATTENTION = 8
+
+
+# Plain-language help for the checks (UX-05; the statuses' help is STATUS_HELP in core). The Help page lists whatever
+# the engine defines, so a check without a sentence here still shows with its name.
+CHECK_HELP = {
+    "C1": "The EOB's own numbers add up: billed = plan paid + discounts + what you owe, and what you owe = deductible "
+          "+ copay + coinsurance + not covered.",
+    "self_pay": "For a visit paid without insurance, the bill's charges, discount and what you owe add up.",
+    "C2": "What the provider asks you for equals what the EOB says you owe, and the provider billed the insurer what it "
+          "billed you.",
+    "lines": "Each line on the bill pairs with a line on the EOB (bundled and panel codes included).",
+    "duplicate": "The same service, date and provider isn't charged twice on a statement.",
+    "C3": "The bill, the EOB and your provider list agree on whether the provider is in network.",
+    "C4": "What you paid the provider matches what you owe: no overpayment, underpayment or payment made twice.",
+    "settlement": "Every dollar you owe is accounted for: paid, written off by the provider, or still owed.",
+    "claim_filed": "A bill with no EOB after the waiting time may mean the provider never filed the claim.",
+    "C6": "A balance the provider shows as owed, how long it has been owed, and whether it's a second notice.",
+    "estimate": "For a self-pay visit with a good-faith estimate, the bill isn't above the estimate. $400 or more above "
+                "it opens the No Surprises Act dispute process for 120 days from the first bill.",
 }
 
 
@@ -53,6 +87,7 @@ class PagesHost(Protocol):
     """What the pages need from the app that mounts them."""
 
     path_import: bool  # offer import by a path on this computer (Release 0 only)
+    cookie_secure: bool  # the household view's cookie is Secure where the sign-in cookie is
 
     def store(self, request: Request) -> Store:
         """The request's record store. Raises to turn away a visitor who isn't signed in."""
@@ -74,13 +109,45 @@ class PagesHost(Protocol):
         """Where attached files go on import."""
         ...
 
-    def scope(self, request: Request) -> str:
-        """Key that keeps one household's import preview away from another's."""
+    def save_preview(self, request: Request, preview: dict) -> str:
+        """Keep an import preview (JSON-safe dict) until it is confirmed; returns its token. One per household."""
+        ...
+
+    def load_preview(self, request: Request, token: str) -> dict | None:
+        """Take back this household's preview for the token (it can be used once), or None."""
+        ...
+
+    def record_view(self, request: Request, kind: str, record_id: str, action: str = "view") -> None:
+        """Note that the request's member looked at a record (Release 1's access log, PRV-10)."""
+        ...
+
+    def identifiers(self, request: Request, store: Store, visit: VisitResult) -> dict[str, str]:
+        """The member's real identifiers for a visit's letters (DSP-02), such as the account number on its statement:
+        Release 1 re-identifies them from vault tokens here in the application tier (ADR-022); Release 0 has none."""
         ...
 
     def default_import_path(self) -> str: ...
 
     def resolve_import_path(self, text: str) -> Path: ...
+
+
+def files_to_json(files) -> dict | None:
+    """Where an import's attached files come from, in a form a preview can be stored as."""
+    if files is None:
+        return None
+    if isinstance(files, Path):
+        return {"folder": str(files)}
+    if isinstance(files, UploadedSource):
+        return {"uploaded": {n: base64.b64encode(d).decode() for n, d in files.files.items()}}
+    raise TypeError(type(files))
+
+
+def files_from_json(spec: dict | None):
+    if spec is None:
+        return None
+    if "folder" in spec:
+        return Path(spec["folder"])
+    return UploadedSource({n: base64.b64decode(d) for n, d in spec["uploaded"].items()})
 
 
 def money_text(value: int | None) -> str:
@@ -118,6 +185,112 @@ def lines_of(text: str) -> list[str]:
     return [line.strip() for line in (text or "").splitlines() if line.strip()]
 
 
+def attention_queue(visits: list[VisitResult]) -> list[VisitResult]:
+    """UX-04: visits that need the member. A follow-up that is due or a deadline 14 days away or nearer comes first,
+    soonest first (TC-DSP-04-2, TC-DSP-05-3, ADR-042); then the most dollars (at stake plus still owed), then the
+    oldest."""
+    return sorted((v for v in visits if v.status in ATTENTION or v.due),
+                  key=lambda v: (not v.due, v.due[0].due if v.due else "", -(v.at_stake + v.remaining),
+                                 v.visit["date"], v.id))
+
+
+def case_lines(match: LineMatch | None) -> list[dict]:
+    """The bill and EOB lines that disagree, as a case keeps them when it is opened (DSP-01)."""
+    out = []
+    for r in line_rows(match):
+        if not r["disagree"]:
+            continue
+        side = r["bill"] or r["eob"]
+        line = {"code": " + ".join(x.get("code") or "" for x in side).strip(" +"),
+                "description": "; ".join(x.get("description") or "" for x in side).strip("; "),
+                "charge": r["charge"], "billed": r["billed"], "patient_amount": r["asked"],
+                "patient_responsibility": r["owed"], "note": "; ".join(r["notes"])}
+        out.append({k: v for k, v in line.items() if v not in (None, "")})
+    return out
+
+
+def line_rows(match: LineMatch | None) -> list[dict]:
+    """TC-UX-02-2: each bill line beside its EOB line, with the difference where they disagree. "asked" is what the
+    statement asks you to pay for the line and "owed" what the EOB says you owe for it, when both print it."""
+    if not match:
+        return []
+
+    def total(lines: list[dict], key: str) -> int | None:
+        values = [l.get(key) for l in lines]
+        return sum(values) if values and all(isinstance(x, int) for x in values) else None
+
+    rows = []
+    for p in match.pairs:
+        asked, owed = total(p.bill, "patient_amount"), total(p.eob, "patient_responsibility")
+        charge_diff = p.charge - p.billed
+        you_diff = asked - owed if asked is not None and owed is not None else 0
+        rows.append({"bill": p.bill, "eob": p.eob, "charge": p.charge, "billed": p.billed, "asked": asked,
+                     "owed": owed, "charge_diff": charge_diff, "you_diff": you_diff, "notes": p.notes,
+                     "disagree": bool(charge_diff or you_diff)})
+    for b in match.bill_only:
+        rows.append({"bill": [b], "eob": [], "charge": b.get("charge"), "billed": None,
+                     "asked": b.get("patient_amount"), "owed": None, "charge_diff": b.get("charge") or 0,
+                     "you_diff": 0, "notes": ["Only on the bill"], "disagree": True})
+    for e in match.eob_only:
+        rows.append({"bill": [], "eob": [e], "charge": None, "billed": e.get("billed"), "asked": None,
+                     "owed": e.get("patient_responsibility"), "charge_diff": -(e.get("billed") or 0),
+                     "you_diff": 0, "notes": ["Only on the EOB"], "disagree": True})
+    return rows
+
+
+def case_history(v: VisitResult, notes: list[dict], accounts: dict[str, dict]) -> list[dict]:
+    """UX-02: one timeline of the visit, newest first, from what its records already hold."""
+    events: list[tuple[str, str, str]] = [(v.visit["date"], "Visit", v.visit.get("description") or "")]
+    for e in v.claims:
+        if e.get("received_date"):
+            events.append((e["received_date"], "The insurer received the claim", e.get("claim_number") or ""))
+        events.append((e["date"], "Insurance decision (EOB)",
+                       f"Claim {e.get('claim_number') or 'without a number'}: you owe "
+                       f"{money_text(e.get('patient_responsibility'))} of {money_text(e.get('billed'))} billed"))
+    for bill, line in reversed(v.bill_lines):
+        balance = f", balance {money_text(line['balance'])}" if line.get("balance") is not None else ""
+        events.append((bill["date"], "Provider statement", f"Asks {money_text(line.get('patient_amount'))}{balance}"))
+    for r in v.receipts:
+        events.append((r["date"], "Receipt", money_text(r.get("total"))))
+    for a in v.allocations:
+        account = accounts.get(a.payment.get("account_id"), {}).get("name", a.payment.get("account_id") or "")
+        what = "Refund" if a.refund else "Payment applied"
+        events.append((a.payment["date"], what, f"{money_text(a.amount)}{' from ' + account if account else ''}"
+                                                f"{' (more than owed)' if a.surplus else ''}"))
+    for kind, choice in (v.visit.get("documents") or {}).items():
+        state = {"expected": "you expect one", "not_applicable": "not needed"}.get(choice.get("state"), "")
+        events.append((choice.get("since") or "", f"{DOCUMENT_LABELS.get(kind, kind)}: {state}", "Set by you"))
+    for c in v.cases:
+        with_whom = f"with {c.party_name}"
+        for h in c.case.get("history") or []:
+            what = {"open": f"You opened a case {with_whom}", "contacted": "Case: contacted",
+                    "waiting": "Case: waiting on them", "resolved": "Case resolved"}[h["status"]]
+            if h["status"] == "open" and h is not (c.case.get("history") or [None])[0]:
+                what = "Case reopened"
+            events.append((h["date"], what, h.get("note") or (c.case.get("note", "") if h["status"] == "open" else "")))
+    for f in v.visit.get("closed_findings") or []:
+        events.append((f["closed"], f"Finding closed: {CHECK_NAMES.get(f['code'], f['code'])}",
+                       ", ".join(filter(None, (money_text(f["amount"]), closed_how(f)))) +
+                       (f": {f['reason']}" if f.get("reason") else "")))
+    for n in notes:
+        if n.get("visit_id") == v.id:
+            how = " · ".join(humanize(n[k]) for k in ("channel", "direction") if n.get(k))
+            who = ", ".join(x for x in (n.get("person"), n.get("reference") and f"ref. {n['reference']}") if x)
+            events.append((n["date"], f"Note{' (' + how + ')' if how else ''}",
+                           n["text"] + (f" ({who})" if who else "")))
+    order = sorted(range(len(events)), key=lambda i: (events[i][0], i), reverse=True)
+    return [{"date": events[i][0], "what": events[i][1], "detail": events[i][2]} for i in order]
+
+
+def closed_how(entry: dict) -> str:
+    """How a finding was closed, with the member's verdict when the way doesn't already say it (ADR-044)."""
+    how = entry.get("how", "")
+    verdict = entry.get("verdict")
+    if verdict and how not in CLOSED_HOW.values() and not how.startswith("case resolved"):  # the outcome says it
+        return f"{how}, {VERDICT_TEXT[verdict]}" if how else VERDICT_TEXT[verdict]
+    return how
+
+
 @pass_context
 def csrf_input(ctx) -> Markup:
     """The hidden CSRF field for a post form; empty where the host has no CSRF token (Release 0)."""
@@ -127,15 +300,21 @@ def csrf_input(ctx) -> Markup:
 
 def make_templates(directories: list[Path], context: Callable[[Request], dict]) -> Jinja2Templates:
     templates = Jinja2Templates(directory=[*directories, WEB / "templates"], context_processors=[context])
-    templates.env.filters.update(money=money_text, nice_date=nice_date, humanize=humanize)
-    templates.env.globals.update(STATUS_LABELS=STATUS_LABELS, STATUS_ORDER=STATUS_ORDER, csrf_input=csrf_input)
+    templates.env.filters.update(money=money_text, nice_date=nice_date, humanize=humanize,
+                                 kind_label=lambda kind: FINDING_KINDS.get(kind, kind or "a finding"))
+    templates.env.tests["contains_finding"] = lambda findings, check: any(
+        (f["code"], f["amount"]) == (check.code, check.amount) for f in findings or [])
+    templates.env.globals.update(STATUS_LABELS=STATUS_LABELS, STATUS_ORDER=STATUS_ORDER, STATUS_HELP=STATUS_HELP,
+                                 BUCKETS=BUCKETS, FINDING_KINDS=FINDING_KINDS, csrf_input=csrf_input,
+                                 CASE_LABELS=disputes.CASE_LABELS, OUTCOMES=disputes.OUTCOMES,
+                                 LETTERS=disputes.LETTERS,
+                                 closed_how=closed_how)
     return templates
 
 
 def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Callable:
     """Mount the pages. Returns preview_import(request, store, data, source, files, notes), which shows the import
     preview for records built elsewhere (Release 1 uploads of HSA and claims exports) and confirms them the same way."""
-    pending: dict[str, tuple[str, importer.ImportPlan]] = {}  # token -> (scope, plan)
 
     def report_for(store: Store, year: int | None) -> Report:
         ds = load_dataset(store)
@@ -168,9 +347,10 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
             raise HTTPException(400, "A note needs some text")
         note.update(provider_id=form.get("provider_id") or note.get("provider_id"),
                     date=form.get("date") or date.today().isoformat(), text=text)
-        for key in ("visit_id", "channel", "direction"):
-            if form.get(key):
-                note[key] = form.get(key)
+        for key in ("visit_id", "channel", "direction", "person", "reference", "outcome"):  # DSP-03: who, ref., outcome
+            value = (form.get(key) or "").strip()
+            if value:
+                note[key] = value
             else:
                 note.pop(key, None)
         errors = importer.record_errors("provider_note", note)
@@ -191,26 +371,76 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
     async def form_error(request: Request, exc: FormError):
         return settings_page(request, host.store(request), error=str(exc), status_code=400)
 
+    def view_of(request: Request, store: Store) -> dict | None:
+        """The household member the pages show (UX-06), or None for the whole family."""
+        member_id = request.cookies.get(VIEW_COOKIE) or ""
+        return store.get("member", member_id) if member_id else None
+
+    @app.post("/view")
+    async def set_view(request: Request):
+        """The household view's switch (UX-06): a member, or the family. Kept for the browser session."""
+        store, form = await posted(request)
+        member_id = form.get("member") or ""
+        response = RedirectResponse(safe_next(form.get("next"), "/"), status_code=303)
+        if member_id and store.get("member", member_id):
+            response.set_cookie(VIEW_COOKIE, member_id, httponly=True, samesite="lax",
+                                secure=host.cookie_secure, path="/")
+        else:
+            response.delete_cookie(VIEW_COOKIE, path="/")
+        return response
+
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request, year: int | None = None):
-        report = report_for(host.store(request), year)
-        attention = sorted((v for v in report.visits if v.status in ("discrepancy", "balance_outstanding")),
-                           key=lambda v: -(v.at_stake + v.remaining))
-        return render(request, "home.html", report=report, attention=attention[:8], totals=report.totals)
+        """ADR-023 and ADR-041: the summary, then the attention queue, then the year's visits as cards."""
+        store = host.store(request)
+        report = report_for(store, year)
+        view = view_of(request, store)
+        visits = visits_for(report.visits, view and view["id"])
+        if view:
+            mine = household_totals(visits, [view], ATTENTION)[1]
+            totals = {**report.totals, "billed": mine.billed, "insurer_paid": mine.insurer_paid, "you_paid": mine.paid,
+                      "at_stake": mine.at_issue}
+            status_counts = mine.status_counts
+            limits = [l for l in report.limits if l.member_id in (None, view["id"])]
+        else:
+            totals, status_counts, limits = report.totals, report.status_counts, report.limits
+        attention = attention_queue(visits)
+        cards = sorted(visits, key=lambda v: (v.visit["date"], v.id), reverse=True)
+        return render(request, "home.html", report=report, totals=totals, status_counts=status_counts, limits=limits,
+                      visits=visits, attention=attention[:HOME_ATTENTION], attention_more=len(attention) - HOME_ATTENTION,
+                      cards=cards[:HOME_CARDS], view=view, members=store.all("member"))
+
+    @app.get("/household", response_class=HTMLResponse)
+    def household(request: Request, year: int | None = None):
+        """UX-06: each member's totals for the plan year and the family's."""
+        store = host.store(request)
+        report = report_for(store, year)
+        members = store.all("member")
+        people, family = household_totals(report.visits, members, ATTENTION)
+        limits = {p.member_id: [l for l in report.limits if l.member_id == p.member_id] for p in people}
+        return render(request, "household.html", report=report, people=people, family=family, limits=limits,
+                      family_limits=[l for l in report.limits if l.member_id is None], members=members,
+                      view=view_of(request, store), NOBODY=NOBODY)
 
     @app.get("/visits", response_class=HTMLResponse)
-    def visits(request: Request, year: int | None = None, status: str = "", member: str = "",
+    def visits(request: Request, year: int | None = None, status: str = "", member: str | None = None,
                provider: str = "", category: str = "", flagged: str = "", hsa: str = ""):
         store = host.store(request)
         report = report_for(store, year)
+        if member is None:  # no filter chosen: the household view's member, if any (UX-06)
+            view = view_of(request, store)
+            member = view["id"] if view else ""
         rows = report.visits
         if hsa in HSA_FILTERS:  # matches the home page's HSA totals, so carry-in visits are included
             rows = [v for v in report.ledger_visits if getattr(v, HSA_FILTERS[hsa][0])]
         if status:
             rows = [v for v in rows if v.status == status]
         if flagged:
-            rows = [v for v in rows if v.status in ("discrepancy", "balance_outstanding") or v.hsa_flags]
-        if member:
+            rows = [v for v in rows if v.status in ATTENTION or v.hsa_flags]
+        if member == "none":  # the Household page's "not assigned" row: no member, or one no longer in Settings
+            known = {m["id"] for m in store.all("member")}
+            rows = [v for v in rows if v.visit.get("member_id") not in known]
+        elif member:
             rows = [v for v in rows if v.visit.get("member_id") == member]
         if provider:
             rows = [v for v in rows if v.group_id == provider]
@@ -222,19 +452,442 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                                "category": category, "flagged": flagged, "hsa": hsa if hsa in HSA_FILTERS else ""},
                       hsa_filters=HSA_FILTERS)
 
-    @app.get("/visits/{visit_id}", response_class=HTMLResponse)
-    def visit_detail(request: Request, visit_id: str):
-        store = host.store(request)
+    def visit_page(request: Request, store: Store, visit_id: str, error: str = "", status_code: int = 200):
         visit = store.get("visit", visit_id)
         if not visit:
             raise HTTPException(404, "Visit not found")
+        host.record_view(request, "visit", visit_id)
         report = report_for(store, int(visit["date"][:4]))
         vr = report.visit(visit_id)
         group = report.group(vr.group_id)
-        return render(request, "visit.html", report=report, v=vr, group=group,
-                      notes=notes_for(store, (p["id"] for p in group.providers)),
-                      plan=store.get("plan", visit.get("plan_id", "")),
-                      accounts={a["id"]: a for a in store.all("account")})
+        notes = notes_for(store, (p["id"] for p in group.providers))
+        accounts = {a["id"]: a for a in store.all("account")}
+        return render(request, "visit.html", status_code=status_code, report=report, v=vr, group=group, error=error,
+                      notes=notes, plan=store.get("plan", visit.get("plan_id", "")), accounts=accounts,
+                      others=[o for o in group.visits if o.id != visit_id], lines=line_rows(vr.line_match),
+                      history=case_history(vr, notes, accounts), tax=visit_tax(store, visit_id))
+
+    @app.get("/visits/{visit_id}", response_class=HTMLResponse)
+    def visit_detail(request: Request, visit_id: str):
+        return visit_page(request, host.store(request), visit_id)
+
+    # ---------- the member's reconciliation decisions (MAT-07, ALC-04, REC-11, MAT-10; ADR-011, ADR-035) ----------
+
+    def visit_or_404(store: Store, visit_id: str) -> dict:
+        visit = store.get("visit", visit_id)
+        if not visit:
+            raise HTTPException(404, "Visit not found")
+        return visit
+
+    def save_record(store: Store, kind: str, record: dict) -> None:
+        """Validate and save a record the member changed, marked as their edit so imports keep it."""
+        definition = record["type"] if kind == "document" else kind
+        clean = {k: v for k, v in record.items() if k not in BOOKKEEPING}
+        errors = importer.record_errors(definition, to_dollars(clean))
+        if errors:
+            raise edits.EditError("; ".join(errors))
+        store.upsert(kind, record, edited=True)
+
+    def back_to(visit_id: str, anchor: str = "") -> RedirectResponse:
+        return RedirectResponse(f"/visits/{visit_id}" + (f"#{anchor}" if anchor else ""), status_code=303)
+
+    async def decide(request: Request, visit_id: str, change: Callable[[Store, dict, object], str]):
+        """Run one decision on a visit; an EditError shows on the visit page instead of saving anything."""
+        store, form = await posted(request)
+        visit = visit_or_404(store, visit_id)
+        try:
+            target = change(store, visit, form)
+        except edits.EditError as e:
+            return visit_page(request, store, visit_id, error=str(e), status_code=400)
+        return back_to(target or visit_id)
+
+    def new_visit_like(store: Store, visit: dict, when: str | None = None) -> dict:
+        when = when or visit["date"]
+        base = f"v-{when}-{visit['provider_id'].removeprefix('prov-')}"
+        vid, n = base, 2
+        while store.get("visit", vid):
+            vid, n = f"{base}-{n}", n + 1
+        new = {k: visit[k] for k in ("provider_id", "member_id", "plan_id", "category", "payment_path") if k in visit}
+        return {"id": vid, "date": when, **new, "description": "Split off from another visit"}
+
+    def document_on(store: Store, visit_id: str, doc_id: str) -> dict:
+        doc = store.get("document", doc_id)
+        if not doc or doc_id not in edits.references(visit_id, [doc]):
+            raise HTTPException(404, "Document not found on this visit")
+        return doc
+
+    @app.post("/visits/{visit_id}/documents/{doc_id}/confirm")
+    async def confirm_match(request: Request, visit_id: str, doc_id: str):
+        def change(store, visit, form):
+            save_record(store, "document", edits.confirm_match(document_on(store, visit_id, doc_id), visit_id))
+            return ""
+        return await decide(request, visit_id, change)
+
+    @app.post("/visits/{visit_id}/documents/{doc_id}/move")
+    async def move_document(request: Request, visit_id: str, doc_id: str):
+        """Not this visit: move a document, or some of a statement's lines, to another visit or a new one."""
+        def change(store, visit, form):
+            doc = document_on(store, visit_id, doc_id)
+            target = form.get("target") or ""
+            items = [int(i) for i in form.getlist("items") if str(i).isdigit()] or None
+            if target == "new":
+                lines = [l for l in doc.get("lines", []) if l.get("visit_id") == visit_id]
+                chosen = [it for l in lines for n, it in enumerate(l.get("items") or []) if items is None or n in items]
+                dates = sorted(d for d in (it.get("service_date") for it in chosen) if d)
+                new = new_visit_like(store, visit, dates[0] if dates else None)
+                save_record(store, "visit", new)
+                target = new["id"]
+            elif not store.get("visit", target):
+                raise edits.EditError("Choose the visit it belongs to.")
+            save_record(store, "document", edits.move_document(doc, visit_id, target,
+                                                               reject=form.get("reject") == "1", items=items))
+            return target
+        return await decide(request, visit_id, change)
+
+    @app.post("/visits/{visit_id}/merge")
+    async def merge_visit(request: Request, visit_id: str):
+        """Merge another visit into this one: its documents, payment splits and notes move here."""
+        def change(store, visit, form):
+            other = form.get("other") or ""
+            if not store.get("visit", other):
+                raise edits.EditError("Choose the visit to merge into this one.")
+            kept, renames = edits.merge_cases(visit, store.get("visit", other))
+            if kept != visit:
+                save_record(store, "visit", kept)
+            for kind, record in edits.merge_visits(visit_id, other, store.all("document"), store.all("provider_note")):
+                if kind == "document":
+                    save_record(store, kind, record)
+                else:
+                    if record.get("case_id") in renames:
+                        record = {**record, "case_id": renames[record["case_id"]]}
+                    store.upsert(kind, record, edited=True)
+            store.delete("visit", other, edited=True)
+            return ""
+        return await decide(request, visit_id, change)
+
+    @app.post("/visits/{visit_id}/delete")
+    async def delete_visit(request: Request, visit_id: str):
+        """TC-MAT-01-4: a visit that still has documents, payments or notes can't be deleted (no orphans)."""
+        store, form = await posted(request)
+        visit_or_404(store, visit_id)
+        refs = edits.references(visit_id, store.all("document"), store.all("provider_note"))
+        if refs:
+            return visit_page(request, store, visit_id, status_code=400, error=(
+                f"This visit still has {len(refs)} document{'s' if len(refs) != 1 else ''} or note"
+                f"{'s' if len(refs) != 1 else ''} ({', '.join(refs)}). Move them to another visit, or merge the "
+                f"visits, before deleting it."))
+        store.delete("visit", visit_id, edited=True)
+        return RedirectResponse("/visits", status_code=303)
+
+    @app.post("/visits/{visit_id}/findings")
+    async def finding(request: Request, visit_id: str):
+        def change(store, visit, form):
+            try:
+                code, amount = form.get("code") or "", int(form.get("amount") or 0)
+            except ValueError:
+                raise edits.EditError("Unknown finding.") from None
+            if form.get("action") == "reopen":
+                changed = edits.reopen_finding(visit, code, amount)
+            else:
+                # PLT-02: the member says whether it was a real problem or wrong (ADR-044).
+                verdict = form.get("verdict") or ""
+                if verdict not in edits.VERDICTS:
+                    raise edits.EditError("Say whether the finding was a real problem or wrong.")
+                finding = next((c for c in report_for(store, int(visit["date"][:4])).visit(visit_id).findings
+                                if (c.code, c.amount) == (code, amount) and c.code not in NOT_CLOSABLE), None)
+                if finding is None:
+                    raise edits.EditError("That finding isn't open on this visit.")
+                changed = edits.close_finding(visit, code, amount, date.today().isoformat(), CLOSED_HOW[verdict],
+                                              verdict, form.get("reason") or "", finding.kind, RELEASE)
+            save_record(store, "visit", changed)
+            return ""
+        return await decide(request, visit_id, change)
+
+    @app.post("/visits/{visit_id}/estimate")
+    async def estimate(request: Request, visit_id: str):
+        """The provider's good-faith estimate for a self-pay visit (No Surprises Act, DSP-05); empty removes it."""
+        def change(store, visit, form):
+            text = (form.get("good_faith_estimate") or "").strip()
+            changed = {k: v for k, v in visit.items() if k != "good_faith_estimate"}
+            if text:
+                try:
+                    changed["good_faith_estimate"] = parse_money(text, "Good-faith estimate")
+                except FormError as e:
+                    raise edits.EditError(str(e)) from None
+            save_record(store, "visit", changed)
+            return ""
+        return await decide(request, visit_id, change)
+
+    # ---------- dispute cases (DSP-01 to DSP-05, DSP-07; ADR-042) ----------
+
+    def case_of(store: Store, visit_id: str, case_id: str) -> tuple[dict, VisitResult, disputes.CaseView, Report]:
+        visit = visit_or_404(store, visit_id)
+        report = report_for(store, int(visit["date"][:4]))
+        vr = report.visit(visit_id)
+        case = next((c for c in vr.cases if c.id == case_id), None)
+        if case is None:
+            raise HTTPException(404, "Case not found")
+        return visit, vr, case, report
+
+    def case_url(visit_id: str, case_id: str, anchor: str = "") -> str:
+        return f"/visits/{visit_id}/cases/{case_id}" + (f"#{anchor}" if anchor else "")
+
+    def case_page(request: Request, store: Store, visit_id: str, case_id: str, error: str = "",
+                  status_code: int = 200, contact: dict | None = None):
+        visit, vr, case, report = case_of(store, visit_id, case_id)
+        host.record_view(request, "case", f"{visit_id}/{case_id}")
+        plan = store.get("plan", visit.get("plan_id", ""))
+        ids = host.identifiers(request, store, vr)
+        return render(request, "case.html", status_code=status_code, v=vr, case=case, plan=plan, error=error,
+                      group=report.group(vr.group_id), script=letters.call_script(vr, case, plan, ids), ids=ids,
+                      identifier_fields=letters.IDENTIFIERS, today=date.today().isoformat(), channels=NOTE_CHANNELS,
+                      contact=contact or {}, follow_up_default=disputes.FOLLOW_UP_DAYS,
+                      statuses=[s for s in disputes.CASE_STATUSES if s != "resolved"], help=disputes.CASE_HELP)
+
+    @app.get("/visits/{visit_id}/cases/{case_id}", response_class=HTMLResponse)
+    def case_detail(request: Request, visit_id: str, case_id: str):
+        return case_page(request, host.store(request), visit_id, case_id)
+
+    async def case_change(request: Request, visit_id: str, case_id: str,
+                          change: Callable[[Store, dict, VisitResult, disputes.CaseView, object], str | None]):
+        """Run one change on a case; an EditError shows on the case page instead of saving anything."""
+        store, form = await posted(request)
+        visit, vr, case, _ = case_of(store, visit_id, case_id)
+        try:
+            anchor = change(store, visit, vr, case, form)
+        except edits.EditError as e:
+            return case_page(request, store, visit_id, case_id, error=str(e), status_code=400,
+                             contact={k: form.get(k) or "" for k in form.keys() if k != "csrf_token"})
+        return RedirectResponse(case_url(visit_id, case_id, anchor or ""), status_code=303)
+
+    @app.post("/visits/{visit_id}/cases")
+    async def open_case(request: Request, visit_id: str):
+        """DSP-01: a case about one finding (code:amount) or the whole visit, with the evidence it stands on."""
+        store, form = await posted(request)
+        visit = visit_or_404(store, visit_id)
+        vr = report_for(store, int(visit["date"][:4])).visit(visit_id)
+        which = form.get("finding") or "all"
+        findings = [{"code": c.code, "kind": c.kind, "amount": c.amount, "detail": c.detail} for c in vr.findings
+                    if c.code != "C6" and (which == "all" or which == f"{c.code}:{c.amount}")]  # a balance isn't a dispute
+        if which != "all" and not findings:
+            return visit_page(request, store, visit_id, error="That finding is no longer open.", status_code=400)
+        party = form.get("party") or None
+        try:
+            changed, case_id = edits.open_case(visit, date.today().isoformat(), findings,
+                                               case_lines(vr.line_match) if findings else [], party,
+                                               (form.get("note") or "").strip())
+            save_record(store, "visit", changed)
+        except edits.EditError as e:
+            return visit_page(request, store, visit_id, error=str(e), status_code=400)
+        return RedirectResponse(case_url(visit_id, case_id), status_code=303)
+
+    @app.post("/visits/{visit_id}/cases/{case_id}/status")
+    async def case_status(request: Request, visit_id: str, case_id: str):
+        """TC-DSP-04-1: open, contacted or waiting, each change dated; also who the case is with."""
+        def change(store, visit, vr, case, form):
+            changed = visit
+            if form.get("party") and form.get("party") != case.party:
+                changed = edits.set_case_party(changed, case_id, form.get("party"))
+            if form.get("status"):
+                changed = edits.set_case_status(changed, case_id, form.get("status"), date.today().isoformat(),
+                                                (form.get("note") or "").strip())
+            save_record(store, "visit", changed)
+            return "status"
+        return await case_change(request, visit_id, case_id, change)
+
+    @app.post("/visits/{visit_id}/cases/{case_id}/follow-up")
+    async def case_follow_up(request: Request, visit_id: str, case_id: str):
+        """DSP-04: days after the last contact before a reminder (default 30)."""
+        def change(store, visit, vr, case, form):
+            text = (form.get("days") or "").strip()
+            try:
+                days = int(text) if text else None
+            except ValueError:
+                raise edits.EditError("The follow-up is a number of days from 1 to 365.") from None
+            save_record(store, "visit", edits.set_follow_up(visit, case_id, days))
+            return "status"
+        return await case_change(request, visit_id, case_id, change)
+
+    def log_contact(store: Store, visit: dict, case: disputes.CaseView, note: dict) -> None:
+        """Save a contact on the case's log; something sent moves an open case to contacted, a reply moves a
+        contacted case to waiting."""
+        note = {"id": f"note-{note['date']}-{secrets.token_hex(3)}", "provider_id": visit["provider_id"],
+                "visit_id": visit["id"], "case_id": case.id, **note}
+        if note.get("party") == "provider":
+            del note["party"]
+        errors = importer.record_errors("provider_note", note)
+        if errors:
+            raise edits.EditError("; ".join(errors))
+        store.upsert("provider_note", note, edited=True)
+        moves = {("open", "sent"): "contacted", ("contacted", "received"): "waiting"}
+        status = moves.get((case.status, note.get("direction")))
+        if status:
+            save_record(store, "visit", edits.set_case_status(visit, case.id, status, note["date"]))
+
+    @app.post("/visits/{visit_id}/cases/{case_id}/contacts")
+    async def case_contact(request: Request, visit_id: str, case_id: str):
+        """DSP-03: log a call (date, person, reference number, outcome) or another contact on the case."""
+        def change(store, visit, vr, case, form):
+            if not case.open:
+                raise edits.EditError("This case is resolved. Reopen it to log more.")
+            channel = form.get("channel") or "phone"
+            fields = {k: (form.get(k) or "").replace("\r\n", "\n").strip() for k in ("person", "reference", "outcome", "text")}
+            if channel == "phone" and not fields["outcome"]:
+                raise edits.EditError("Say how the call ended (the outcome) before saving it.")
+            text = fields["text"] or fields["outcome"]
+            if not text:
+                raise edits.EditError("Say what was sent or said.")
+            when = form.get("date") or date.today().isoformat()
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", when):
+                raise edits.EditError("Choose the date.")
+            note = {"date": when, "channel": channel, "direction": form.get("direction") or "sent", "text": text,
+                    "party": form.get("party") or case.party}
+            note.update({k: v for k, v in fields.items() if v and k != "text"})
+            log_contact(store, visit, case, note)
+            return "log"
+        return await case_change(request, visit_id, case_id, change)
+
+    def letter_ids(request: Request, store: Store, vr: VisitResult, form) -> dict[str, str]:
+        """What the app knows, overridden by what the member typed on the form (used for this draft, never kept)."""
+        ids = dict(host.identifiers(request, store, vr))
+        for key in letters.IDENTIFIERS:
+            value = (form.get(key) or "").strip()
+            if value:
+                ids[key] = value
+        return ids
+
+    @app.post("/visits/{visit_id}/cases/{case_id}/letter")
+    async def case_letter(request: Request, visit_id: str, case_id: str):
+        """DSP-02: a draft letter, made here in the application tier and returned; not stored, queued or sent."""
+        store, form = await posted(request)
+        visit, vr, case, _ = case_of(store, visit_id, case_id)
+        kind = form.get("kind") or case.letter
+        if kind not in disputes.LETTERS:
+            raise HTTPException(400, "Choose a letter")
+        plan = store.get("plan", visit.get("plan_id", ""))
+        letter = letters.draft(kind, vr, case, plan, letter_ids(request, store, vr, form))
+        host.record_view(request, "letter", f"{visit_id}/{case_id}/{kind}",
+                         "download" if form.get("format") == "text" else "view")
+        headers = {"Cache-Control": "no-store"}
+        if form.get("format") == "text":
+            headers["Content-Disposition"] = f'attachment; filename="{kind}-{visit["date"]}.txt"'
+            return Response(letter.text, media_type="text/plain; charset=utf-8", headers=headers)
+        page = render(request, "letter.html", v=vr, case=case, letter=letter, disclaimer=letters.DISCLAIMER,
+                      fields={k: (form.get(k) or "").strip() for k in letters.IDENTIFIERS},
+                      blanks=[letters.IDENTIFIERS[k].lower() for k in letter.blanks],
+                      today=date.today().isoformat())
+        page.headers.update(headers)
+        return page
+
+    @app.post("/visits/{visit_id}/cases/{case_id}/sent")
+    async def case_sent(request: Request, visit_id: str, case_id: str):
+        """TC-DSP-02-2: the member says they sent a letter; the app logs it (without its text) and sends nothing."""
+        def change(store, visit, vr, case, form):
+            kind = form.get("kind") or ""
+            if kind not in disputes.LETTERS:
+                raise edits.EditError("Choose the letter you sent.")
+            channel = form.get("channel") if form.get("channel") in NOTE_CHANNELS else "letter"
+            when = form.get("date") or date.today().isoformat()
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", when):
+                raise edits.EditError("Choose the date.")
+            log_contact(store, visit, case, {"date": when, "channel": channel, "direction": "sent",
+                                             "party": disputes.LETTER_PARTY[kind],
+                                             "text": f"Sent the {disputes.LETTERS[kind].lower()}"})
+            return "log"
+        return await case_change(request, visit_id, case_id, change)
+
+    @app.post("/visits/{visit_id}/cases/{case_id}/resolve")
+    async def case_resolve(request: Request, visit_id: str, case_id: str):
+        """DSP-07: the outcome and the dollars recovered; the case's findings close with it."""
+        def change(store, visit, vr, case, form):
+            text = (form.get("recovered") or "").strip()
+            try:
+                amount = parse_money(text, "Amount recovered") if text else case.amount
+            except FormError as e:
+                raise edits.EditError(str(e)) from None
+            save_record(store, "visit", edits.resolve_case(visit, case_id, date.today().isoformat(),
+                                                           form.get("result") or "", amount,
+                                                           (form.get("note") or "").strip(), RELEASE))
+            return ""
+        return await case_change(request, visit_id, case_id, change)
+
+    @app.post("/visits/{visit_id}/cases/{case_id}/reopen")
+    async def case_reopen(request: Request, visit_id: str, case_id: str):
+        def change(store, visit, vr, case, form):
+            save_record(store, "visit", edits.reopen_case(visit, case_id, date.today().isoformat()))
+            return ""
+        return await case_change(request, visit_id, case_id, change)
+
+    @app.get("/cases", response_class=HTMLResponse)
+    def cases(request: Request):
+        """Every case, open ones first with what is due next; the dollars recovered so far (DSP-07)."""
+        store = host.store(request)
+        ds = load_dataset(store)
+        rows: list[tuple[VisitResult, disputes.CaseView]] = []
+        lifetime = 0
+        for year in available_years(ds):
+            report = build_report(ds, year, date.today())
+            lifetime = report.recovered_lifetime
+            rows += [(v, c) for v in report.visits for c in v.cases]
+        open_rows = sorted((r for r in rows if r[1].open),
+                           key=lambda r: (not r[0].due, r[0].due[0].due if r[0].due else "", r[1].case["opened"]))
+        closed_rows = sorted((r for r in rows if not r[1].open),
+                             key=lambda r: r[1].outcome["date"] if r[1].outcome else "", reverse=True)
+        by_year: dict[str, int] = {}
+        for v, c in closed_rows:
+            if c.outcome:
+                by_year[c.outcome["date"][:4]] = by_year.get(c.outcome["date"][:4], 0) + c.recovered
+        return render(request, "cases.html", open_rows=open_rows, closed_rows=closed_rows, lifetime=lifetime,
+                      by_year=sorted(by_year.items(), reverse=True))
+
+    @app.post("/visits/{visit_id}/expected")
+    async def expected(request: Request, visit_id: str):
+        def change(store, visit, form):
+            state = form.get("state") or None
+            save_record(store, "visit", edits.set_expectation(visit, form.get("kind") or "",
+                                                              None if state == "default" else state,
+                                                              date.today().isoformat()))
+            return ""
+        return await decide(request, visit_id, change)
+
+    @app.post("/visits/{visit_id}/payment-path")
+    async def payment_path(request: Request, visit_id: str):
+        def change(store, visit, form):
+            path = form.get("path")
+            changed = {k: v for k, v in visit.items() if k != "payment_path"}
+            if path in ("insurance", "self_pay"):
+                changed["payment_path"] = path
+            save_record(store, "visit", changed)
+            return ""
+        return await decide(request, visit_id, change)
+
+    @app.post("/payments/{payment_id}/split")
+    async def split_payment(request: Request, payment_id: str):
+        """ALC-04: the member's split of a payment across visits; "reset" goes back to the statement or oldest first."""
+        store, form = await posted(request)
+        payment = store.get("document", payment_id)
+        if not payment or payment["type"] != "payment" or payment.get("kind") == "refund":
+            raise HTTPException(404, "Payment not found")
+        year = int(payment["date"][:4])
+        group = next((g for g in report_for(store, year).groups if payment in g.payments), None)
+        group_id = group.id if group else ""
+        group_visits = {v.id for v in group.visits} if group else set()
+        try:
+            if form.get("action") == "reset":
+                changed = edits.clear_split(payment)
+            else:
+                splits = {}
+                for key in form.keys():
+                    if key.startswith("split-") and (form.get(key) or "").strip():
+                        vid = key.removeprefix("split-")
+                        if vid not in group_visits:
+                            raise edits.EditError("A payment can only be split across this provider's visits.")
+                        splits[vid] = parse_money(form.get(key), "Amount")
+                changed = edits.set_split(payment, splits)
+            save_record(store, "document", changed)
+        except (edits.EditError, FormError) as e:
+            return ledger_page(request, store, group_id, year, {payment_id: str(e)}, status_code=400)
+        return RedirectResponse(f"/providers/{group_id}?year={year}#pay-{payment_id}", status_code=303)
 
     @app.get("/providers", response_class=HTMLResponse)
     def providers(request: Request, year: int | None = None, flag: str = ""):
@@ -246,16 +899,26 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         groups = [g for g in report.groups if flag in g.flags] if flag else report.groups
         return render(request, "providers.html", report=report, groups=groups, flag=flag, note_counts=counts)
 
-    @app.get("/providers/{group_id}", response_class=HTMLResponse)
-    def ledger(request: Request, group_id: str, year: int | None = None):
-        store = host.store(request)
+    def ledger_page(request: Request, store: Store, group_id: str, year: int | None, split_error: dict | None = None,
+                    status_code: int = 200):
         report = report_for(store, year)
         group = report.group(group_id)
         if not group:
             raise HTTPException(404, f"No activity for this provider in {report.year}")
-        return render(request, "ledger.html", report=report, g=group,
+        split = {}  # payment id -> {visit id: amount} as allocated now
+        for v in group.visits:
+            for a in v.allocations:
+                if not a.refund:
+                    split.setdefault(a.payment["id"], {}).setdefault(v.id, 0)
+                    split[a.payment["id"]][v.id] += a.amount
+        return render(request, "ledger.html", status_code=status_code, report=report, g=group, split=split,
+                      split_error=split_error or {},
                       notes=notes_for(store, (p["id"] for p in group.providers)), today=date.today().isoformat(),
                       channels=NOTE_CHANNELS, directions=NOTE_DIRECTIONS)
+
+    @app.get("/providers/{group_id}", response_class=HTMLResponse)
+    def ledger(request: Request, group_id: str, year: int | None = None):
+        return ledger_page(request, host.store(request), group_id, year)
 
     @app.post("/notes")
     async def add_note(request: Request):
@@ -287,6 +950,7 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         doc = store.get("document", doc_id)
         if not doc or "stored_file" not in doc:
             raise HTTPException(404, "No file stored for this document")
+        host.record_view(request, "document", doc_id, "download")
         return host.file_response(store, doc)
 
     # ---------- import ----------
@@ -331,20 +995,19 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                        status_code: int = 200) -> HTMLResponse:
         plan = importer.prepare(data, store, source, files)
         plan.warnings.extend(notes)
-        scope = host.scope(request)
-        for token in [t for t, (s, _) in pending.items() if s == scope]:
-            del pending[token]
-        token = secrets.token_urlsafe(16)
-        pending[token] = (scope, plan)
+        token = host.save_preview(request, {"source": source, "data": data, "files": files_to_json(files)})
         return render(request, "import_preview.html", status_code=status_code, plan=plan, token=token)
 
     @app.post("/import/confirm")
     async def import_confirm(request: Request):
         store, form = await posted(request)
-        scope, plan = pending.get(form.get("token", ""), (None, None))
-        if plan is None or scope != host.scope(request) or not plan.ok:
+        preview = host.load_preview(request, form.get("token") or "")
+        if preview is None:
             return RedirectResponse("/import", status_code=303)
-        del pending[form.get("token")]
+        # The plan is made again from what was checked; commit re-checks member edits made since the preview.
+        plan = importer.prepare(preview["data"], store, preview["source"], files_from_json(preview["files"]))
+        if not plan.ok:
+            return RedirectResponse("/import", status_code=303)
         importer.commit(plan, store, host.document_files(request), replace_edits=form.get("replace_edits") == "1")
         if any(s in plan.data for s in ("plans", "accounts", "members", "providers", "provider_relationships")):
             host.settings_saved(store)
@@ -362,6 +1025,7 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                       relationships=store.all("provider_relationship"),
                       provider_names={p["id"]: p["name"] for p in store.all("provider")},
                       member_names={m["id"]: m["name"] for m in store.all("member")},
+                      waiting_days=waiting_days(store),
                       opts={"account_types": ACCOUNT_TYPES, "provider_kinds": PROVIDER_KINDS,
                             "network_statuses": NETWORK_STATUSES, "relationships": RELATIONSHIPS,
                             "limit_types": LIMIT_TYPES, "limit_networks": LIMIT_NETWORKS})
@@ -449,6 +1113,19 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
             save_settings(store, "plan", "plan", plan)
         return back("plans")
 
+    @app.post("/settings/reconciliation")
+    async def save_reconciliation(request: Request):
+        """REC-11: how long to wait for an EOB or another document before it counts as missing."""
+        store, form = await posted(request)
+        try:
+            days = int(form.get("waiting_days") or 0)
+        except ValueError:
+            days = 0
+        if not 1 <= days <= 365:
+            raise FormError("The waiting time is a number of days from 1 to 365")
+        store.upsert(PREFERENCE, {"id": RECONCILIATION, "waiting_days": days}, edited=True)
+        return back("reconciliation")
+
     @app.post("/settings/members")
     async def save_member(request: Request):
         store, form = await posted(request)
@@ -504,9 +1181,25 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         save_settings(store, "provider_relationship", "provider_relationship", rel)
         return back("relationships")
 
+    @app.get("/accuracy", response_class=HTMLResponse)
+    def accuracy_page(request: Request, year: int | None = None):
+        """PLT-02, TC-PLT-02-2: how many of the findings the member closed in a year they marked wrong (ADR-044)."""
+        store = host.store(request)
+        ds = load_dataset(store)
+        today = date.today()
+        closed_years = {int(f["closed"][:4]) for v in ds.visits for f in v.get("closed_findings") or []
+                        if f.get("closed")}
+        years = sorted(closed_years | {today.year}, reverse=True)
+        year = year if year in years else today.year
+        open_now = open_findings([build_report(ds, y, today) for y in available_years(ds)])
+        acc = accuracy(ds.visits, open_now, f"{year}-01-01", f"{year}-12-31")
+        return render(request, "accuracy.html", acc=acc, total=acc.total, year=year, years=years, TARGET=TARGET,
+                      percent=percent)
+
     @app.get("/help", response_class=HTMLResponse)
     def help_page(request: Request):
         host.store(request)
-        return render(request, "help.html")
+        return render(request, "help.html", CHECK_NAMES=CHECK_NAMES, CHECK_HELP=CHECK_HELP, STATUS_HELP=STATUS_HELP)
 
+    add_tax_pages(app, render, host, posted)  # the HSA and tax page (ADR-043)
     return preview_import

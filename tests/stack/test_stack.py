@@ -191,3 +191,59 @@ def test_captured_traffic_stays_first_party(member):
     for f in flows:
         if f["response_headers"].get("content-type", "").startswith("text/html"):
             assert not re.search(r'(?:src|href)="(?:https?:)?//', f["response_body"]), f["path"]
+
+
+def test_forwarded_email_arrives_and_is_read(member):
+    """TC-ING-01-4 on the stack: mail to the household's address through the `mail` service becomes an upload the
+    worker reads; strangers and unknown addresses are refused at SMTP."""
+    import smtplib
+    from email.message import EmailMessage
+
+    from mhs.data.db import Database
+    from mhs.data.household_store import HouseholdStore
+    from mhs.stack import database_url
+    from mhs.web.household.inbound import address_for
+
+    m, _, _ = member
+    db = Database(database_url(), max_size=1)
+    to = address_for(db, m.household_id)
+    host, port = os.environ["MHS_STACK_MAIL"].split(":")
+
+    def mail(sender: str, rcpt: str):
+        msg = EmailMessage()
+        msg["From"], msg["To"], msg["Subject"] = sender, rcpt, "Fwd: EOB"
+        msg.set_content("Forwarding my EOB.")
+        msg.add_attachment(make_pdf(EOB + "Forwarded copy\n"), maintype="application", subtype="pdf",
+                           filename="forwarded-eob.pdf")
+        with smtplib.SMTP(host, int(port), timeout=30) as smtp:
+            smtp.send_message(msg)
+
+    with pytest.raises(smtplib.SMTPRecipientsRefused):
+        mail(m.email, "nobody@inbound.mhs.local")
+    with pytest.raises(smtplib.SMTPDataError):
+        mail("stranger@example.test", to)
+    mail(m.email, to)
+    store = HouseholdStore(db, m.household_id)
+    deadline = time.monotonic() + 60
+    while True:
+        emailed = [r for r in store.all("original") if r.get("via") == "email"]
+        if emailed and (ext := store.get("extraction", emailed[0]["id"])) and ext["status"] == "review":
+            break
+        assert time.monotonic() < deadline, "the forwarded EOB wasn't read"
+        time.sleep(0.5)
+    assert ext["doc_type"] == "eob" and len(emailed) == 1
+    db.close()
+
+
+def test_typical_uploads_reach_a_visit_within_a_minute(member):
+    """PLT-05 (TC-PLT-05-1, small): a few typical uploads, timed from upload to a confirmed visit without the member's
+    own review time; tools/perf_run.py runs the full 50."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("perf_run", Path("/srv/mhs/tools/perf_run.py"))
+    perf = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(perf)
+    results = perf.run(5, STACK_URL)
+    s = perf.summary(results)
+    assert s["confirmed"] == 5, results
+    assert s["p95_seconds"] < perf.TARGET_SECONDS, s

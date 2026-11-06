@@ -1,0 +1,10 @@
+{
+  "doc_type": "provider_statement",
+  "fields": {
+    "patient": "Riley Novak",
+    "provider": "Bennett Radiology",
+    "statement_date": "2026-11-18",
+    "balance_due": 4500,
+    "account_number": "6594629"
+  }
+}

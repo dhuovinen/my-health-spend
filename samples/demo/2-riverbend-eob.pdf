@@ -1,0 +1,54 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 829 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+40 760 Td
+(Example Health) Tj T*
+(EXPLANATION OF BENEFITS          THIS IS NOT A BILL) Tj T*
+(Patient: Jordan Sample     Member ID: W987-654-321) Tj T*
+(Provider: Riverbend Orthopedics) Tj T*
+(Claim number: C-2026-0814) Tj T*
+(Date of service: 08/14/2026) Tj T*
+(Date processed: 09/24/2026) Tj T*
+(Amount billed: $480.00) Tj T*
+(Plan discount: $180.00) Tj T*
+(Allowed amount: $300.00) Tj T*
+(Plan paid: $0.00) Tj T*
+(Deductible: $300.00) Tj T*
+(Your responsibility: $300.00) Tj T*
+(In-network) Tj T*
+(Date        Code   Service       Billed   Allowed   Plan paid   You owe) Tj T*
+(08/14/2026 99214 Office visit $260.00 $160.00 $0.00 $160.00) Tj T*
+(08/14/2026 73562 X-ray, knee $220.00 $140.00 $0.00 $140.00) Tj T*
+(The provider may not bill you more than Your responsibility for in-network services.) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000001065 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1191
+%%EOF

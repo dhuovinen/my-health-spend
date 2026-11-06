@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Riley Novak",
+    "provider": "Riverbend Orthopedics",
+    "claim_number": "9370557965",
+    "service_start": "2026-10-16",
+    "billed": 190350,
+    "adjustment": 40650,
+    "allowed": 149700,
+    "insurer_paid": 145200,
+    "patient_responsibility": 4500
+  }
+}

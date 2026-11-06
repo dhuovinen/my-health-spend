@@ -4,6 +4,10 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("select[data-autosubmit]").forEach((el) => {
     el.addEventListener("change", () => el.form.submit());
   });
+  // A file input marked data-autosubmit uploads as soon as a file is chosen (the phone's "Take a photo").
+  document.querySelectorAll("input[type=file][data-autosubmit]").forEach((el) => {
+    el.addEventListener("change", () => { if (el.files.length) el.form.submit(); });
+  });
   // Forms with data-confirm ask before submitting (e.g. deleting a note).
   document.querySelectorAll("form[data-confirm]").forEach((form) => {
     form.addEventListener("submit", (event) => {

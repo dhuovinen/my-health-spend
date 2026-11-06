@@ -1,0 +1,14 @@
+{
+  "doc_type": "eob",
+  "fields": {
+    "patient": "Morgan Lee",
+    "provider": "Cedar Valley Labs",
+    "claim_number": "4792767750",
+    "service_start": "2026-02-17",
+    "billed": 169750,
+    "adjustment": 59550,
+    "allowed": 110200,
+    "insurer_paid": 105700,
+    "patient_responsibility": 4500
+  }
+}

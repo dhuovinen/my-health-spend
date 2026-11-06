@@ -214,6 +214,12 @@
         },
         "extensions": {
           "$ref": "#/$defs/extensions"
+        },
+        "appeal_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3650,
+          "description": "Days after an EOB to appeal it to the insurer (DSP-05). Default 180, the ACA minimum for internal appeals."
         }
       }
     },
@@ -238,16 +244,96 @@
           "enum": [
             "hsa",
             "fsa",
+            "lpfsa",
+            "hra",
             "credit_card",
             "debit_card",
             "bank",
             "cash",
             "other"
-          ]
+          ],
+          "description": "fsa is a general-purpose health FSA; lpfsa a limited-purpose (dental and vision) FSA; hra a health reimbursement arrangement."
         },
         "plan_year": {
           "type": "integer",
           "description": "For FSAs and other per-year accounts."
+        },
+        "opened": {
+          "$ref": "#/$defs/date",
+          "description": "When an HSA was established; expenses before it can't be reimbursed from it (TAX-04)."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "description": "The account holder first (HSA), or the participants (FSA, HRA)."
+        },
+        "plan_year_start": {
+          "$ref": "#/$defs/date",
+          "description": "First day of an FSA's or HRA's plan year (default: January 1 of plan_year)."
+        },
+        "plan_year_end": {
+          "$ref": "#/$defs/date",
+          "description": "Last day of the plan year (default: December 31 of plan_year)."
+        },
+        "grace_period": {
+          "type": "boolean",
+          "description": "The plan year's money pays expenses through the 15th of the third month after it ends (TAX-02)."
+        },
+        "carryover": {
+          "$ref": "#/$defs/money",
+          "description": "Most the plan carries into the next plan year; capped by the IRS maximum for the year."
+        },
+        "run_out_end": {
+          "$ref": "#/$defs/date",
+          "description": "Last day to file claims for the plan year."
+        },
+        "balance": {
+          "$ref": "#/$defs/money",
+          "description": "Balance on balance_as_of, as the member entered it."
+        },
+        "balance_as_of": {
+          "$ref": "#/$defs/date"
+        },
+        "eligible_categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "An HRA's eligible expense categories (ids from the Publication 502 table)."
+        },
+        "coverage": {
+          "type": "array",
+          "description": "HSA-eligible coverage periods for an HSA's contribution limit (TAX-06); default: from the HSA-eligible plans covering the holder.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "start": {
+                "$ref": "#/$defs/date"
+              },
+              "end": {
+                "$ref": "#/$defs/date"
+              },
+              "type": {
+                "enum": [
+                  "self_only",
+                  "family"
+                ]
+              }
+            }
+          }
+        },
+        "last_month_rule_years": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "Tax years the HSA's limit uses the last-month rule instead of monthly pro rata."
         },
         "notes": {
           "$ref": "#/$defs/notes"
@@ -356,6 +442,299 @@
         },
         "extensions": {
           "$ref": "#/$defs/extensions"
+        },
+        "payment_path": {
+          "enum": [
+            "insurance",
+            "self_pay"
+          ],
+          "description": "Whether the visit goes through insurance. Default: insurance for provider visits and services, none for supplements, equipment and prescriptions (REC-05, ADR-017)."
+        },
+        "dispute": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The minimal dispute of Release 1 (ADR-035), read as a case. New edits write `cases` instead (ADR-042).",
+          "required": [
+            "status",
+            "opened"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            },
+            "opened": {
+              "$ref": "#/$defs/date"
+            },
+            "closed": {
+              "$ref": "#/$defs/date"
+            },
+            "note": {
+              "type": "string"
+            },
+            "outcome": {
+              "type": "string"
+            }
+          }
+        },
+        "closed_findings": {
+          "type": "array",
+          "description": "Findings the member closed (dealt with, or accepted when closing a dispute), with whether each was a real problem or wrong.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "amount"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "amount": {
+                "$ref": "#/$defs/money"
+              },
+              "closed": {
+                "$ref": "#/$defs/date"
+              },
+              "how": {
+                "type": "string"
+              },
+              "verdict": {
+                "enum": [
+                  "real",
+                  "wrong"
+                ],
+                "description": "The member's word on the finding: a real problem, or wrong (a false positive; PLT-02, ADR-044)."
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "kind": {
+                "type": "string",
+                "description": "The finding's kind (or its check code) when it was closed."
+              },
+              "release": {
+                "type": "string",
+                "description": "The release that showed the finding, e.g. release-1."
+              }
+            }
+          }
+        },
+        "documents": {
+          "type": "object",
+          "description": "The member's choices for the document checklist (MAT-10): a document kind marked expected or not applicable.",
+          "propertyNames": {
+            "enum": [
+              "bill",
+              "itemized_bill",
+              "eob",
+              "receipt",
+              "payment"
+            ]
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state"
+            ],
+            "properties": {
+              "state": {
+                "enum": [
+                  "expected",
+                  "not_applicable"
+                ]
+              },
+              "since": {
+                "$ref": "#/$defs/date"
+              }
+            }
+          }
+        },
+        "good_faith_estimate": {
+          "$ref": "#/$defs/money",
+          "description": "The provider's good-faith estimate for a self-pay visit (No Surprises Act). A bill above it is a finding; $400 or more above it starts the 120-day patient-provider dispute window (DSP-05)."
+        },
+        "cases": {
+          "type": "array",
+          "description": "Dispute cases the member opened on this visit (DSP-01, DSP-04, DSP-07; ADR-042).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "opened",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/id"
+              },
+              "opened": {
+                "$ref": "#/$defs/date"
+              },
+              "status": {
+                "enum": [
+                  "open",
+                  "contacted",
+                  "waiting",
+                  "resolved"
+                ]
+              },
+              "party": {
+                "enum": [
+                  "provider",
+                  "insurer"
+                ],
+                "description": "Who the case is with."
+              },
+              "note": {
+                "type": "string"
+              },
+              "follow_up_days": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 365,
+                "description": "Days after the last contact before a reminder (default 30)."
+              },
+              "findings": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "code",
+                    "amount"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "description": "The findings the case is about, as they were when it was opened."
+              },
+              "lines": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "charge": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "billed": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "patient_amount": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "patient_responsibility": {
+                      "$ref": "#/$defs/money"
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "description": "The bill and EOB lines that disagreed when the case was opened."
+              },
+              "history": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "date",
+                    "status"
+                  ],
+                  "properties": {
+                    "date": {
+                      "$ref": "#/$defs/date"
+                    },
+                    "status": {
+                      "enum": [
+                        "open",
+                        "contacted",
+                        "waiting",
+                        "resolved"
+                      ]
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "outcome": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "result",
+                  "recovered",
+                  "date"
+                ],
+                "properties": {
+                  "result": {
+                    "enum": [
+                      "corrected",
+                      "refunded",
+                      "written_off",
+                      "denied",
+                      "findings_wrong"
+                    ]
+                  },
+                  "recovered": {
+                    "$ref": "#/$defs/money"
+                  },
+                  "date": {
+                    "$ref": "#/$defs/date"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tax": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The member's tax choices for this visit (TAX-01, TAX-07): its Publication 502 category (with the table version it was chosen from), a letter of medical necessity on file, and an HSA payment marked as a mistake.",
+          "properties": {
+            "category": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "documentation": {
+              "type": "boolean"
+            },
+            "mistake": {
+              "type": "boolean"
+            }
+          }
         }
       }
     },
@@ -385,6 +764,9 @@
         },
         "extensions": {
           "$ref": "#/$defs/extensions"
+        },
+        "match": {
+          "$ref": "#/$defs/match"
         }
       }
     },
@@ -503,9 +885,34 @@
                     },
                     "balance": {
                       "$ref": "#/$defs/money"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "CPT/HCPCS code with any modifier, e.g. 99214-25."
+                    },
+                    "service_date": {
+                      "$ref": "#/$defs/date"
+                    },
+                    "units": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "write_off": {
+                      "$ref": "#/$defs/money"
                     }
                   }
                 }
+              },
+              "write_off": {
+                "$ref": "#/$defs/money",
+                "description": "Provider write-off after adjudication: prompt-pay discount, financial assistance, small balance (identity 3)."
+              },
+              "self_pay_discount": {
+                "$ref": "#/$defs/money",
+                "description": "Self-pay visits: the discount from the billed charge."
+              },
+              "match": {
+                "$ref": "#/$defs/match"
               }
             }
           }
@@ -612,7 +1019,7 @@
         },
         "lines": {
           "type": "array",
-          "description": "Optional service lines. Not reconciled in the MVP; captured for later.",
+          "description": "Service lines. Paired with the bill's lines and checked against the claim (MAT-06, REC-01).",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -638,9 +1045,45 @@
               },
               "patient_responsibility": {
                 "$ref": "#/$defs/money"
+              },
+              "adjustment": {
+                "$ref": "#/$defs/money"
+              },
+              "additional_savings": {
+                "$ref": "#/$defs/money"
+              },
+              "secondary_paid": {
+                "$ref": "#/$defs/money"
+              },
+              "deductible": {
+                "$ref": "#/$defs/money"
+              },
+              "copay": {
+                "$ref": "#/$defs/money"
+              },
+              "coinsurance": {
+                "$ref": "#/$defs/money"
+              },
+              "not_covered": {
+                "$ref": "#/$defs/money"
+              },
+              "units": {
+                "type": "number",
+                "minimum": 0
+              },
+              "remark_codes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Adjustment and remark codes printed on the line, e.g. CO-97 (bundled)."
               }
             }
           }
+        },
+        "secondary_paid": {
+          "$ref": "#/$defs/money",
+          "description": "Paid by a second plan under coordination of benefits (ALC-05). Zero with one plan."
         }
       },
       "unevaluatedProperties": false
@@ -690,6 +1133,32 @@
         "account_balance_after": {
           "$ref": "#/$defs/money",
           "description": "Account balance after this transaction, if the statement shows it."
+        },
+        "allocations": {
+          "type": "array",
+          "description": "How this payment is split across visits, when the member set it (ALC-04, MAT-07). Must add up to the amount.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "visit_id",
+              "amount"
+            ],
+            "properties": {
+              "visit_id": {
+                "$ref": "#/$defs/id"
+              },
+              "amount": {
+                "$ref": "#/$defs/money"
+              }
+            }
+          }
+        },
+        "allocation_source": {
+          "enum": [
+            "member",
+            "statement"
+          ]
         }
       },
       "unevaluatedProperties": false
@@ -854,6 +1323,26 @@
           },
           "description": "Names this member appears under in source files (e.g. claims 'Patient')."
         },
+        "birth_year": {
+          "type": "integer",
+          "minimum": 1900,
+          "maximum": 2100,
+          "description": "Year only: for the HSA 55+ catch-up and FSA rules for children under 27 (TAX-06, TAX-09)."
+        },
+        "tax_dependent": {
+          "type": "object",
+          "description": "Whether this member is a tax dependent, by tax year, e.g. {\"2026\": true} (TAX-09).",
+          "propertyNames": {
+            "pattern": "^[0-9]{4}$"
+          },
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "medicare_from": {
+          "$ref": "#/$defs/date",
+          "description": "First day of Medicare coverage; no HSA contributions from that month on (TAX-08)."
+        },
         "notes": {
           "$ref": "#/$defs/notes"
         },
@@ -996,6 +1485,60 @@
         },
         "extensions": {
           "$ref": "#/$defs/extensions"
+        },
+        "case_id": {
+          "$ref": "#/$defs/id",
+          "description": "The dispute case (on the visit) the note belongs to."
+        },
+        "party": {
+          "enum": [
+            "provider",
+            "insurer"
+          ],
+          "description": "Who the contact was with (default the provider)."
+        },
+        "person": {
+          "type": "string",
+          "description": "Who you spoke to or heard from."
+        },
+        "reference": {
+          "type": "string",
+          "description": "A call or case reference number they gave."
+        },
+        "outcome": {
+          "type": "string",
+          "description": "What was agreed or said. Required for a phone call on a case."
+        }
+      }
+    },
+    "match": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How a document (or a statement line) was linked to its visit (MAT-05). status: auto (score 0.9 or more), proposed (0.6 to 0.9, the member confirms), confirmed (the member chose it). rejected lists visits the member said it isn't for; matching never proposes them again.",
+      "properties": {
+        "status": {
+          "enum": [
+            "auto",
+            "proposed",
+            "confirmed"
+          ]
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rejected": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
         }
       }
     }

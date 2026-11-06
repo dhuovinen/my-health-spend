@@ -64,7 +64,7 @@ def test_tc_prv_08_1_pages_reference_no_third_party_resources():
 def test_served_pages_load_only_same_origin_assets(household):
     who = household.enrol()
     member = household.sign_in(who)
-    html = "".join(member.get(p).text for p in ("/", "/visits", "/providers", "/import", "/settings", "/help", "/uploads"))
+    html = "".join(member.get(p).text for p in ("/", "/visits", "/providers", "/import", "/settings", "/help", "/accuracy", "/uploads"))
     html += household.client().get("/signin").text
     for url in re.findall(r'(?:src|href)="([^"]+)"', html):
         assert url.startswith(("/", "#", "?")) and not url.startswith("//"), url
