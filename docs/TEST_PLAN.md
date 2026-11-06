@@ -4,7 +4,7 @@ Oct 15, 2026 · Revised Oct 15, 2026: all conflicts and ambiguities decided; P1 
 
 **Covers:** all 102 requirements in the [Product Requirements](<My Health Spend (MHS) Product Requirements.md>) (the PRD). They are checked against [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) (agreed and built 2026-10-09) and the [Problem Statement & Plan](<My Health Spend (MHS) Problem Statement & Plan.md>).
 
-**At a glance:** 349 test cases cover all 102 requirements; 183 are for Release 1 (P1), none of them blocked. All 16 conflicts and 14 ambiguities are decided. 3 Release 2 cases still wait on one PRD open question (does self-pay count toward the deductible). 22 cases are already partly or fully automated by the existing 32 tests.
+**At a glance:** 351 test cases cover all 102 requirements; 183 are for Release 1 (P1), none of them blocked. All 16 conflicts and 14 ambiguities are decided. 3 Release 2 cases still wait on one PRD open question (does self-pay count toward the deductible). 22 cases are already partly or fully automated by the existing 32 tests.
 
 **How to use it**
 
@@ -617,6 +617,8 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-UX-11-11 | UX-11 | Visit with a payment but no billed amount | No dot; listed in the table with no amount and counted in a note under the chart | I | New |
 | TC-UX-11-12 | UX-11 | Two members with the same provider, date and amount | Both dots can be reached and read; neither hides the other | E | New |
 | TC-UX-11-13 | UX-11 | Open the page at 375px and 1280px | No horizontal scroll at 375px; no third-party requests; no inline styles or scripts (CSP clean) | S | New |
+| TC-UX-11-14 | UX-11 | Two bills of $400.00 with member shares of $80.00 and $50.00; switch from billed to the member's share and reload the URL | Dots are level on billed and differ on the member's share; the table's amount follows; billed is the default; the choice is restored after reload | I | New |
+| TC-UX-11-15 | UX-11 | Bill with a billed amount and no member's share yet (no EOB); switch to the member's share | No dot in that view; listed in the table with no amount and counted in the note; plotted again on billed | I | New |
 
 ### 3.9 Privacy, security and pseudonymization (PRV)
 
@@ -698,7 +700,7 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 
 One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities that hold back at least one of its cases.
 
-**Totals:** 102 requirements, 349 test cases (P1 183, P2 157, P3 9). 3 cases (2 requirements) are blocked on a decision; 22 are already partly or fully automated.
+**Totals:** 102 requirements, 351 test cases (P1 183, P2 159, P3 9). 3 cases (2 requirements) are blocked on a decision; 22 are already partly or fully automated.
 
 | Req | Priority | Test cases | Levels | Blocked by | Automated today |
 | --- | --- | --- | --- | --- | --- |
@@ -778,7 +780,7 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | UX-08 | P2 | 1, 2, 3 (3) | IS | — | — |
 | UX-09 | P2 | 1, 2 (2) | E | — | — |
 | UX-10 | P1 | 1, 2 (2) | E | — | — |
-| UX-11 | P2 | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 (13) | EIS | — | — |
+| UX-11 | P2 | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 (15) | EIS | — | — |
 | PRV-01 | P1 | 1, 2, 3 (3) | SU | — | — |
 | PRV-02 | P1 | 1, 2 (2) | U | — | — |
 | PRV-03 | P1 | 1, 2, 3 (3) | U | — | — |
