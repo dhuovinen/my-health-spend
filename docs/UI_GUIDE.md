@@ -5,7 +5,7 @@ The brand standard for the app, the website, decks and marketing. It was built f
 - Full style guide with live components: https://claude.ai/artifact/93oE8yMM7LQcxzXn5FwZcU
 - Scorecard and competitor benchmark: https://claude.ai/artifact/FK7DcQbdRJGYUy1GH4Xgq3
 
-The app is on this standard, except that Manrope and DM Sans aren't self-hosted yet, so it shows system fonts until they are added under `src/mhs/web/static/fonts/`.
+The app is on this standard, with Manrope and DM Sans self-hosted in `src/mhs/web/static/fonts/`.
 
 ## Brand rules
 
@@ -38,7 +38,7 @@ The app is on this standard, except that Manrope and DM Sans aren't self-hosted 
 
 Status colors keep the current app values in `style.css` (`--warn`, `--info`, `--good`, `--idle`, and their soft fills). A status always carries its word.
 
-**Type:** Manrope for headings (58/65, 36/45, 18/27), DM Sans for text. Body is 16/26, and nothing goes below 12px. Self-host both in the app, because its policy is `font-src 'self'`.
+**Type:** Manrope for headings (58/65, 36/45, 18/27), DM Sans for text. Body is 16/26, and nothing goes below 12px. Self-host both in the app, because its policy is `font-src 'self'`. DM Sans has no tabular digits, so money columns use Manrope with `tabular-nums` (`.num` in the app).
 
 **Shape:** 5px buttons, 6px tiles, 7px cards. Hairlines over cards, a shadow only on things that float, no gradients. Icons are Lucide outline at 2px.
 
