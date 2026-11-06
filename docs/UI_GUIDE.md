@@ -5,7 +5,7 @@ The brand standard for the app, the website, decks and marketing. It was built f
 - Full style guide with live components: https://claude.ai/artifact/93oE8yMM7LQcxzXn5FwZcU
 - Scorecard and competitor benchmark: https://claude.ai/artifact/FK7DcQbdRJGYUy1GH4Xgq3
 
-The app has not moved to this standard yet. It is still teal with system fonts.
+The app is on this standard, except that Manrope and DM Sans aren't self-hosted yet, so it shows system fonts until they are added under `src/mhs/web/static/fonts/`.
 
 ## Brand rules
 
@@ -42,9 +42,9 @@ Status colors keep the current app values in `style.css` (`--warn`, `--info`, `-
 
 **Shape:** 5px buttons, 6px tiles, 7px cards. Hairlines over cards, a shadow only on things that float, no gradients. Icons are Lucide outline at 2px.
 
-## Moving the app
+## How the app moved
 
-| App | Today | Becomes |
+| App | Was | Now |
 | --- | --- | --- |
 | `--accent` | #0f766e | #1a5cdf |
 | `--accent-soft` | #e3f3f1 | #e5efff |
@@ -56,8 +56,8 @@ Status colors keep the current app values in `style.css` (`--warn`, `--info`, `-
 | `--radius` | 10px | 7px |
 | Button and input radius | 8px | 5px |
 | Body | System stack, 15px | DM Sans, 16px |
-| `.hero` | Teal gradient | Flat `dark-surface`, or `hero-surface` with dark text |
+| `.hero` | Teal gradient | Flat `dark-surface` (`hero-surface` is too close to the app ground) |
 | `.brand` | Plain name | Wordmark with `$` in `primary` |
 | `favicon.svg` | Teal heart | The blue mark |
 
-Dark theme values are in the table above. The website's mark is a PNG, and a vector master is still needed.
+Dark theme values are in the table above. In the app, dark `--bg` is `background`, `--surface` is `hero-surface` and `--surface-2` is `accent`, so cards sit lighter than the page. The favicon is the old heart recolored: the website's mark is a PNG, and a vector master is still needed.
