@@ -336,6 +336,53 @@ class Accounts:
             )
         return True
 
+    # --- social sign-in (PRV-12, ADR-048): linked by provider and subject, never by email ---
+
+    def member_for_identity(self, provider: str, subject: str) -> Member | None:
+        """The first factor through a provider. None for an unlinked account or a locked member (indistinguishable)."""
+        with self.db.tx() as c:
+            row = c.execute("SELECT m.* FROM app.member_identities i JOIN app.members m ON m.id = i.member_id "
+                            "WHERE i.provider = %s AND i.subject = %s", (provider, subject)).fetchone()
+        if row is None or self._locked(row):
+            return None
+        return Member(str(row["id"]), str(row["household_id"]), row["email"], row["display_name"])
+
+    def start_identity_link(self, member_id: str, state: str, minutes: int) -> None:
+        """Remember who is linking an account, against the flow's state, until the provider sends them back."""
+        with self.db.tx() as c:
+            c.execute("DELETE FROM app.enrolment_links WHERE expires_at <= now()")
+            c.execute("INSERT INTO app.enrolment_links (token_hash, member_id, expires_at, purpose) "
+                      "VALUES (%s, %s, now() + make_interval(mins => %s), 'link_identity')",
+                      (_hash_token(state), member_id, minutes))
+
+    def take_identity_link(self, state: str) -> str | None:
+        """The member linking under this state, if any. The entry is used up either way."""
+        with self.db.tx() as c:
+            row = c.execute("DELETE FROM app.enrolment_links WHERE token_hash = %s AND purpose = 'link_identity' "
+                            "RETURNING member_id, expires_at > now() AS valid", (_hash_token(state),)).fetchone()
+        return str(row["member_id"]) if row and row["valid"] else None
+
+    def link_identity(self, member_id: str, provider: str, subject: str, email: str) -> None:
+        with self.db.tx() as c:
+            added = c.execute("INSERT INTO app.member_identities (provider, subject, member_id, email) "
+                              "VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING",
+                              (provider, subject, member_id, email)).rowcount
+        if added != 1:
+            raise AccountError("That account couldn't be linked. It may already be linked to a member, or you may "
+                               "already have one linked. Unlink the old one first.")
+
+    def unlink_identity(self, member_id: str, provider: str) -> bool:
+        with self.db.tx() as c:
+            return c.execute("DELETE FROM app.member_identities WHERE member_id = %s AND provider = %s",
+                             (member_id, provider)).rowcount == 1
+
+    def identities_of(self, member_id: str) -> dict[str, str]:
+        """Each linked provider and the account's email at the time it was linked."""
+        with self.db.tx() as c:
+            rows = c.execute("SELECT provider, email FROM app.member_identities WHERE member_id = %s",
+                             (member_id,)).fetchall()
+        return {r["provider"]: r["email"] for r in rows}
+
     # --- sessions ---
 
     def start_session(self, member: Member) -> str:

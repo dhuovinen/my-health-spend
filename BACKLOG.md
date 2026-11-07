@@ -27,6 +27,7 @@ Items deferred from the MVP. Newest decisions are in `docs/MVP_REQUIREMENTS.md` 
 | B-21 | Prior-year (2025) HSA history | Real data, 2026-10-09 | Needed to close 2025 Southeastern Retina payments; HSA export starts 2026-01-14. |
 | B-22 | Follow-up tracking on provider notes (open / resolved, follow-up date, reminders) | Owner, 2026-10-09 | MVP notes are a plain dated log. |
 | B-23 | Sign-in: tell a wrong password apart from a locked account | Owner, 2026-11-06 | Not built. One message covers two conditions, and the code step hides a lock completely. Needs an ADR. See [B-23 in detail](#b-23-in-detail). |
+| B-24 | Self-service sign-up | Owner, 2026-11-07 | Invitation only for now (ADR-048). The owner expects to open sign-up later, including through Google or Microsoft. It needs the launch gate in the Product Requirements first, a way to create a household on sign-up, and abuse limits. |
 
 ## B-23 in detail
 

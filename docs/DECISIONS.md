@@ -54,7 +54,8 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 044 | False-positive tracking: the member says real or wrong when closing a finding; the rate is wrong over decided, per kind and release, counts only for the owner | 2026-10-18 | Accepted |
 | 046 | Visits as rows with date sort; a different date can't propose a visit; REC-14 flags as their own result; UX-11 as server-drawn SVG | 2026-11-06 | Accepted |
 | 047 | The public landing page is a server-rendered page in the app; `/` shows it to anyone not signed in; no React, Supabase or Google/Microsoft sign-in | 2026-11-07 | Proposed |
-| 048 | Social sign-in (PRV-12): Google and Microsoft through direct OpenID Connect, replacing the password but not the code; invitation only, linked by provider subject | 2026-11-07 | Proposed |
+| 048 | Social sign-in (PRV-12): Google and Microsoft through direct OpenID Connect; invitation only for now; linked by provider subject | 2026-11-07 | Accepted |
+| 049 | Owner-only admin screen with feature toggles (PLT-09); the authenticator code becomes owner-controlled | 2026-11-07 | Proposed |
 
 ## Records
 
@@ -395,22 +396,35 @@ The landing page was built separately in Lovable (`dhuovinen/health-reconciler`:
 
 **Consequences.** A signed-out visitor to `/` no longer lands on the sign-in form; it's one click away. Sign-out and expired sessions on data routes still go to `/signin`. The FAQ describes access as early access by invitation, because members are created by `mhs-admin`; change it when sign-up exists. The Lovable repository stops being the source for this page.
 
-### ADR-048 · Social sign-in (Proposed)
-PRV-12: the owner wants Google and Microsoft sign-in, first built in the Lovable project on Supabase and never tried with a real account. Proposed by the build session on 2026-11-07; nothing is built.
+### ADR-048 · Social sign-in (Accepted)
+PRV-12: the owner wants Google and Microsoft sign-in, first built in the Lovable project on Supabase and never tried with a real account. Proposed by the build session on 2026-11-07 and accepted by the owner the same day, with the authenticator change in ADR-049 and self-service sign-up expected later (B-24).
 
 **Decision.**
-- **Direct OpenID Connect from the application tier.** Authorization code flow with PKCE, `state` and `nonce`, over the httpx the app already uses, plus one library to check ID tokens. No Supabase, Lovable or other broker, so no outside service holds sessions or the member list.
-- **It replaces the password, not the code.** After the provider, the member still enters their authenticator code (PRV-11). The app can't rely on what a provider says about its own second factor, and the session keeps ADR-031's cookie, timeouts and rotation.
-- **Invitation only.** A social account never creates a member or a household. An unlinked account gets the same answer whether or not its email belongs to a member.
-- **Linked by provider and subject, never by email.** A new table, `app.member_identities` (provider, subject, member), in its own migration. Emails can change and be reassigned, so matching on them could hand over a household's data. A member links an account from the Account page, or at enrolment, after proving who they are.
-- **Least data.** Only the `openid` and `email` scopes. Provider tokens are used once and not kept, and no document, amount or provider name goes to them. Sign-ins and link changes go in the access log (PRV-10).
+- **Direct OpenID Connect from the application tier.** Authorization code flow with PKCE, `state` and `nonce`, over the httpx the app already uses. The ID token comes straight from the provider's token endpoint over TLS, so its claims (issuer, audience, expiry, nonce) are checked and its signature isn't (OpenID Connect Core 3.1.3.7), which needs no new library. No Supabase, Lovable or other broker, so no outside service holds sessions or the member list.
+- **It replaces the password, not the code.** While the code is required, the member still enters it after the provider (PRV-11); ADR-049 makes that the owner's choice. The app can't rely on what a provider says about its own second factor, and the session keeps ADR-031's cookie, timeouts and rotation.
+- **Invitation only for now.** A social account never creates a member or a household. An unlinked account gets the same answer whether or not its email belongs to a member.
+- **Linked by provider and subject, never by email.** A new table, `app.member_identities` (provider, subject, member), in its own migration. Emails can change and be reassigned, so matching on them could hand over a household's data. A member links an account from the Account page, once signed in, so a new member signs in with a password the first time.
+- **Least data.** Only the `openid` and `email` scopes. Provider tokens are used once and not kept, and no document, amount or provider name goes to them. Sign-ins and link changes go in the security log.
 - **Passwords and recovery stay** (ADR-037's recovery codes), so a member who loses the Google or Microsoft account can still get in. Going password-free is a later decision.
 - **Release 1 stack only.** Release 0 has no sign-in.
 
-**What the build has to allow for.**
+**What the build allows for.**
 - The buttons must be plain links (GET), not forms: the policy's `form-action 'self'` can block a form post that redirects to the provider. The policy itself doesn't change.
-- The session cookie is `SameSite=Strict`, so it isn't sent on the redirect chain that started at the provider. The callback shows the code step itself rather than redirecting to it, and the short-lived `state` cookie is `SameSite=Lax`.
-- The app tier needs outbound HTTPS to the two providers' token endpoints, allowed by host, in compose and in Google Cloud.
+- The session cookie is `SameSite=Strict`, so it isn't sent on the redirect chain that started at the provider. The callback shows the code step itself rather than redirecting to it, and the short-lived `state` cookie is `SameSite=Lax`. Linking an account can't read the session on the callback either, so the member is recorded when the flow starts, against its `state`.
+- The app tier needs outbound HTTPS to the two providers' token endpoints. On compose it already has a route out; check Google Cloud when staging exists.
 - New OAuth clients for each environment, with secrets in the `secrets` volume and Secret Manager. Lovable's are managed by Lovable and can't be carried over.
 
 **Consequences.** Google or Microsoft learns each time a member signs in to a medical billing app, though nothing about their records; the sign-in page should say so, and a member can keep using a password. Losing the provider account removes that route only. Open: whether to add Apple; whether the privacy notice (CMP) and ADR-028 need updating before real households use it. Test cases: TC-PRV-12-1 to TC-PRV-12-6.
+
+### ADR-049 · Admin screen and an owner-controlled authenticator (Proposed)
+PLT-09. The owner wants one screen to manage features and toggles, and wants the authenticator code to be optional, under the owner's control. Owner's decision on 2026-11-07; the details below are proposed by the build session and nothing is built, so the code stays required until this is.
+
+**Decision.**
+- **The owner decides, for the whole service.** One setting says whether the code is required. Narrowing ADR-031 and PRV-11, turning it off means a password or a linked Google or Microsoft account alone reaches a household's data.
+- **Toggles are records, not environment settings,** so a change needs no deploy. Each change is logged with who and when.
+- **The owner's own sign-in always needs the code,** even when it's off for members. Otherwise one stolen password could turn off the service's protection.
+- **The screen shows no household's health data,** only settings and counts, like `mhs-admin false-positives`. `mhs-admin` keeps a way in if the screen is unavailable.
+- **Turning it on is safe for those already in.** Sessions without a code end. A member who never set up an authenticator is taken through it at their next sign-in, rather than locked out.
+- **First toggles:** the required code, and each social sign-in provider. AI extraction per household can move here from `mhs-admin`.
+
+**Consequences.** With the code off, a single stolen credential exposes real health data, so the screen says so. The launch gate for other users should decide whether the code must be on for them. Open: who counts as the owner (a role on one member, or a separate operator sign-in), and whether the code starts on or off.

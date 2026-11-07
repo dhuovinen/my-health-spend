@@ -66,13 +66,19 @@ def browser():
         b.close()
 
 
+def free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
 class Server:
     """Serve an ASGI app on a free loopback port in a thread, for the browser."""
 
-    def __init__(self, app):
-        with socket.socket() as s:
-            s.bind(("127.0.0.1", 0))
-            self.port = s.getsockname()[1]
+    def __init__(self, app, port: int | None = None):
+        if port is None:
+            port = free_port()
+        self.port = port
         self.server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=self.port, log_level="warning"))
         self.thread = threading.Thread(target=self.server.run, daemon=True)
         self.thread.start()
@@ -231,6 +237,57 @@ def test_landing_page_is_root_for_visitors_release1(browser, release1):
     server, _, _ = release1
     check_landing(browser, server, "/", PHONE, "r1-375")
     check_landing(browser, server, "/", DESKTOP, "r1-1280")
+
+
+@pytest.mark.postgres
+def test_tc_prv_12_5_social_sign_in_in_a_real_browser(browser, make_household):
+    """The provider on another site (localhost, the app on 127.0.0.1), so the Strict session cookie and the policy
+    behave as they will in production: sign in through the provider, then link an account from the Account page."""
+    from tests.fake_oidc import FakeProvider
+
+    fake = FakeProvider(host="localhost")
+    port = free_port()
+    household = make_household(sign_in_providers=(fake.as_provider(),), public_url=f"http://127.0.0.1:{port}")
+    server = Server(household.app, port)
+    try:
+        who = household.enrol()
+        context, page = open_page(browser, server, [], DESKTOP)
+        problems = []
+        page.on("console", lambda m: problems.append(m.text) if m.type == "error" else None)
+
+        # link, signed in with the password
+        page.goto(server.url + "/signin")
+        page.fill("input[name=email]", who.email)
+        page.fill("input[name=password]", who.password)
+        page.locator("button[type=submit]").click()
+        page.fill("input[name=code]", who.code())
+        page.locator("button[type=submit]").click()
+        assert page.url == server.url + "/"
+        page.goto(server.url + "/account")
+        shot(page, "r1-1280-account-social.png")
+        page.locator('a[href="/account/link/google"]').click()
+        assert "/signin/with/google/callback" in page.url and "is linked" in page.locator("main").inner_text()
+        page.locator('a[href="/account"]').click()
+        assert "person@example.test" in page.locator("main").inner_text()  # the session survived the round trip
+        page.locator("form[action='/signout'] button").first.click()
+
+        # sign in through the provider; the code step works from the callback page
+        assert page.url == server.url + "/signin"
+        shot(page, "r1-1280-signin-social.png")
+        assert page.evaluate(SIDEWAYS) <= 0
+        link = page.locator('a[href="/signin/with/google"]')
+        link.click()
+        assert "/signin/with/google/callback" in page.url and page.locator("h1").inner_text() == "Verification code"
+        time.sleep(30 - int(time.time()) % 30 + 1)  # a code can't be reused: wait for the next one
+        page.fill("input[name=code]", who.code())
+        page.locator("button[type=submit]").click()
+        assert page.url == server.url + "/", page.locator("main").inner_text()
+        assert page.locator("nav.nav").is_visible()  # signed in: the cookie set on the callback is in use
+        assert problems == []
+        context.close()
+    finally:
+        server.stop()
+        fake.stop()
 
 
 def test_tc_ux_10_2_desktop_release0(browser, release0):

@@ -44,6 +44,37 @@ def database_url(user_env: str = "DB_USER") -> str:
 
 
 @dataclass(frozen=True)
+class SignInProvider:
+    """A social sign-in provider (PRV-12, ADR-048). `issuer` is a regular expression for the ID token's iss claim."""
+
+    name: str
+    label: str
+    client_id: str
+    client_secret: str
+    authorize_url: str
+    token_url: str
+    issuer: str
+
+
+def sign_in_providers() -> tuple[SignInProvider, ...]:
+    """The providers with a client configured; a provider with none doesn't appear on the sign-in page."""
+    known = (
+        ("google", "Google", "https://accounts.google.com/o/oauth2/v2/auth", "https://oauth2.googleapis.com/token",
+         r"(https://)?accounts\.google\.com"),
+        ("microsoft", "Microsoft", "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+         "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+         r"https://login\.microsoftonline\.com/[0-9a-f-]{36}/v2\.0"),
+    )
+    found = []
+    for name, label, authorize, token, issuer in known:
+        client_id = os.environ.get(f"MHS_{name.upper()}_CLIENT_ID", "")
+        client_secret = secret(f"{name.upper()}_CLIENT_SECRET") or ""
+        if client_id and client_secret:
+            found.append(SignInProvider(name, label, client_id, client_secret, authorize, token, issuer))
+    return tuple(found)
+
+
+@dataclass(frozen=True)
 class AppConfig:
     database_url: str
     objects_dir: Path
@@ -58,6 +89,7 @@ class AppConfig:
     ocr_engine: str = "stub"  # MHS_OCR_ENGINE: stub | tesseract (ingest/ocr.py)
     scrubber: str = "rules"  # MHS_SCRUBBER: rules | presidio (ingest/scrub.py)
     public_url: str = f"http://127.0.0.1:{APP_PORT}"  # MHS_PUBLIC_URL: where members open the app (enrolment links)
+    sign_in_providers: tuple[SignInProvider, ...] = ()  # MHS_GOOGLE_CLIENT_ID and _SECRET, MHS_MICROSOFT_...
 
 
 def load_app_config() -> AppConfig:
@@ -76,6 +108,7 @@ def load_app_config() -> AppConfig:
         ocr_engine=os.environ.get("MHS_OCR_ENGINE", "stub"),
         scrubber=os.environ.get("MHS_SCRUBBER", "rules"),
         public_url=os.environ.get("MHS_PUBLIC_URL", f"http://127.0.0.1:{port}").rstrip("/"),
+        sign_in_providers=sign_in_providers(),
     )
 
 

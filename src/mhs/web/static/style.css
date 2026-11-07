@@ -409,3 +409,8 @@ a.visit-row:hover { text-decoration: none; background: var(--surface-2); }
 .bill-lines { padding: 0 .9rem .8rem; overflow-x: auto; }
 @media (max-width: 860px) { .bill-summary { grid-template-columns: 1fr 5.5rem; } .bill-head { display: none; } .bill-summary > span:nth-child(1) { grid-column: 1 / -1; font-size: .8rem; color: var(--muted); } }
 
+/* social sign-in (PRV-12) */
+.social-signin { display: grid; gap: .5rem; }
+.social-signin p { margin: 0; }
+.social-signin .btn { justify-content: center; }
+.social-link { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: .5rem 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }

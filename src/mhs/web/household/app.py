@@ -35,6 +35,7 @@ from mhs.web.household.auth import AccountError, Accounts, Session
 from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.intake import TOKEN, Intake, add_intake
 from mhs.web.household.qr import qr_svg
+from mhs.web.household.social import add_social_sign_in
 from mhs.web.pages import VIEW_COOKIE, WEB, add_pages, make_templates
 
 HERE = Path(__file__).parent
@@ -160,7 +161,8 @@ def create_app(
         signed_in = session is not None and session.mfa_passed
         return {"session": session if signed_in else None, "csrf": session.csrf_token if session else "",
                 "show_nav": signed_in, "path_import": False,
-                "landing_link": {"href": "/signin", "label": "Sign in"}}
+                "landing_link": {"href": "/signin", "label": "Sign in"},
+                "sign_in_providers": config.sign_in_providers}
 
     templates = make_templates([HERE / "templates"], context)
 
@@ -329,10 +331,17 @@ def create_app(
         email, totp_secret, codes = done
         return enrolled(request, email, totp_secret, codes)
 
+    def account_page(request: Request, session: Session, status: int = 200, **ctx) -> HTMLResponse:
+        ctx.setdefault("left", accounts.recovery_codes_left(session.member_id))
+        return page(request, "account.html", status, identities=accounts.identities_of(session.member_id), **ctx)
+
+    add_social_sign_in(app, config=config, accounts=accounts, db=db, page=page, member=member, check_csrf=check_csrf,
+                       set_cookie=set_cookie)
+
     @app.get("/account", response_class=HTMLResponse)
     def account(request: Request):
         session = member(request)
-        return page(request, "account.html", left=accounts.recovery_codes_left(session.member_id))
+        return account_page(request, session)
 
     @app.post("/account/recovery-codes", response_class=HTMLResponse)
     def new_codes(request: Request, code: str = Form(""), csrf_token: str = Form("")):
@@ -340,10 +349,10 @@ def create_app(
         session = member(request)
         check_csrf(session, csrf_token)
         if not accounts.check_totp(session.member_id, code):
-            return page(request, "account.html", 401, left=accounts.recovery_codes_left(session.member_id),
-                        error="That code didn't work. Use the current code from your authenticator app.")
+            return account_page(request, session, 401,
+                                error="That code didn't work. Use the current code from your authenticator app.")
         codes = accounts.new_recovery_codes(accounts.email_of(session.member_id))
-        return page(request, "account.html", left=len(codes), codes=codes)
+        return account_page(request, session, left=len(codes), codes=codes)
 
     # --- your data: export, and delete the account (PRV-09) ---
 

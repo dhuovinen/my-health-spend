@@ -1,6 +1,6 @@
 # My Health Spend (MHS): Product Requirements
 
-Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026)); Nov 5, 2026 added REC-14; Nov 6, 2026 added UX-11; Nov 7, 2026 added PRV-12
+Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026)); Nov 5, 2026 added REC-14; Nov 6, 2026 added UX-11; Nov 7, 2026 added PRV-12 and PLT-09, and made the authenticator code owner-controlled (PRV-11)
 
 ## Scope and sizing
 
@@ -20,7 +20,7 @@ The count is driven by multiplication: three parties (provider, insurer, member)
 | User experience | UX | 11 | Visit cards, household view, dashboards, charges over time, exports |
 | Privacy and security | PRV | 12 | Pseudonymization and consumer health data obligations |
 | Regulatory and compliance | CMP | 6 | FTC, state health data laws, future HIPAA path |
-| Platform and non-functional | PLT | 8 | Integrations, accuracy targets, performance, auditability |
+| Platform and non-functional | PLT | 9 | Integrations, accuracy targets, performance, auditability |
 
 **Priority key:** R0 = Release 0, the local MVP already built (see [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) and [Release 0 baseline](#release-0-baseline)). P1 = Release 1, the server-side responsive web app (see [Release 1 scope](#release-1-scope)). P2 = Release 2, including tax optimization, disputes and pre-visit strategy. P3 = later or provider-facing.
 
@@ -224,7 +224,7 @@ The visit card list from the original plan stays the home screen. The rest of th
 | PRV-08 | Never send data to advertising pixels or third-party analytics; product analytics events are limited to an allow-list (event name, pseudonymous install ID, timestamp, app version) with no amounts, providers, codes or identifiers | P1 |
 | PRV-09 | Let the member export all their data and delete their account and data, with a deletion confirmation. Deletion removes records, originals and vault entries at once and backups on their normal rotation within 35 days; only security and access logs without health content are kept, for one year | P2 |
 | PRV-10 | Keep an access log of who and what touched each record, viewable by the member | P2 |
-| PRV-11 | Authenticate every member with multi-factor sign-in, and isolate each household's data so no query can return another household's records | P1 |
+| PRV-11 | Authenticate every member, with a multi-factor sign-in the owner can require or turn off for the whole service (PLT-09, ADR-049; required until that control is built), and isolate each household's data so no query can return another household's records | P1 |
 | PRV-12 | Let a member sign in with a Google or Microsoft account in place of a password, linked to their existing membership. The second factor (PRV-11) still applies, household isolation is unchanged, and a social account with no link to a member gets no access and no new account | P2 |
 
 ## Regulatory and compliance
@@ -254,6 +254,7 @@ Accuracy and explainability matter more than speed: one wrong "you were overchar
 | PLT-06 | A test library of real-world scenarios (redacted) covering each REC rule, run on every change | P1 |
 | PLT-07 | An API and import layer designed for payer FHIR, HSA administrator and clearinghouse feeds | P2 |
 | PLT-08 | Measure first-pass match rate, findings per visit, dollars recovered and time to resolution as product KPIs | P2 |
+| PLT-09 | An owner-only admin screen to manage features and feature toggles, starting with whether the authenticator code is required and which social sign-in providers are on. It shows no household's health data, and every change is logged | P2 |
 
 ## Priorities and open questions
 

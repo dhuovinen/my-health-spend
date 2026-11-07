@@ -656,7 +656,7 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-PRV-11-1 | PRV-11 | Sign in with password only | Second factor required; no data reachable before it | S | New |
 | TC-PRV-11-2 | PRV-11 | Member of household A requests visit, document and API ids belonging to household B | Not found or forbidden; nothing from household B returned or leaked in errors | S | New |
 | TC-PRV-11-3 | PRV-11 | Sign out; session idle past the timeout | Session tokens invalid; next request needs sign-in | S | New |
-| TC-PRV-12-1 | PRV-12 | Member with a linked Google, then Microsoft, account signs in through the provider | Authenticator code still required; no data reachable before it; Home after it | S | New |
+| TC-PRV-12-1 | PRV-12 | Member with a linked Google, then Microsoft, account signs in through the provider | While the code is required (PLT-09): code asked for, no data reachable before it, Home after it | S | New |
 | TC-PRV-12-2 | PRV-12 | Sign in with a provider account linked to no member, including one whose email matches a member's | No access, no account created, no link made, and the response doesn't reveal whether the email is a member's | S | New |
 | TC-PRV-12-3 | PRV-12 | Callback with a wrong or missing `state`, a wrong `nonce`, a reused code, or a token for another client or issuer | Refused; no session started | S | New |
 | TC-PRV-12-4 | PRV-12 | Member links, then unlinks, a provider account on the Account page; provider account's email changes | Link needs a passed sign-in; after unlinking that account no longer signs in; a changed email still matches the same member | S | New |
@@ -699,6 +699,9 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-PLT-06-3 | PLT-06 | Seeded-identifier scan of the library | No real identifiers in fixtures | S | New |
 | TC-PLT-07-1 | PLT-07 | Contract tests with sample FHIR EOB, HSA export and X12 835 payloads | Each adapter maps to the same internal model; REC-01 holds | I | New |
 | TC-PLT-08-1 | PLT-08 | KPI job on a fixture dataset with known answers | First-pass match rate, findings per visit, dollars recovered and time to resolution equal the expected values | U | New |
+| TC-PLT-09-1 | PLT-09 | A member, and a visitor, open the admin screen | Refused for both; only the owner reaches it | S | New |
+| TC-PLT-09-2 | PLT-09 | Owner turns the required code off, then on | Off: sign-in needs no code. On: open sessions without a code end and the code is asked for; a member who never set up an authenticator is taken through it. Each change logged | S | New |
+| TC-PLT-09-3 | PLT-09 | Owner opens the admin screen | Shows no household's health data | S | New |
 
 ---
 
@@ -813,6 +816,7 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | PLT-06 | P1 | 1, 2, 3 (3) | RS | — | — |
 | PLT-07 | P2 | 1 (1) | I | — | — |
 | PLT-08 | P2 | 1 (1) | U | — | — |
+| PLT-09 | P2 | 1, 2, 3 (3) | S | — | — |
 
 ---
 

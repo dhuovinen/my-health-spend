@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Link your {{ provider.label }} account{% endblock %}
+{% block content %}
+<section class="card auth">
+  <h1>{{ provider.label }} account</h1>
+  {% if error %}
+  <p class="alert bad">{{ error }}</p>
+  {% else %}
+  <p class="alert good">Your {{ provider.label }} account is linked. You can use it to sign in from now on.</p>
+  {% endif %}
+  {# A link the member follows, not a redirect: the session cookie isn't sent on a chain that began at the provider. #}
+  <p><a class="btn primary" href="/account">Back to your account</a></p>
+</section>
+{% endblock %}

@@ -132,6 +132,16 @@ docker compose exec app mhs-admin import --household <household-id> /srv/mhs/sam
 
 Without `--yes` it only previews (counts, warnings, member edits it would keep); add `--yes` to save, and `--replace-edits` to let the file overwrite edits made in the app. For a file on your machine, copy its folder in first with `docker compose cp <folder> app:/tmp/import`. The local stack is for synthetic data only (ARCHITECTURE.md "Environments"). Settings has a "Download settings.json" link for `tools/build_ingest.py`.
 
+### Social sign-in (optional, off until a client is set)
+
+Members can sign in with a Google or Microsoft account they've linked on their Account page (PRV-12, ADR-048). Accounts are still created by invitation, and the authenticator code still applies. Each provider stays hidden until its client is set.
+
+1. Create a web OAuth client: Google Cloud console (APIs & Services, Credentials), Microsoft Entra admin center (App registrations; accounts in any organization and personal accounts). Ask only for `openid` and `email`.
+2. Add the redirect URI, which must match `MHS_PUBLIC_URL` exactly: `<MHS_PUBLIC_URL>/signin/with/google/callback` and `<MHS_PUBLIC_URL>/signin/with/microsoft/callback`. Microsoft accepts plain `http` only for `localhost`, so set `MHS_PUBLIC_URL=http://localhost:3063` to try it locally.
+3. Put `MHS_GOOGLE_CLIENT_ID` and `MHS_GOOGLE_CLIENT_SECRET`, or the `MHS_MICROSOFT_` pair, in a git-ignored `.env` beside `compose.yaml` and restart the app. A secret can also be a file (`MHS_GOOGLE_CLIENT_SECRET_FILE`), and in Google Cloud it belongs in Secret Manager.
+
+Use a separate client per environment. Before real households use it, check each provider's button branding rules and complete Google's app verification.
+
 ### Export and delete your data (PRV-09)
 
 "Your data" in the header: download everything as a ZIP (records as an ingest file with its files, uploads, identifiers, a manifest), or delete your account. Deleting the last member's account deletes the household's records, files and identifiers at once (ADR-038). The same page shows the access log: who viewed or changed which record, and when (ADR-040).
