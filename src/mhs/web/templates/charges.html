@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Charges over time{% endblock %}
+{% block content %}
+{% set w, h, left, right = size %}
+<div class="page-head"><h1>Charges over time</h1><span class="muted">{{ bills|length }} bill{{ '' if bills|length == 1 else 's' }}{{ ' in %d and %d'|format(year - 1, year) if prior else ' in %d'|format(year) }}</span></div>
+<form class="filters" method="get" action="/charges">
+  <input type="hidden" name="year" value="{{ year }}">
+  {% if prior %}<input type="hidden" name="prior" value="1">{% endif %}
+  <label>Provider<select name="provider" data-autosubmit><option value="">All</option>{% for id, name in groups %}<option value="{{ id }}" {{ 'selected' if filters.provider == id }}>{{ name }}</option>{% endfor %}</select></label>
+  <label>Member<select name="member" data-autosubmit><option value="">All</option>{% for m in members %}<option value="{{ m.id }}" {{ 'selected' if filters.member == m.id }}>{{ m.name }}</option>{% endfor %}</select></label>
+  <label>Amount<select name="view" data-autosubmit>{% for k, label in views.items() %}<option value="{{ k }}" {{ 'selected' if filters.view == k }}>{{ label }}</option>{% endfor %}</select></label>
+  <noscript><button class="btn">Show</button></noscript>
+  {% if filters.provider or filters.member %}<a class="btn" href="/charges?year={{ year }}&amp;member=">Clear</a>{% endif %}
+</form>
+{% if earlier_count and not prior %}<p class="small">{{ earlier_count }} earlier bill{{ '' if earlier_count == 1 else 's' }} in {{ year - 1 }}. <a class="btn small" href="{{ link(prior='1') }}">Include {{ year - 1 }}</a></p>
+{% elif prior %}<p class="small"><a class="btn small" href="{{ link() }}">Show {{ year }} only</a></p>{% endif %}
+<div class="card chart-card">
+  <svg class="charges-chart" viewBox="0 0 {{ w }} {{ h }}" role="group" aria-label="{{ views[filters.view] }} per bill, by date of service">
+    {% for y, amount in drawing.y_ticks %}<line class="grid-line" x1="{{ left }}" x2="{{ w - right }}" y1="{{ y }}" y2="{{ y }}"/><text class="axis" x="{{ left - 8 }}" y="{{ y + 4 }}" text-anchor="end">{{ amount|money|replace('.00', '') }}</text>{% endfor %}
+    {% for x, label in drawing.x_ticks %}<text class="axis" x="{{ x }}" y="{{ h - 18 }}">{{ label }}</text>{% endfor %}
+    {% if drawing.year_line %}<line class="year-line" x1="{{ drawing.year_line }}" x2="{{ drawing.year_line }}" y1="6" y2="{{ h - 34 }}"/>{% endif %}
+    {% for x, label in drawing.year_labels %}<text class="axis year" x="{{ x }}" y="{{ h - 3 }}" text-anchor="middle">{{ label }}</text>{% endfor %}
+    {% for d in drawing.dots %}<a class="dot" href="#bill-{{ d.bill.visit_id }}" data-provider="{{ d.bill.provider }}" data-member="{{ d.bill.member }}" data-date="{{ d.bill.date|nice_date }}" data-billed="{{ d.bill.billed|money if d.bill.billed is not none else 'none yet' }}" data-share="{{ d.bill.share|money if d.bill.share is not none else 'not known yet' }}" data-status="{{ d.bill.status }}">
+      <title>{{ d.bill.provider }}, {{ d.bill.member }}, {{ d.bill.date|nice_date }}: {{ d.amount|money }}</title>
+      <circle class="hit" cx="{{ d.x }}" cy="{{ d.y }}" r="27"/><circle class="mark mc-{{ d.color if d.color >= 0 else 'none' }}" cx="{{ d.x }}" cy="{{ d.y }}" r="7"/></a>{% endfor %}
+    {% if not drawing.dots %}<text class="axis empty-note" x="{{ w / 2 }}" y="{{ h / 2 }}" text-anchor="middle">No bills match</text>{% endif %}
+  </svg>
+  <p id="dot-detail" class="small muted dot-detail" aria-live="polite">Hover over a dot, focus it or tap it for the details.</p>
+  <ul class="legend small">{% for m in members %}<li><span class="swatch mc-{{ colors[m.id] }}"></span>{{ m.name }}</li>{% endfor %}<li><span class="swatch mc-none"></span>No one assigned</li></ul>
+  {% if unplotted %}<p class="small muted">{{ unplotted }} bill{{ '' if unplotted == 1 else 's' }} with no {{ 'member\'s share yet' if filters.view == 'share' else 'billed amount' }} {{ 'isn\'t' if unplotted == 1 else 'aren\'t' }} on the chart.</p>{% endif %}
+</div>
+{% if bills %}
+<div class="bill-list section">
+  <div class="bill-summary bill-head small muted"><span>Date</span><span>Provider</span><span>Member</span><span class="num">{{ views[filters.view] }}</span></div>
+  {% for b in bills %}{% set amount = b.amount(filters.view) %}
+  <details class="bill" id="bill-{{ b.visit_id }}">
+    <summary class="bill-summary"><span>{{ b.date|nice_date }}</span><span><strong>{{ b.provider }}</strong></span><span>{{ b.member }}</span><span class="num">{{ amount|money if amount is not none else '—' }}</span></summary>
+    <div class="bill-lines small">
+      {% if b.lines %}
+      <table><tr><th>Code</th><th>Description</th><th class="num">Billed</th><th class="num">Allowed</th><th class="num">Your share</th></tr>
+      {% for l in b.lines %}<tr><td>{{ l.code or '—' }}</td><td>{{ l.description }}</td><td class="num">{{ l.billed|money if l.billed is not none else '—' }}</td><td class="num">{{ l.allowed|money if l.allowed is not none else '—' }}</td><td class="num">{{ l.share|money if l.share is not none else '—' }}</td></tr>{% endfor %}
+      </table>
+      {% set key = 'share' if filters.view == 'share' else 'billed' %}{% set total = b.lines|map(attribute=key)|reject('none')|sum %}
+      {% if amount is not none and total != amount %}<p class="muted">The lines add up to {{ total|money }}, {{ (amount - total)|abs|money }} {{ 'less' if total < amount else 'more' }} than this bill's {{ views[filters.view]|lower }}.</p>{% endif %}
+      {% else %}<p class="muted">This bill shows totals only.</p>{% endif %}
+      <p><a class="btn small" href="/visits/{{ b.visit_id }}">Open the visit</a></p>
+    </div>
+  </details>{% endfor %}
+</div>
+{% else %}<div class="card empty muted section">No bills match. <a href="/charges?year={{ year }}&amp;member=">Clear the filters</a></div>{% endif %}
+{% endblock %}

@@ -11,7 +11,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 
-from mhs.core import disputes
+from mhs.core import disputes, repeats
 from mhs.core.lines import (BUCKETS, TOLERANCE_CAP, LineMatch, add_buckets, adjustment_of, buckets,
                             claim_differences, duplicate_items, fmt, judge, pair_lines, self_pay_buckets,
                             self_pay_difference)
@@ -58,8 +58,16 @@ CHECK_NAMES = {
     "claim_filed": "Claim filed with insurance",
     "estimate": "Bill within the good-faith estimate",
     "C6": "Balance outstanding",
+    "R14-allowed": "Allowed amount changed",
+    "R14-billed": "Billed amount changed",
+    "R14-share": "Your share changed",
+    "R14-codes": "Codes changed in a series",
 }
 FINDING_KINDS = {
+    "repeat_allowed": "Repeat service",
+    "repeat_billed": "Repeat service",
+    "repeat_share": "Repeat service",
+    "repeat_codes": "Repeat service",
     "missed_adjustment": "Missed adjustment",
     "balance_billing": "Balance billing",
     "billed_mismatch": "Charges differ from the claim",
@@ -92,11 +100,12 @@ class Dataset:
 @dataclass
 class Check:
     code: str
-    result: str  # pass | fail | na | cleared (under the tolerance) | info | closed (by the member)
+    result: str  # pass | fail | na | cleared (under the tolerance) | info | closed (by the member) | flag (REC-14)
     detail: str = ""
     amount: int = 0
     kind: str = ""  # finding type, e.g. missed_adjustment (FINDING_KINDS)
     closed: dict | None = None  # the member's closing entry
+    earlier_visit: str = ""  # REC-14: the visit this one is compared with
 
     @property
     def name(self) -> str:
@@ -246,6 +255,11 @@ class VisitResult:
     @property
     def findings(self) -> list[Check]:
         return [c for c in self.checks if c.result == "fail"]
+
+    @property
+    def repeat_flags(self) -> list[Check]:
+        """REC-14: worth a closer look. Not findings, so they don't change the status or the dollars at stake."""
+        return [c for c in self.checks if c.result == "flag"]
 
     @property
     def cleared(self) -> list[Check]:
@@ -577,6 +591,7 @@ def build_report(ds: Dataset, year: int, today: date) -> Report:
         _check_visit(vr, groups[vr.group_id], is_hsa, today)
         _cases(vr, notes_by_visit[vr.id], plans.get(vr.visit.get("plan_id", "")), today)
 
+    _repeat_checks(results, plans)
     for g in groups.values():
         _summarize_group(g, is_hsa, ys)
 
@@ -1060,6 +1075,23 @@ def _status(vr: VisitResult, today: date) -> str:
             or (vr.surplus and vr.refunded and not vr.overpaid):
         return "resolved"
     return "complete"
+
+
+def _repeat_checks(results: list[VisitResult], plans: dict[str, dict]) -> None:
+    """REC-14 (ADR-045): flags across the year's visits, closed by the member like a finding (ADR-044)."""
+    deductibles = {pid: limit["amount"] for pid, plan in plans.items() for limit in plan.get("limits") or []
+                   if limit.get("type") == "deductible" and limit.get("level") == "individual"
+                   and limit.get("network") == "in_network"}
+    by_id = {vr.id: vr for vr in results}
+    for f in repeats.repeat_flags(results, deductibles):
+        vr = by_id[f.visit_id]
+        check = Check(f"R14-{f.kind}", "info" if f.explained else "flag", f.detail, f.amount,
+                      "" if f.explained else f"repeat_{f.kind}", earlier_visit=f.earlier_visit)
+        closed = next((e for e in vr.visit.get("closed_findings") or []
+                       if (e["code"], e["amount"]) == (check.code, check.amount)), None)
+        if closed and check.result == "flag":
+            check.result, check.closed = "closed", closed
+        vr.checks.append(check)
 
 
 def _age_balance(vr: VisitResult, today: date) -> None:

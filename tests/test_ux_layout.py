@@ -30,7 +30,7 @@ playwright_api = pytest.importorskip("playwright.sync_api")
 PHONE = {"viewport": {"width": 375, "height": 812}, "is_mobile": True, "has_touch": True, "device_scale_factor": 2}
 DESKTOP = {"viewport": {"width": 1280, "height": 800}}
 PAGES = ["/", "/visits?year=2026", f"/visits/{PEDS}", "/visits/v-2026-04-02-pcp", "/household", "/providers",
-         "/providers/prov-peds?year=2026", "/tax?year=2026", "/settings", "/help", "/accuracy", "/import", "/cases",
+         "/providers/prov-peds?year=2026", "/charges?year=2026", "/tax?year=2026", "/settings", "/help", "/accuracy", "/import", "/cases",
          f"/visits/{PEDS}/cases/case-1"]
 R1_PAGES = ["/uploads", "/account", "/data"]
 SHOTS = os.environ.get("MHS_UX_SCREENSHOTS")
@@ -233,3 +233,23 @@ def test_tc_ux_10_2_desktop_release1(browser, release1):
     context, page = open_page(browser, server, cookies, DESKTOP)
     check_desktop_visit(page, server.url, "r1")
     context.close()
+
+
+def test_tc_ux_11_3_a_dots_details_on_hover_focus_and_tap(browser, release0):
+    """UX-11: hover at 1280px, keyboard focus, and a tap at 375px each show the bill's details, and the page keeps its
+    width on a phone."""
+    server, cookies = release0
+    for device, act in ((DESKTOP, "hover"), (DESKTOP, "focus"), (PHONE, "tap")):
+        context, page = open_page(browser, server, cookies, device)
+        page.goto(f"{server.url}/charges?year=2026&member=")
+        dot = page.locator(".charges-chart .dot").first
+        if act == "tap":
+            dot.locator(".mark").click(force=True)
+            assert page.evaluate(SIDEWAYS) <= 1
+        elif act == "hover":
+            dot.locator(".mark").hover(force=True)
+        else:
+            dot.focus()
+        detail = page.locator("#dot-detail").inner_text()
+        assert "Billed $" in detail and "your share" in detail, (act, detail)
+        context.close()

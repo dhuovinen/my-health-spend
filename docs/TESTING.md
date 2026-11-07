@@ -46,6 +46,10 @@ Release 1 test cases covered in phase 1.1:
 
 TC-PRV-07-3 (lost phone and password, recovered with a recovery code; data intact): `test_r1_recovery.py`. Not yet: TC-PRV-06-1 (TLS; staging), TC-PRV-08-2 (no analytics events exist).
 
+## Repeat services and charges over time
+
+REC-14's cases are automated in `tests/test_repeats.py`, which also covers the matching rule and the Visits rows, filters and sort (ADR-046). UX-11's are in `tests/test_charges.py`, both on both apps; hover, focus and tap on a dot, and the 375px checks, are in `tests/test_ux_layout.py`. By hand, TC-UX-11-3's tap on a real phone waits for staging.
+
 ## Test harness
 
 `uv run tools/run_harness.py` runs the made-up data in `samples/harness/` through the real app and reports each visit against its expected answer, with screenshots and logins, in `harness-output/` (`samples/harness/README.md`). It measures how far the app gets with no person reviewing, so mismatches are its output rather than failures, unless `--strict` is given. `tests/test_harness.py` tests its conversions and comparison without a stack.

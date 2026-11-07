@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, year_select, visit_card, reason, view_switch %}
+{% from "_macros.html" import badge, year_select, visit_row, visit_head, reason, view_switch %}
 {% block title %}Home{% endblock %}
 {% block content %}
 {% set add_url = '/uploads' if session else '/import' %}
@@ -78,7 +78,14 @@
   <div class="page-head flush-head"><h2>Visits in {{ report.year }}</h2>
     <a class="small" href="/visits?year={{ report.year }}">All {{ visits|length }} visits</a></div>
   {% if cards %}
-  <div class="grid cards">{% for v in cards %}{{ visit_card(v) }}{% endfor %}</div>
+  <form class="filters" method="get" action="/visits">
+    <input type="hidden" name="year" value="{{ report.year }}">
+    <label>Status<select name="status"><option value="">All</option>{% for s in STATUS_ORDER %}<option value="{{ s }}">{{ STATUS_LABELS[s] }}</option>{% endfor %}</select></label>
+    <label>Provider<select name="provider"><option value="">All</option>{% for g in report.groups if g.visits %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}</select></label>
+    <label>Sort<select name="sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label>
+    <button class="btn">Show visits</button>
+  </form>
+  <div class="visit-rows">{{ visit_head() }}{% for v in cards %}{{ visit_row(v) }}{% endfor %}</div>
   {% else %}<div class="card muted">No visits for {{ view.name if view else 'the household' }} in {{ report.year }}.</div>{% endif %}
 </section>
 

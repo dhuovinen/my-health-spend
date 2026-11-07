@@ -10,6 +10,7 @@ import json
 import re
 import secrets
 from datetime import date, datetime
+from urllib.parse import urlencode
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Callable, Protocol
@@ -21,7 +22,7 @@ from jinja2 import pass_context
 from markupsafe import Markup, escape
 
 from mhs import RELEASE
-from mhs.core import disputes, edits
+from mhs.core import charges, disputes, edits
 from mhs.core.accuracy import NOT_CLOSABLE, TARGET, accuracy, open_findings, percent
 from mhs.core.household import NOBODY, household_totals, visits_for
 from mhs.core.lines import BUCKETS, LineMatch
@@ -424,7 +425,8 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
 
     @app.get("/visits", response_class=HTMLResponse)
     def visits(request: Request, year: int | None = None, status: str = "", member: str | None = None,
-               provider: str = "", category: str = "", flagged: str = "", hsa: str = ""):
+               provider: str = "", category: str = "", flagged: str = "", hsa: str = "", repeat: str = "",
+               start: str = "", end: str = "", sort: str = "newest"):
         store = host.store(request)
         report = report_for(store, year)
         if member is None:  # no filter chosen: the household view's member, if any (UX-06)
@@ -446,11 +448,51 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
             rows = [v for v in rows if v.group_id == provider]
         if category:
             rows = [v for v in rows if v.visit["category"] == category]
+        if repeat:
+            rows = [v for v in rows if v.repeat_flags]
+        if start:
+            rows = [v for v in rows if v.visit["date"] >= start]
+        if end:
+            rows = [v for v in rows if v.visit["date"] <= end]
+        sort = sort if sort in ("newest", "oldest") else "newest"
+        rows = sorted(rows, key=lambda v: (v.visit["date"], v.id), reverse=sort == "newest")
         members = store.all("member")
         return render(request, "visits.html", report=report, rows=rows, members=members, categories=CATEGORIES,
                       filters={"status": status, "member": member, "provider": provider,
-                               "category": category, "flagged": flagged, "hsa": hsa if hsa in HSA_FILTERS else ""},
-                      hsa_filters=HSA_FILTERS)
+                               "category": category, "flagged": flagged, "hsa": hsa if hsa in HSA_FILTERS else "",
+                               "repeat": repeat, "start": start, "end": end, "sort": sort},
+                      hsa_filters=HSA_FILTERS, query=urlencode({k: v for k, v in (
+                          ("year", report.year), ("status", status), ("member", member), ("provider", provider),
+                          ("category", category), ("flagged", flagged), ("hsa", hsa), ("repeat", repeat),
+                          ("start", start), ("end", end)) if v}))
+
+    @app.get("/charges", response_class=HTMLResponse)
+    def charges_page(request: Request, year: int | None = None, provider: str = "", member: str | None = None,
+                     view: str = "billed", prior: str = ""):
+        """UX-11: provider charges over time. Everything is in the URL, so a reload restores the choices."""
+        store = host.store(request)
+        if member is None:
+            chosen = view_of(request, store)
+            member = chosen["id"] if chosen else ""
+        year = year or date.today().year
+        view = view if view in charges.VIEWS else "billed"
+        ds = load_dataset(store)
+        report = build_report(ds, year, date.today())
+        earlier = build_report(ds, year - 1, date.today())
+        this_year = charges.select(charges.bills_of(report.visits), provider, member)
+        last_year = charges.select(charges.bills_of(earlier.visits), provider, member)
+        shown = this_year + last_year if prior else this_year
+        members = store.all("member")
+        colors = {m["id"]: i % 8 for i, m in enumerate(members)}
+        drawing = charges.chart(shown, view, year - 1 if prior else year, year, colors)
+        groups = {g.id: g.name for r in (report, earlier) for g in r.groups if g.visits}
+        filters = {"year": year, "provider": provider, "member": member, "view": view}
+        link = lambda **more: "/charges?" + urlencode({k: v for k, v in {**filters, **more}.items() if v})  # noqa: E731
+        return render(request, "charges.html", year=year, bills=shown, drawing=drawing, views=charges.VIEWS,
+                      groups=sorted(groups.items(), key=lambda g: g[1]), members=members, colors=colors,
+                      filters=filters, prior=bool(prior), earlier_count=len(last_year), link=link,
+                      unplotted=sum(1 for b in shown if b.amount(view) is None),
+                      size=(charges.WIDTH, charges.HEIGHT, charges.LEFT, charges.RIGHT))
 
     def visit_page(request: Request, store: Store, visit_id: str, error: str = "", status_code: int = 200):
         visit = store.get("visit", visit_id)
@@ -593,7 +635,8 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                 verdict = form.get("verdict") or ""
                 if verdict not in edits.VERDICTS:
                     raise edits.EditError("Say whether the finding was a real problem or wrong.")
-                finding = next((c for c in report_for(store, int(visit["date"][:4])).visit(visit_id).findings
+                result = report_for(store, int(visit["date"][:4])).visit(visit_id)
+                finding = next((c for c in [*result.findings, *result.repeat_flags]
                                 if (c.code, c.amount) == (code, amount) and c.code not in NOT_CLOSABLE), None)
                 if finding is None:
                     raise edits.EditError("That finding isn't open on this visit.")

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% from "_macros.html" import visit_card %}
+{% from "_macros.html" import visit_row, visit_head %}
 {% block title %}Visits{% endblock %}
 {% block content %}
-<div class="page-head"><h1>Visits</h1><span class="muted">{{ rows|length }} of {{ report.visits|length }} in {{ report.year }}</span></div>
+<div class="page-head"><h1>Visits</h1><span class="muted">{{ rows|length }} of {{ report.visits|length }} in {{ report.year }} · <a href="/charges">Charges over time</a></span></div>
 <form class="filters" method="get" action="/visits">
   <label>Plan year<select name="year">{% for y in report.years %}<option value="{{ y }}" {{ 'selected' if y == report.year }}>{{ y }}</option>{% endfor %}</select></label>
   <label>Status<select name="status"><option value="">All</option>{% for s in STATUS_ORDER %}<option value="{{ s }}" {{ 'selected' if filters.status == s }}>{{ STATUS_LABELS[s] }}</option>{% endfor %}</select></label>
@@ -10,11 +10,15 @@
   <label>Provider<select name="provider"><option value="">All</option>{% for g in report.groups if g.visits %}<option value="{{ g.id }}" {{ 'selected' if filters.provider == g.id }}>{{ g.name }}</option>{% endfor %}</select></label>
   <label>Category<select name="category"><option value="">All</option>{% for c in categories %}<option value="{{ c }}" {{ 'selected' if filters.category == c }}>{{ c|humanize }}</option>{% endfor %}</select></label>
   <label>HSA<select name="hsa"><option value="">All</option>{% for k, (_, label) in hsa_filters.items() %}<option value="{{ k }}" {{ 'selected' if filters.hsa == k }}>{{ label }}</option>{% endfor %}</select></label>
+  <label>From<input type="date" name="start" value="{{ filters.start }}"></label>
+  <label>To<input type="date" name="end" value="{{ filters.end }}"></label>
+  <label>Sort<select name="sort"><option value="newest" {{ 'selected' if filters.sort == 'newest' }}>Newest first</option><option value="oldest" {{ 'selected' if filters.sort == 'oldest' }}>Oldest first</option></select></label>
   <label class="check-label"><input type="checkbox" name="flagged" value="1" {{ 'checked' if filters.flagged }}> Flagged only</label>
+  <label class="check-label"><input type="checkbox" name="repeat" value="1" {{ 'checked' if filters.repeat }}> Worth a closer look</label>
   <button class="btn">Filter</button>
   <a class="btn" href="/visits?year={{ report.year }}">Clear</a>
 </form>
 {% if rows %}
-<div class="grid cards">{% for v in rows %}{{ visit_card(v) }}{% endfor %}</div>
+<div class="visit-rows">{{ visit_head('/visits?' ~ query ~ ('&sort=oldest' if filters.sort == 'newest' else '&sort=newest'), filters.sort) }}{% for v in rows %}{{ visit_row(v) }}{% endfor %}</div>
 {% else %}<div class="card empty muted">No visits match these filters.</div>{% endif %}
 {% endblock %}

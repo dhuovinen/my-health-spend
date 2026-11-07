@@ -80,9 +80,9 @@
   <div class="card" id="findings">
     <h2>What's wrong</h2>
     {% if not v.findings %}<p class="good-ink small">No open findings.</p>{% endif %}
-    {% for c in v.checks if c.result in ('fail', 'closed', 'info') %}
+    {% for c in v.checks if c.result in ('fail', 'closed', 'info', 'flag') %}
     <div class="check {{ c.result }}">
-      <div class="mark">{{ {'fail': '✕', 'closed': '✓', 'info': 'i'}[c.result] }}</div>
+      <div class="mark">{{ {'fail': '✕', 'closed': '✓', 'info': 'i', 'flag': '?'}[c.result] }}</div>
       <div><strong>{{ c.name }}</strong>{% if c.kind_label %} <span class="chip {{ 'bad' if c.result == 'fail' else 'idle' }}">{{ c.kind_label }}</span>{% endif %}
         <div class="small muted">{{ c.detail[:1]|upper }}{{ c.detail[1:] }}</div>
         {% if c.result == 'closed' %}
@@ -90,6 +90,19 @@
           <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}"><input type="hidden" name="action" value="reopen">
           <span class="muted">Closed by you on {{ c.closed.closed|nice_date }} ({{ closed_how(c.closed) }}){% if c.closed.reason %}: {{ c.closed.reason }}{% endif %}.</span> <button class="btn small">Reopen</button>
         </form>
+        {% elif c.result == 'flag' %}
+        <div class="actions small">
+        {% if c.earlier_visit %}<a class="btn small" href="/visits/{{ c.earlier_visit }}">See the earlier visit</a>{% endif %}
+        <details class="small close-finding">
+          <summary>Close this</summary>
+          <form method="post" action="/visits/{{ v.id }}/findings" class="inline small">{{ csrf_input() }}
+            <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}">
+            <label class="grow">Why (optional)<input name="reason" maxlength="200"></label>
+            <button class="btn small" name="verdict" value="real">It was a real problem</button>
+            <button class="btn small" name="verdict" value="wrong">It was wrong</button>
+          </form>
+        </details>
+        </div>
         {% elif c.result == 'fail' %}
         <div class="actions small">
         {% set in_case = v.open_cases|selectattr('findings', 'contains_finding', c)|list %}

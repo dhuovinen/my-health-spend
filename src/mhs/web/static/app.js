@@ -15,6 +15,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
   // Progress bars take their width from data-pct.
+  // UX-11: a dot's details, on hover, keyboard focus or a tap.
+  const detail = document.getElementById("dot-detail");
+  document.querySelectorAll(".charges-chart .dot").forEach((dot) => {
+    const show = () => {
+      const d = dot.dataset;
+      detail.textContent = `${d.provider}, ${d.member}, ${d.date}. Billed ${d.billed}; your share ${d.share}. ${d.status}.`;
+      detail.classList.remove("muted");
+    };
+    dot.addEventListener("mouseenter", show);
+    dot.addEventListener("focus", show);
+    dot.addEventListener("click", (event) => { event.preventDefault(); show(); });
+  });
   document.querySelectorAll(".bar span[data-pct]").forEach((el) => {
     const pct = Math.max(0, Math.min(100, Number(el.dataset.pct) || 0));
     el.style.width = pct + "%";

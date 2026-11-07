@@ -41,8 +41,7 @@ def report(tmp_path):
 
 def card(html: str, visit_id: str) -> str:
     """The visit card for one visit in a page."""
-    m = re.search(rf'<a class="card visit-card[^"]*" href="/visits/{visit_id}">(.*?)</a>\s*(?=<a class="card visit-card|</div>)',
-                  html, re.S)
+    m = re.search(rf'<a class="visit-row[^"]*" href="/visits/{visit_id}">(.*?)</a>', html, re.S)
     assert m, f"no card for {visit_id}"
     return m.group(1)
 
@@ -212,17 +211,17 @@ def test_tc_ux_06_2_switch_individual_and_family_kept_across_pages(web):
     assert "httponly" in r.headers["set-cookie"].lower() and "samesite=lax" in r.headers["set-cookie"].lower()
     home = web.client.get("/").text
     assert "Showing <strong>Sam Sample</strong>" in home
-    assert re.findall(r'class="card visit-card[^"]*" href="/visits/([^"]+)"', home) == [PEDS]
+    assert re.findall(r'class="visit-row[^"]*" href="/visits/([^"]+)"', home) == [PEDS]
     assert "$595.00" in home[home.index('id="summary"'):home.index('id="attention"')]  # Sam's billed only
     assert "Jordan Sample in-network deductible" not in home and "Sam Sample in-network deductible" in home
     visits = web.client.get("/visits?year=2026").text
-    assert "1 of 7" in visits and re.findall(r'class="card visit-card[^"]*" href="/visits/([^"]+)"', visits) == [PEDS]
+    assert "1 of 7" in visits and re.findall(r'class="visit-row[^"]*" href="/visits/([^"]+)"', visits) == [PEDS]
     assert "7 of 7" in web.client.get("/visits?year=2026&member=").text  # "All" in the filter still means all
     assert '<span class="chip info">showing</span>' in web.client.get("/household").text
     # back to the family
     web.client.post("/view", data={"member": "", "next": "/"})
     home = web.client.get("/").text
-    assert "Showing <strong>" not in home and len(re.findall(r'class="card visit-card', home)) == 7
+    assert "Showing <strong>" not in home and len(re.findall(r'class="visit-row s-edge', home)) == 7
     # an unknown member falls back to the family
     web.client.post("/view", data={"member": "mem-nobody"})
     assert "7 of 7" in web.client.get("/visits?year=2026").text

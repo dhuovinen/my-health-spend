@@ -80,7 +80,7 @@ def finding_key(code: str, kind: str = "") -> str:
 
 def open_findings(reports: list[Report]) -> list[Check]:
     """The findings a member could still close, over reports for different years (each visit is in one)."""
-    return [c for r in reports for v in r.visits for c in v.findings if c.code not in NOT_CLOSABLE]
+    return [c for r in reports for v in r.visits for c in [*v.findings, *v.repeat_flags] if c.code not in NOT_CLOSABLE]
 
 
 def accuracy(visits: list[dict], open_now: list[Check] = (), start: str | None = None, end: str | None = None,

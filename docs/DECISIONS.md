@@ -52,6 +52,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 042 | Dispute cases on the visit record: four dated statuses, follow-ups and deadlines in the attention queue, a call log on provider notes, letters drafted on request in the application tier and never stored, outcomes feeding lifetime savings | 2026-10-18 | Accepted |
 | 043 | HSA and tax: dated reference tables, "likely" tags per visit, account rules on the account record, receipt vault, contribution limits by month, year-end summary | 2026-10-18 | Accepted |
 | 044 | False-positive tracking: the member says real or wrong when closing a finding; the rate is wrong over decided, per kind and release, counts only for the owner | 2026-10-18 | Accepted |
+| 046 | Visits as rows with date sort; a different date can't propose a visit; REC-14 flags as their own result; UX-11 as server-drawn SVG | 2026-11-06 | Accepted |
 
 ## Records
 
@@ -352,6 +353,18 @@ How PLT-02's second target (at most 5% of findings dismissed by the member as wr
 - **The owner gets a report command,** `mhs-admin false-positives [--from DATE] [--to DATE] [--release LABEL] [--household ID]`, across every household by default. It prints counts only: per kind, real, wrong and the rate; the total and whether it meets the target; findings still open; closings without a verdict; and how many households were read. No reasons, names, record ids, dates of service or amounts. Reading households for it is the owner's operation, like `import`, not a member's action, so it isn't in the access log (ADR-040).
 
 **Consequences.** The ingest schema's closing entry gains four optional fields, so exports keep the verdicts and older files stay valid. The member's word is the measure (A-01): a member can mark a correct finding wrong, and the report can't tell. A finding whose amount changes after it was closed comes back open (findings are keyed by check and amount) and can be decided again, so it counts twice. Findings fixed by corrected documents without a case, and findings in a case resolved as denied, drop out without a verdict, which leaves some real problems out of the denominator and makes the rate read high, the safe side for a ceiling. `mhs.RELEASE` has to be changed when Release 2 is cut, or its verdicts are counted under Release 1.
+
+### ADR-046 · Visits as rows, repeat visits stay apart, charges chart (Accepted)
+Choices made building the owner's request of 2026-11-06 for a row layout, REC-14 and UX-11. Proposed by the build session on 2026-11-06 and accepted by the owner as written on 2026-11-06.
+
+**Decision.**
+- **Visits are rows, not cards,** on the Visits page and Home, replacing the cards of ADR-041 at the owner's request. Phones stack each row's cells. Visits adds From and To dates, a "Worth a closer look" filter and a sort by date, newest first by default, from the Sort list or the Date heading. Home has a short filter form that opens Visits. A row shows its document count and names what's missing; the rest are on hover and on the visit page.
+- **A different date can't propose a visit.** MAT-05 now caps the score below the proposal line when the dates are more than 3 days apart and no claim number matches, however alike the rest is. This changes ADR-035's scoring, because without it weekly or monthly treatment merges into one visit and REC-14 has nothing to compare. A resent statement keeps its original service date, so it still matches.
+- **REC-14 flags are a check result of their own,** `flag`. They aren't `fail`, so status and dollars at stake can't change. The member closes one as real or wrong, and it counts on Finding accuracy under "Repeat service". A share change the deductible explains is an `info` note: the line's deductible was applied before and none applies now, or the plan's individual deductible is reached by this visit.
+- **REC-14 reads line detail only:** EOB lines, else the latest statement's service lines, which have no allowed amount or share to compare. Insurer claims exports have no lines, so their claims aren't compared.
+- **UX-11 is a server-drawn SVG on `/charges`,** with no chart library, which keeps it inside the content security policy. Dot details show in a panel under the chart rather than a floating tooltip. On phones the chart scrolls inside its card, so each dot stays a 44px target and the page doesn't scroll sideways. A bill is a visit. "Charges" joins the top nav; on phones it's reached from the Visits page.
+
+**Consequences.** A document more than 3 days from its visit's date no longer links by itself; the member chooses the visit when confirming. Line items in UX-11 come from the EOB when it has lines, so their billed and share come from the insurer.
 
 ### ADR-045 · Repeat services across visits (Accepted)
 REC-14, split out of REC-10's changed-price rule and widened, because that rule compares only the price per code. A member on a repeating treatment can see the same treatment cost different amounts from month to month, and no check today looks across visits. Proposed on 2026-11-05 and accepted by the owner as written on 2026-11-06; nothing is built.

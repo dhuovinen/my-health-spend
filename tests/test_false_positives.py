@@ -80,7 +80,7 @@ def test_plt_02_2_period_and_release():
 def test_plt_02_2_open_findings_leave_out_what_the_member_cannot_close():
     class V:
         def __init__(self, checks):
-            self.findings = checks
+            self.findings, self.repeat_flags = checks, []
 
     class R:
         visits = [V([Check("C2", "fail", kind="missed_adjustment"), Check("C6", "fail"),
