@@ -1,11 +1,11 @@
 """Run the made-up test data in samples/harness through the real app, end to end, and report what it concluded.
 
     uv run tools/run_harness.py                    # start the stack, ingest everything, write harness-output/
-    uv run tools/run_harness.py code <email>       # the current 6-digit sign-in code for a harness member
+    uv run tools/run_harness.py login <email>      # a harness member's password and current 6-digit code
 
 The CSV is the source of truth and the PDFs are generated from it (tools/make_harness_pdfs.py). Each family runs
-twice, in separate households: once from the CSV, converted to the claims and HSA export layouts the app accepts, and
-once from its PDFs, uploaded one by one. Every step goes through the app's own pages: sign in, upload, wait for the
+three ways, in separate households: from the CSV, converted to the claims and HSA export layouts the app accepts;
+from its PDFs, uploaded one by one; and from its invoices and exports together. Every step goes through the app's own pages: sign in, upload, wait for the
 worker, confirm what it extracted without a person checking it. The results are compared with the CSV's answers.
 
 Synthetic data only. The work runs inside the compose `tests` container (`--inside`), which has Chromium and reaches
@@ -349,7 +349,7 @@ main{{max-width:1180px;margin:0 auto;padding:24px}}h1{{margin:0 0 4px}}h2{{margi
 .tile b{{display:block;font-size:22px}}table{{border-collapse:collapse;width:100%;font-size:13px}}
 th,td{{text-align:left;padding:5px 8px;border-bottom:1px solid #e6eaee;vertical-align:top}}th{{color:#5c6b7a;font-weight:600}}
 td.n,th.n{{text-align:right;white-space:nowrap}}.ok{{color:#16723b;font-weight:600}}.bad{{color:#b3261e;font-weight:600}}
-code{{background:#eef1f4;padding:1px 4px;border-radius:3px}}.shots{{display:flex;flex-wrap:wrap;gap:10px}}
+code{{background:#eef1f4;padding:1px 4px;border-radius:3px;user-select:all}}.shots{{display:flex;flex-wrap:wrap;gap:10px}}
 .shots a{{width:200px;font-size:12px;color:#1c2733}}.shots img{{width:200px;height:130px;object-fit:cover;
 object-position:top;border:1px solid #dde3e9;border-radius:4px;display:block}}</style></head><body><main>
 <h1>Test harness results</h1><p class="muted">Run {e(stamp)}. Made-up data from <code>{INPUT}</code>. Every document
@@ -372,7 +372,7 @@ was confirmed automatically, exactly as extracted, without a person checking it.
 <div class="tile"><b>{money(total_paid)}</b>paid, per the app</div></div>
 <h3>How to look at it yourself</h3><p>Open <a href="http://127.0.0.1:3063">http://127.0.0.1:3063</a> and sign in with
 <code>{e(r['login']['email'])}</code> and password <code>{e(r['login']['password'])}</code>. For the 6-digit code, run
-<code>uv run tools/run_harness.py code {e(r['login']['email'])}</code>, or add authenticator secret
+<code>uv run tools/run_harness.py login {e(r['login']['email'])}</code>, which also prints the password, or add authenticator secret
 <code>{e(r['login']['totp_secret'])}</code> to an app.</p><h3>Files</h3><table><tr><th>File</th><th>Read as</th>
 <th>Should be</th><th>Outcome</th><th>Detail</th></tr>""")
         for f in r["files"]:
@@ -436,6 +436,14 @@ def scenarios(folder: Path) -> tuple[list[Scenario], list[str]]:
         out.append(Scenario(f"pdf-{key}", f"{family}, from the PDFs", family, members_of(part),
                             expected_from_invoices(part, pages), documents=names,
                             expected_types={n: expected_type(n) for n in names}))
+        # Everything together, as a member would use it: the bills as PDFs, then the insurer's and HSA's exports.
+        facility = {(r["Date_of_Service"], r["Provider_Name"], r["Member_Name"]): r["Facility_Name"] for r in part}
+        out.append(Scenario(f"all-{key}", f"{family}, invoices and exports together", family, members_of(part),
+                            [{**e, "match": [e["provider"], facility[(e["date"], e["provider"], e["member"])]]}
+                             for e in expected],
+                            exports=[(f"{key}-claims.csv", claims_csv(part)), (f"{key}-hsa.csv", hsa_csv(part))],
+                            documents=[n for n in names if n.startswith("invoice_")],
+                            expected_types={n: expected_type(n) for n in names}))
     return out, DATA_NOTES
 
 
@@ -460,10 +468,11 @@ def inside(args) -> int:
             print(f"== {s.title}", flush=True)
             login = set_up(s, accounts, stamp)
             client, token = sign_in(stack_url, login)
-            files = [import_export(client, token, n, t) for n, t in s.exports]
+            files = []
             for name in s.documents:
                 files.append(upload_document(client, token, folder / "pdfs", name, s.expected_types.get(name, "")))
                 print(f"   {name}: {files[-1]['outcome']}", flush=True)
+            files += [import_export(client, token, n, t) for n, t in s.exports]
             visits = app_visits(db, login["household_id"])
             rows, extra = compare(s.expected, visits)
             shots = screenshots(browser, browser_url, client, out, s.key, visits)
@@ -486,7 +495,7 @@ def inside(args) -> int:
 
 # ---------- on your machine ----------
 
-def show_code(email: str, output: Path) -> int:
+def show_login(email: str, output: Path) -> int:
     import pyotp
 
     path = output / "logins.json"
@@ -497,7 +506,8 @@ def show_code(email: str, output: Path) -> int:
     if email not in logins:
         print("Harness members:", ", ".join(logins))
         return 1
-    print(pyotp.TOTP(logins[email]["totp_secret"]).now())
+    print(f"email:    {email}\npassword: {logins[email]['password']}\ncode:     "
+          f"{pyotp.TOTP(logins[email]['totp_secret']).now()} (changes every 30 seconds)")
     return 0
 
 
@@ -520,8 +530,8 @@ def on_host(args) -> int:
 
 
 def main() -> None:
-    if sys.argv[1:2] == ["code"]:
-        sys.exit(show_code(sys.argv[2] if len(sys.argv) > 2 else "", ROOT / OUTPUT))
+    if sys.argv[1:2] in (["login"], ["code"]):  # `code` is what earlier reports print
+        sys.exit(show_login(sys.argv[2] if len(sys.argv) > 2 else "", ROOT / OUTPUT))
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--input", default=INPUT)
     parser.add_argument("--output", default=OUTPUT)

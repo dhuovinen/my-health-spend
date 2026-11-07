@@ -6,13 +6,13 @@ Made-up data for `tools/run_harness.py`, which runs it through the real app and 
 uv run tools/run_harness.py
 ```
 
-The results go to `harness-output/` (git-ignored, because the report holds passwords): `results.png` is a screenshot of the results, `report.html` has every table, the logins and the page screenshots. The stack stays running at http://127.0.0.1:3063. Get the 6-digit sign-in code for a harness member with:
+The results go to `harness-output/` (git-ignored, because the report holds passwords): `results.png` is a screenshot of the results, `report.html` has every table, the logins and the page screenshots. The stack stays running at http://127.0.0.1:3063. Get a harness member's password and current 6-digit sign-in code with:
 
 ```bash
-uv run tools/run_harness.py code <email>
+uv run tools/run_harness.py login <email>
 ```
 
-Each run makes four new households; `docker compose --profile test down -v` wipes them, with everything else in the local stack.
+Each run makes six new households; `docker compose --profile test down -v` wipes them, with everything else in the local stack.
 
 ## What's here
 
@@ -22,7 +22,7 @@ Each run makes four new households; `docker compose --profile test down -v` wipe
 | `pdfs/` | 47 PDFs generated from the CSV: the 43 invoices, 2 EOBs and 2 HSA statements its last three columns name | Uploaded one by one and confirmed exactly as extracted; nothing is filled in for a field the app couldn't read |
 | `original-pdfs/` | The nine earlier Truman PDFs, unchanged, and [their comparison with the CSV](original-pdfs/PDF_VS_CSV.md) | Not used: they're different data |
 
-Each family runs twice in separate households. From the CSV, each visit is compared with the CSV's amounts and status. From the PDFs, each invoice should make one visit at the amount due it prints, since the app can't yet read a family-wide EOB or HSA payments from a PDF. After changing the CSV, regenerate the PDFs:
+Each family runs three ways, in separate households. From the CSV, each visit is compared with the CSV's amounts and status. From the PDFs, each invoice should make one visit at the amount due it prints, since the app can't yet read a family-wide EOB or HSA payments from a PDF. Invoices and exports together, as a member would use the app, the invoices' visits should join the claims and payments, and each visit is compared with the CSV's amounts and status. After changing the CSV, regenerate the PDFs:
 
 ```bash
 uv run tools/make_harness_pdfs.py
