@@ -699,9 +699,9 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-PLT-06-3 | PLT-06 | Seeded-identifier scan of the library | No real identifiers in fixtures | S | New |
 | TC-PLT-07-1 | PLT-07 | Contract tests with sample FHIR EOB, HSA export and X12 835 payloads | Each adapter maps to the same internal model; REC-01 holds | I | New |
 | TC-PLT-08-1 | PLT-08 | KPI job on a fixture dataset with known answers | First-pass match rate, findings per visit, dollars recovered and time to resolution equal the expected values | U | New |
-| TC-PLT-09-1 | PLT-09 | A member, and a visitor, open the admin screen | Refused for both; only the owner reaches it | S | New |
-| TC-PLT-09-2 | PLT-09 | Owner turns the required code off, then on | Off: sign-in needs no code. On: open sessions without a code end and the code is asked for; a member who never set up an authenticator is taken through it. Each change logged | S | New |
-| TC-PLT-09-3 | PLT-09 | Owner opens the admin screen | Shows no household's health data | S | New |
+| TC-PLT-09-1 | PLT-09 | A member, and a visitor, open the admin screen | Refused for both; only the owner reaches it | S | Automated: `test_r1_admin.py` |
+| TC-PLT-09-2 | PLT-09 | Owner turns the required code off, then on | Off: sign-in needs no code. On: open sessions without a code end and the code is asked for; a member who never set up an authenticator is taken through it. Each change logged | S | Automated: `test_r1_admin.py` |
+| TC-PLT-09-3 | PLT-09 | Owner opens the admin screen | Shows no household's health data | S | Automated: `test_r1_admin.py` |
 
 ---
 

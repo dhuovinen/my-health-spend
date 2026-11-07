@@ -134,13 +134,27 @@ Without `--yes` it only previews (counts, warnings, member edits it would keep);
 
 ### Social sign-in (optional, off until a client is set)
 
-Members can sign in with a Google or Microsoft account they've linked on their Account page (PRV-12, ADR-048). Accounts are still created by invitation, and the authenticator code still applies. Each provider stays hidden until its client is set.
+Members can sign in with a Google or Microsoft account they've linked on their Account page (PRV-12, ADR-048). Accounts are still created by invitation, and the authenticator code still applies while it's required (below). Each provider stays hidden until its client is set, and an owner can turn a configured one off on the admin screen.
 
 1. Create a web OAuth client: Google Cloud console (APIs & Services, Credentials), Microsoft Entra admin center (App registrations; accounts in any organization and personal accounts). Ask only for `openid` and `email`.
 2. Add the redirect URI, which must match `MHS_PUBLIC_URL` exactly: `<MHS_PUBLIC_URL>/signin/with/google/callback` and `<MHS_PUBLIC_URL>/signin/with/microsoft/callback`. Microsoft accepts plain `http` only for `localhost`, so set `MHS_PUBLIC_URL=http://localhost:3063` to try it locally.
 3. Put `MHS_GOOGLE_CLIENT_ID` and `MHS_GOOGLE_CLIENT_SECRET`, or the `MHS_MICROSOFT_` pair, in a git-ignored `.env` beside `compose.yaml` and restart the app. A secret can also be a file (`MHS_GOOGLE_CLIENT_SECRET_FILE`), and in Google Cloud it belongs in Secret Manager.
 
 Use a separate client per environment. Before real households use it, check each provider's button branding rules and complete Google's app verification.
+
+### Admin screen and the authenticator code (PLT-09, ADR-049)
+
+An owner manages settings for the whole service at `/admin` (linked from their Account page): whether members must enter the authenticator code, and which configured sign-in providers are on. It shows counts and who changed what, never a household's records. Make yourself an owner (your sessions end, so sign in again):
+
+```bash
+docker compose exec app mhs-admin owner --email you@example.com on
+```
+
+The code starts required. Turning it off on the screen takes your current code; owners always enter it whatever the setting. Turning it back on signs out everyone who came in without a code, and a member who has only ever signed in without one is shown their authenticator at the next sign-in. If the screen is unavailable:
+
+```bash
+docker compose exec app mhs-admin require-code status
+```
 
 ### Export and delete your data (PRV-09)
 

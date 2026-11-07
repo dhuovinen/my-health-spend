@@ -38,6 +38,7 @@ Release 1 test cases covered in phase 1.1:
 | TC-PRV-11-1 password alone reaches no data | `test_r1_auth.py::test_tc_prv_11_1_*`, `stack/test_stack.py` |
 | TC-PRV-11-2 two-household isolation (records, files, jobs, vault entries; database row-level security) | `test_r1_isolation.py`, `test_r1_database.py::test_row_level_security_*` |
 | TC-PRV-11-3 sign-out and idle timeout | `test_r1_auth.py::test_tc_prv_11_3_*` |
+| TC-PLT-09-1 to 3 admin screen, the code off and on, no household data | `test_r1_admin.py` |
 | TC-PRV-06-2 unreadable without the key | `test_r1_encryption.py`, `stack/test_stack.py::test_originals_volume_holds_only_ciphertext` |
 | TC-PRV-06-3 back-end tier can't decrypt or read the vault | `test_r1_database.py::test_worker_role_*`, `test_r1_encryption.py::test_tc_prv_06_3_*` |
 | TC-PRV-07-1 restore onto a fresh server; TC-PRV-07-2 wrong passphrase | `test_r1_backup.py` (including the scripted `mhs-vault` commands) |

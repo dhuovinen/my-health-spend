@@ -32,7 +32,7 @@ DESKTOP = {"viewport": {"width": 1280, "height": 800}}
 PAGES = ["/", "/visits?year=2026", f"/visits/{PEDS}", "/visits/v-2026-04-02-pcp", "/household", "/providers",
          "/providers/prov-peds?year=2026", "/charges?year=2026", "/tax?year=2026", "/settings", "/help", "/accuracy", "/import", "/cases",
          f"/visits/{PEDS}/cases/case-1"]
-R1_PAGES = ["/uploads", "/account", "/data"]
+R1_PAGES = ["/uploads", "/account", "/data", "/admin"]
 SHOTS = os.environ.get("MHS_UX_SCREENSHOTS")
 
 # Every visible control smaller than 44px in either direction, except a link inside running text.
@@ -116,6 +116,8 @@ def release1(household, app_db, worker_db):
     r1.client = member.client
     import_household(r1)
     open_case(r1.client)
+    with app_db.tx() as c:  # an owner, so the admin screen is in the phone check (PLT-09)
+        c.execute("UPDATE app.members SET is_owner = true")
     server = Server(household.app)
     cookie = {"name": "mhs_session", "value": member.client.client.cookies.get("mhs_session"), "url": server.url}
     yield server, [cookie], member

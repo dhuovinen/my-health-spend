@@ -97,7 +97,7 @@ def admin_sql(pgdb: TestDatabase, query: str, params=()):
 
 @pytest.fixture
 def clean_db(pgdb, tier_dbs):
-    admin_sql(pgdb, "TRUNCATE app.households, vault.household_keys, vault.entries CASCADE")
+    admin_sql(pgdb, "TRUNCATE app.households, app.service_settings, vault.household_keys, vault.entries CASCADE")
     return tier_dbs
 
 

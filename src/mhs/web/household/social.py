@@ -25,13 +25,15 @@ NOT_COMPLETED = "Sign-in was not completed. Please try again."
 
 
 def add_social_sign_in(app: FastAPI, *, config: AppConfig, accounts: Accounts, db: Database, page: Callable,
-                       member: Callable, check_csrf: Callable, set_cookie: Callable) -> None:
-    providers = {p.name: p for p in config.sign_in_providers}
+                       member: Callable, check_csrf: Callable, set_cookie: Callable, providers_on: Callable,
+                       needs_code: Callable, mfa_page: Callable) -> None:
 
     def provider_of(name: str) -> SignInProvider:
-        if name not in providers:
+        """A configured provider the owner hasn't turned off (ADR-049); anything else is 404."""
+        found = next((p for p in providers_on() if p.name == name), None)
+        if found is None:
             raise HTTPException(404)
-        return providers[name]
+        return found
 
     def redirect_uri(provider: SignInProvider) -> str:
         return f"{config.public_url}{FLOW_PATH}/{provider.name}/callback"
@@ -92,8 +94,13 @@ def add_social_sign_in(app: FastAPI, *, config: AppConfig, accounts: Accounts, d
                            "password, then link it on your Account page. If you've just had too many tries, "
                            "wait 15 minutes.", 401)
         privacy.log_event(db, found.household_id, found.id, "social_signin")
-        token = accounts.start_session(found)
-        response = page(request, "mfa.html", mfa_csrf=accounts.get_session(token).csrf_token)
+        if needs_code(found):
+            token = accounts.start_session(found)
+            response = mfa_page(request, accounts.get_session(token))
+        else:  # the owner turned the code off: signed in, but a link to Home, since a redirect wouldn't carry the cookie
+            privacy.log_event(db, found.household_id, found.id, "signin_without_code")
+            token = accounts.start_session(found, without_code=True)
+            response = page(request, "signed_in.html", provider=provider)
         set_cookie(response, token)
         response.delete_cookie(VIEW_COOKIE, path="/")  # a new sign-in starts on the family view
         return finish(response)

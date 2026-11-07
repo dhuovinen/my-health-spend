@@ -55,7 +55,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 046 | Visits as rows with date sort; a different date can't propose a visit; REC-14 flags as their own result; UX-11 as server-drawn SVG | 2026-11-06 | Accepted |
 | 047 | The public landing page is a server-rendered page in the app; `/` shows it to anyone not signed in; no React, Supabase or Google/Microsoft sign-in | 2026-11-07 | Proposed |
 | 048 | Social sign-in (PRV-12): Google and Microsoft through direct OpenID Connect; invitation only for now; linked by provider subject | 2026-11-07 | Accepted |
-| 049 | Owner-only admin screen with feature toggles (PLT-09); the authenticator code becomes owner-controlled | 2026-11-07 | Proposed |
+| 049 | Owner-only admin screen with feature toggles (PLT-09); the authenticator code becomes owner-controlled | 2026-11-07 | Accepted |
 
 ## Records
 
@@ -416,15 +416,17 @@ PRV-12: the owner wants Google and Microsoft sign-in, first built in the Lovable
 
 **Consequences.** Google or Microsoft learns each time a member signs in to a medical billing app, though nothing about their records; the sign-in page should say so, and a member can keep using a password. Losing the provider account removes that route only. Open: whether to add Apple; whether the privacy notice (CMP) and ADR-028 need updating before real households use it. Test cases: TC-PRV-12-1 to TC-PRV-12-6.
 
-### ADR-049 · Admin screen and an owner-controlled authenticator (Proposed)
-PLT-09. The owner wants one screen to manage features and toggles, and wants the authenticator code to be optional, under the owner's control. Owner's decision on 2026-11-07; the details below are proposed by the build session and nothing is built, so the code stays required until this is.
+### ADR-049 · Admin screen and an owner-controlled authenticator (Accepted)
+PLT-09. The owner wants one screen to manage features and toggles, and wants the authenticator code to be optional, under the owner's control. Owner's decision on 2026-11-07; the build session proposed the details and the owner accepted them the same day ("build it"), with the two open points settled as below.
 
 **Decision.**
 - **The owner decides, for the whole service.** One setting says whether the code is required. Narrowing ADR-031 and PRV-11, turning it off means a password or a linked Google or Microsoft account alone reaches a household's data.
-- **Toggles are records, not environment settings,** so a change needs no deploy. Each change is logged with who and when.
-- **The owner's own sign-in always needs the code,** even when it's off for members. Otherwise one stolen password could turn off the service's protection.
-- **The screen shows no household's health data,** only settings and counts, like `mhs-admin false-positives`. `mhs-admin` keeps a way in if the screen is unavailable.
-- **Turning it on is safe for those already in.** Sessions without a code end. A member who never set up an authenticator is taken through it at their next sign-in, rather than locked out.
-- **First toggles:** the required code, and each social sign-in provider. AI extraction per household can move here from `mhs-admin`.
+- **It starts on.** A new or upgraded stack asks for the code until the owner turns it off, so an upgrade never quietly removes protection.
+- **The owner is a role on a member** (`app.members.is_owner`), given and taken away with `mhs-admin owner`, not a separate operator sign-in. There can be more than one.
+- **Toggles are records, not environment settings** (`app.service_settings`), so a change needs no deploy. Each change goes in the security log as its own event (`setting_<name>_on` / `_off`) with the owner who made it and when. Turning the code off needs the owner's current code, typed again.
+- **The owner's own sign-in always needs the code,** even when it's off for members, and the screen only opens to a session that entered one. Otherwise one stolen password could turn off the service's protection.
+- **The screen shows no household's health data,** only settings and counts, like `mhs-admin false-positives`. Anyone else gets 404, as for a page that doesn't exist. `mhs-admin require-code` keeps a way in if the screen is unavailable.
+- **Turning it on is safe for those already in.** Sessions that didn't enter a code end at once. A member who has signed in without a code and never confirmed an authenticator is shown it at their next sign-in and confirms it with a code before reaching any data. A member who was added but never signed in uses the enrolment link from `mhs-admin` as before, so a password alone never shows a new member's authenticator.
+- **First toggles:** the required code, and each social sign-in provider that is configured (on by default). A provider's client settings stay in the environment; the toggle only hides or shows it. AI extraction per household stays in `mhs-admin` for now, since moving it here would put household names on the screen.
 
-**Consequences.** With the code off, a single stolen credential exposes real health data, so the screen says so. The launch gate for other users should decide whether the code must be on for them. Open: who counts as the owner (a role on one member, or a separate operator sign-in), and whether the code starts on or off.
+**Consequences.** With the code off, a single stolen credential exposes real health data, so the screen says so in the toggle's own words. The launch gate for other users should decide whether the code must be on for them. A member who signed in without a code and whose password is then stolen can have the authenticator set up by the thief when the code comes back on; the owner can reset it with `mhs-admin reset-mfa`. Test cases: TC-PLT-09-1 to TC-PLT-09-3.

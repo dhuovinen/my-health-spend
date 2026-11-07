@@ -224,7 +224,7 @@ The visit card list from the original plan stays the home screen. The rest of th
 | PRV-08 | Never send data to advertising pixels or third-party analytics; product analytics events are limited to an allow-list (event name, pseudonymous install ID, timestamp, app version) with no amounts, providers, codes or identifiers | P1 |
 | PRV-09 | Let the member export all their data and delete their account and data, with a deletion confirmation. Deletion removes records, originals and vault entries at once and backups on their normal rotation within 35 days; only security and access logs without health content are kept, for one year | P2 |
 | PRV-10 | Keep an access log of who and what touched each record, viewable by the member | P2 |
-| PRV-11 | Authenticate every member, with a multi-factor sign-in the owner can require or turn off for the whole service (PLT-09, ADR-049; required until that control is built), and isolate each household's data so no query can return another household's records | P1 |
+| PRV-11 | Authenticate every member, with a multi-factor sign-in the owner can require or turn off for the whole service (PLT-09, ADR-049; required unless the owner turns it off, and always for owners), and isolate each household's data so no query can return another household's records | P1 |
 | PRV-12 | Let a member sign in with a Google or Microsoft account in place of a password, linked to their existing membership. The second factor (PRV-11) still applies, household isolation is unchanged, and a social account with no link to a member gets no access and no new account | P2 |
 
 ## Regulatory and compliance

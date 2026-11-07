@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Admin</h1></div>
+<p class="muted small">Settings for the whole service. Only owners see this page, and it shows no household's records.</p>
+{% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
+<div class="grid two">
+  <section class="card">
+    <h2>Authenticator code</h2>
+    {% if require_code %}
+    <p><span class="chip good">Required</span> Every member enters a code from their authenticator app after their password or linked account.</p>
+    <p class="alert warn small">If you turn it off, a stolen password, or a linked Google or Microsoft account, is enough to read that household's health records. Owners still enter the code.</p>
+    <form method="post" action="/admin/require-code" class="stack" data-confirm="Let members sign in without the authenticator code?">
+      {{ csrf_input() }}
+      <input type="hidden" name="state" value="off">
+      <label>Your current code, to confirm <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required></label>
+      <button class="btn danger" type="submit">Turn the code off</button>
+    </form>
+    {% else %}
+    <p><span class="chip bad">Off</span> Members sign in with a password or a linked account alone. Owners still enter the code.</p>
+    <p class="alert warn small">A stolen password, or a linked Google or Microsoft account, is enough to read that household's health records.</p>
+    <form method="post" action="/admin/require-code" class="stack">
+      {{ csrf_input() }}
+      <input type="hidden" name="state" value="on">
+      <button class="btn primary" type="submit">Require the code</button>
+    </form>
+    <p class="small muted">Turning it on signs out everyone who signed in without a code. Members who never set up an authenticator are shown how at their next sign-in.</p>
+    {% endif %}
+  </section>
+  <section class="card">
+    <h2>Sign-in with other accounts</h2>
+    {% for p in providers %}
+    <div class="social-link">
+      {% if not p.configured %}
+      <span>{{ p.label }}: not set up <span class="small muted">(SETUP.md, "Social sign-in")</span></span>
+      {% elif p.on %}
+      <span>{{ p.label }}: on</span>
+      <form method="post" action="/admin/providers/{{ p.name }}">{{ csrf_input() }}<input type="hidden" name="state" value="off"><button class="btn" type="submit">Turn off</button></form>
+      {% else %}
+      <span>{{ p.label }}: off</span>
+      <form method="post" action="/admin/providers/{{ p.name }}">{{ csrf_input() }}<input type="hidden" name="state" value="on"><button class="btn" type="submit">Turn on</button></form>
+      {% endif %}
+    </div>
+    {% endfor %}
+    <p class="small muted">Off hides the button and refuses the sign-in. Links members made are kept for when it's back on.</p>
+  </section>
+</div>
+<section class="card section">
+  <h2>Members</h2>
+  <div class="table-wrap">
+    <table>
+      <tbody>
+        <tr><td>Households</td><td class="num">{{ counts.households }}</td></tr>
+        <tr><td>Members</td><td class="num">{{ counts.members }}</td></tr>
+        <tr><td>With an authenticator set up</td><td class="num">{{ counts.confirmed }}</td></tr>
+        <tr><td>Signed in without a code and no authenticator yet</td><td class="num">{{ counts.no_code }}</td></tr>
+        <tr><td>Owners</td><td class="num">{{ counts.owners }}</td></tr>
+        <tr><td>Linked Google accounts</td><td class="num">{{ counts.linked_google or 0 }}</td></tr>
+        <tr><td>Linked Microsoft accounts</td><td class="num">{{ counts.linked_microsoft or 0 }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="card section">
+  <h2>Changes</h2>
+  {% if changes %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>When (UTC)</th><th>Who</th><th>Change</th></tr></thead>
+      <tbody>
+      {% for c in changes %}
+        <tr><td class="small">{{ c.at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ c.display_name or 'mhs-admin' }}</td><td>{{ c.event[8:] | replace('_', ' ') }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="muted">No changes yet: everything is as it started.</p>{% endif %}
+</section>
+{% endblock %}

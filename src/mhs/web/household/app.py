@@ -31,7 +31,9 @@ from mhs.ingest.scrub import scrubber_class
 from mhs.stack import AppConfig, load_app_config
 from mhs.vault.client import VaultClient, VaultError
 from mhs.web.household import privacy, security
-from mhs.web.household.auth import AccountError, Accounts, Session
+from mhs.web.household.admin_screen import add_admin_screen
+from mhs.web.household.auth import AccountError, Accounts, Member, Session
+from mhs.web.household.features import Features
 from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.intake import TOKEN, Intake, add_intake
 from mhs.web.household.qr import qr_svg
@@ -154,7 +156,15 @@ def create_app(
     objects = objects or object_store_from_env(config.objects_dir)
     vault = vault or VaultClient(config.vault_url, config.vault_token)
     accounts = Accounts(db, keyring, config.session_idle_minutes, config.session_max_hours)
+    features = Features(db)
     queue = JobQueue(db)
+
+    def providers_on() -> tuple:
+        """The configured providers the owner hasn't turned off (ADR-049)."""
+        if not config.sign_in_providers:
+            return ()
+        settings = features.all()
+        return tuple(p for p in config.sign_in_providers if settings.get(f"signin_{p.name}", True))
 
     def context(request: Request) -> dict:
         session = getattr(request.state, "session", None)
@@ -162,7 +172,8 @@ def create_app(
         return {"session": session if signed_in else None, "csrf": session.csrf_token if session else "",
                 "show_nav": signed_in, "path_import": False,
                 "landing_link": {"href": "/signin", "label": "Sign in"},
-                "sign_in_providers": config.sign_in_providers}
+                "sign_in_providers": providers_on(),
+                "code_required": bool(session and session.is_owner) or features.require_code()}
 
     templates = make_templates([HERE / "templates"], context)
 
@@ -222,6 +233,10 @@ def create_app(
             raise SignInRequired(mfa_pending=True)
         return session
 
+    def needs_code(who: Member | Session) -> bool:
+        """The owner's setting, except that an owner always enters the code (ADR-049)."""
+        return who.is_owner or features.require_code()
+
     def check_csrf(session: Session, token: str | None) -> None:
         if not token or not secrets.compare_digest(str(token), session.csrf_token):
             raise HTTPException(403)
@@ -252,10 +267,25 @@ def create_app(
             return page(request, "signin.html", 401, error="That email and password don't match, or the account "
                         "is locked for 15 minutes after too many tries.", email=email)
         accounts.end_session(request.cookies.get(COOKIE))
-        response = RedirectResponse("/signin/mfa", status_code=303)
-        set_cookie(response, accounts.start_session(found))
+        code = needs_code(found)
+        if not code:
+            privacy.log_event(db, found.household_id, found.id, "signin_without_code")
+        response = RedirectResponse("/signin/mfa" if code else "/", status_code=303)
+        set_cookie(response, accounts.start_session(found, without_code=not code))
         response.delete_cookie(VIEW_COOKIE, path="/")  # a new sign-in starts on the family view
         return response
+
+    def mfa_page(request: Request, session: Session, status: int = 200, **ctx) -> HTMLResponse:
+        """The code step; with the authenticator to set up first for a member who has only signed in without a
+        code until now (ADR-049)."""
+        secret = accounts.code_setup_secret(session.member_id)
+        if secret is not None:
+            email = accounts.email_of(session.member_id)
+            ctx.update(setup=True, qr=Markup(qr_svg(accounts.provisioning_uri(email, secret))),
+                       key=" ".join(secret[i:i + 4] for i in range(0, len(secret), 4)))
+        return page(request, "mfa.html", status, mfa_csrf=session.csrf_token, **ctx)
+
+    app.state.mfa_page = mfa_page
 
     @app.get("/signin/mfa", response_class=HTMLResponse)
     def mfa_form(request: Request):
@@ -264,7 +294,12 @@ def create_app(
             return RedirectResponse("/signin", status_code=303)
         if session.mfa_passed:
             return RedirectResponse("/", status_code=303)
-        return page(request, "mfa.html", mfa_csrf=session.csrf_token)
+        if not needs_code(session):  # the owner turned the code off while this sign-in waited for it
+            privacy.log_event(db, session.household_id, session.member_id, "signin_without_code")
+            response = RedirectResponse("/", status_code=303)
+            set_cookie(response, accounts.pass_mfa(session, code_passed=False))
+            return response
+        return mfa_page(request, session)
 
     @app.post("/signin/mfa")
     def mfa(request: Request, code: str = Form(""), csrf_token: str = Form("")):
@@ -273,8 +308,8 @@ def create_app(
             return RedirectResponse("/signin", status_code=303)
         check_csrf(session, csrf_token)
         if not accounts.check_totp(session.member_id, code):
-            return page(request, "mfa.html", 401, mfa_csrf=session.csrf_token,
-                        error="That code didn't work. Use the current code from your authenticator app.")
+            return mfa_page(request, session, 401,
+                            error="That code didn't work. Use the current code from your authenticator app.")
         response = RedirectResponse("/", status_code=303)
         set_cookie(response, accounts.pass_mfa(session))
         return response
@@ -336,7 +371,9 @@ def create_app(
         return page(request, "account.html", status, identities=accounts.identities_of(session.member_id), **ctx)
 
     add_social_sign_in(app, config=config, accounts=accounts, db=db, page=page, member=member, check_csrf=check_csrf,
-                       set_cookie=set_cookie)
+                       set_cookie=set_cookie, providers_on=providers_on, needs_code=needs_code, mfa_page=mfa_page)
+    add_admin_screen(app, config=config, accounts=accounts, features=features, db=db, page=page, member=member,
+                     check_csrf=check_csrf)
 
     @app.get("/account", response_class=HTMLResponse)
     def account(request: Request):
@@ -344,13 +381,17 @@ def create_app(
         return account_page(request, session)
 
     @app.post("/account/recovery-codes", response_class=HTMLResponse)
-    def new_codes(request: Request, code: str = Form(""), csrf_token: str = Form("")):
-        """New recovery codes for a signed-in member, after a fresh authenticator code."""
+    def new_codes(request: Request, code: str = Form(""), password: str = Form(""), csrf_token: str = Form("")):
+        """New recovery codes for a signed-in member, after a fresh authenticator code (or the password, while the
+        owner has the code off and so the member may never have set one up)."""
         session = member(request)
         check_csrf(session, csrf_token)
-        if not accounts.check_totp(session.member_id, code):
-            return account_page(request, session, 401,
-                                error="That code didn't work. Use the current code from your authenticator app.")
+        if needs_code(session):
+            if not accounts.check_totp(session.member_id, code):
+                return account_page(request, session, 401,
+                                    error="That code didn't work. Use the current code from your authenticator app.")
+        elif accounts.check_password(accounts.email_of(session.member_id), password) is None:
+            return account_page(request, session, 401, error="That password didn't work.")
         codes = accounts.new_recovery_codes(accounts.email_of(session.member_id))
         return account_page(request, session, left=len(codes), codes=codes)
 
@@ -387,7 +428,7 @@ def create_app(
         if confirm.strip() != "DELETE":
             return data_page(request, session, 400, error="Type DELETE to confirm.")
         if accounts.check_password(privacy.member_email(db, session.member_id), password) is None \
-                or not accounts.check_totp(session.member_id, code):
+                or (needs_code(session) and not accounts.check_totp(session.member_id, code)):
             return data_page(request, session, 401, error="That password or authenticator code didn't work.")
         last = privacy.member_count(db, session.household_id) == 1
         if last:
