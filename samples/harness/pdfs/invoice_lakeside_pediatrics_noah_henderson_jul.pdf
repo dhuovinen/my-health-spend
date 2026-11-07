@@ -1,0 +1,59 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 956 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+40 760 Td
+(Dr. Patricia Gomez, MD) Tj T*
+(PATIENT STATEMENT) Tj T*
+(Lakeside Pediatric Associates) Tj T*
+(Statement date: 08/14/2026) Tj T*
+(Account number: 1029555) Tj T*
+(Patient: Henderson, Noah) Tj T*
+(Guarantor: David Henderson) Tj T*
+(Date of service: 07/28/2026) Tj T*
+(Primary insurance: Aegis Health Plans) Tj T*
+(Claim number: EOB-HEN-2019) Tj T*
+(Due date: 09/13/2026) Tj T*
+() Tj T*
+(Date Code Description Charges Insurance Adjustments Payments Balance) Tj T*
+(07/28/2026 99213 ADHD Progress Monitoring Review $240.00 $0.00 $90.00 $150.00 $0.00) Tj T*
+(07/28/2026 99394 Annual Pediatric Well-Child Exam $290.00 $170.00 $120.00 $0.00 $0.00) Tj T*
+() Tj T*
+(Total charges: $530.00) Tj T*
+(Contractual adjustments: $210.00) Tj T*
+(Allowed amount: $320.00) Tj T*
+(Insurance payments: $170.00) Tj T*
+(Patient responsibility: $150.00) Tj T*
+(Payment received 07/28/2026, HSA debit card: -$150.00) Tj T*
+(Amount due: $0.00) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000001192 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1318
+%%EOF

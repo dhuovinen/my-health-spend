@@ -1,0 +1,54 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 971 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+40 760 Td
+(EquiHealth HSA Bank) Tj T*
+(HSA ACTIVITY STATEMENT) Tj T*
+(Account holder: Mark Truman) Tj T*
+(HSA account number: HSA-4822594359) Tj T*
+(Period: 01/01/2026 to 11/28/2026) Tj T*
+() Tj T*
+(DISBURSEMENTS) Tj T*
+(Date Transaction Payee Patient Claim Amount) Tj T*
+(06/12/2026 HSA-TRU-9001 Apex Eye Care LLC Mark Truman EOB-TRU-1004 $10.00) Tj T*
+(08/14/2026 HSA-TRU-9002 ImmediateCare Walk-In Sarah Truman EOB-TRU-1007 $160.00) Tj T*
+(09/15/2026 HSA-TRU-9004 ClearSkin Dermatology Group Lucas Truman EOB-TRU-1012 $195.00) Tj T*
+(10/25/2026 HSA-TRU-9003 Tri-County Orthopedics Chloe Truman EOB-TRU-1010 $275.00) Tj T*
+(11/28/2026 HSA-TRU-9005 Dr. Timothy Sterling, MD Maya Truman EOB-TRU-1014 $145.00) Tj T*
+(11/28/2026 HSA-TRU-9005 Lakeside Pediatric Lab Maya Truman EOB-TRU-1014 $24.00) Tj T*
+() Tj T*
+(Number of disbursements: 6) Tj T*
+(Total disbursements: $809.00) Tj T*
+(Contributions and balances aren't shown in this test data.) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000001207 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1333
+%%EOF

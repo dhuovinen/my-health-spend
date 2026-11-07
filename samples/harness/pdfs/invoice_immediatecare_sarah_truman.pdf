@@ -1,0 +1,57 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 795 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+40 760 Td
+(ImmediateCare Walk-In) Tj T*
+(PATIENT STATEMENT) Tj T*
+(ImmediateCare Metro East) Tj T*
+(Statement date: 08/07/2026) Tj T*
+(Account number: 2123617) Tj T*
+(Patient: Truman, Sarah) Tj T*
+(Guarantor: Mark Truman) Tj T*
+(Date of service: 07/22/2026) Tj T*
+(Primary insurance: Aegis Health Plans) Tj T*
+(Claim number: EOB-TRU-1007) Tj T*
+(Due date: 09/06/2026) Tj T*
+() Tj T*
+(Date Code Description Charges Insurance Adjustments Payments Balance) Tj T*
+(07/22/2026 99203 Urgent Care Office Visit \(Acute Maxill $245.00 $0.00 $85.00 $0.00 $160.00) Tj T*
+() Tj T*
+(Total charges: $245.00) Tj T*
+(Contractual adjustments: $85.00) Tj T*
+(Allowed amount: $160.00) Tj T*
+(Insurance payments: $0.00) Tj T*
+(Patient responsibility: $160.00) Tj T*
+(Amount due: $160.00) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000001031 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1157
+%%EOF

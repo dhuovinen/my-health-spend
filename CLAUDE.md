@@ -66,6 +66,12 @@ False-positive rate of findings (PLT-02, ADR-044): members say "real problem" or
 docker compose exec app mhs-admin false-positives --from 2026-10-01 --to 2026-10-31
 ```
 
+The test harness runs the made-up data in `samples/harness/` (README there) through the real app in four new households (each family from its CSV rows and from its PDFs, generated from the CSV by `tools/make_harness_pdfs.py`), with no person reviewing, compares the results with the CSV's answers and writes `harness-output/` (git-ignored; `results.png`, `report.html` with logins). `uv run tools/run_harness.py code <email>` prints a member's current sign-in code. Exit code 0 means the run finished; add `--strict` to fail on a mismatch:
+
+```bash
+uv run tools/run_harness.py
+```
+
 Extraction accuracy on the synthetic corpus (development set `tests/corpus`, held-out set `tests/corpus-holdout`; regenerate with `uv run python tools/make_corpus.py`; add `--extractor claude` with an API key to measure Claude):
 
 ```bash

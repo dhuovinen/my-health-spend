@@ -11,3 +11,4 @@ research/
 .coverage
 .env
 docs/
+harness-output/
