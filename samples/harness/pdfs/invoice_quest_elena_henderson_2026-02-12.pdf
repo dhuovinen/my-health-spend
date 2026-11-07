@@ -1,0 +1,59 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 977 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+40 760 Td
+(Quest Diagnostics Inc.) Tj T*
+(PATIENT STATEMENT) Tj T*
+(Quest Diagnostics Central Lab) Tj T*
+(Statement date: 03/02/2026) Tj T*
+(Account number: 1016762) Tj T*
+(Patient: Henderson, Elena) Tj T*
+(Guarantor: David Henderson) Tj T*
+(Date of service: 02/12/2026) Tj T*
+(Primary insurance: Aegis Health Plans) Tj T*
+(Claim number: EOB-HEN-2011) Tj T*
+(Due date: 04/01/2026) Tj T*
+() Tj T*
+(Date Code Description Charges Insurance Adjustments Payments Balance) Tj T*
+(02/12/2026 82947 Glucose Blood Assay Quantitative $55.00 $0.00 $37.00 $0.00 $18.00) Tj T*
+(02/12/2026 83036 Hemoglobin A1c Glycosylated $85.00 $0.00 $53.00 $0.00 $32.00) Tj T*
+(02/12/2026 84443 Thyroid Stimulating Hormone \(TSH\) $90.00 $0.00 $55.00 $0.00 $35.00) Tj T*
+() Tj T*
+(Total charges: $230.00) Tj T*
+(Contractual adjustments: $145.00) Tj T*
+(Allowed amount: $85.00) Tj T*
+(Insurance payments: $0.00) Tj T*
+(Patient responsibility: $85.00) Tj T*
+(Amount due: $85.00) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000001213 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1339
+%%EOF

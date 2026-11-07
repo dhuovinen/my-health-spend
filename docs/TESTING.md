@@ -46,6 +46,10 @@ Release 1 test cases covered in phase 1.1:
 
 TC-PRV-07-3 (lost phone and password, recovered with a recovery code; data intact): `test_r1_recovery.py`. Not yet: TC-PRV-06-1 (TLS; staging), TC-PRV-08-2 (no analytics events exist).
 
+## Test harness
+
+`uv run tools/run_harness.py` runs the made-up data in `samples/harness/` through the real app and reports each visit against its expected answer, with screenshots and logins, in `harness-output/` (`samples/harness/README.md`). It measures how far the app gets with no person reviewing, so mismatches are its output rather than failures, unless `--strict` is given. `tests/test_harness.py` tests its conversions and comparison without a stack.
+
 ## User scenarios (phase 1.3)
 
 Each scenario is automated in `tests/test_r1_scenarios.py` (with the worker run in-process); scenarios 1, 3, 8, 12 and 15 also run on the compose stack through the real workers (`tests/stack/test_stack.py`): a photo is read by Tesseract in the app, scrubbed with Presidio, and extracted by the `worker-ai` container through the `capture` proxy, which answers with recorded responses and logs each AI request for TC-PLT-04-1. Tesseract tests skip under `uv run pytest` when the binary isn't installed. To try one by hand: `docker compose up --build`, create a household and member (SETUP.md), sign in at http://127.0.0.1:3063 with the authenticator code, add a member and a 2026 plan in Settings, then use the Uploads page. Use synthetic documents only (`tests/pdfs.py` makes them).
