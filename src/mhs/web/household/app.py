@@ -159,7 +159,8 @@ def create_app(
         session = getattr(request.state, "session", None)
         signed_in = session is not None and session.mfa_passed
         return {"session": session if signed_in else None, "csrf": session.csrf_token if session else "",
-                "show_nav": signed_in, "path_import": False}
+                "show_nav": signed_in, "path_import": False,
+                "landing_link": {"href": "/signin", "label": "Sign in"}}
 
     templates = make_templates([HERE / "templates"], context)
 
@@ -189,7 +190,11 @@ def create_app(
     async def sign_in_required(request: Request, exc: SignInRequired):
         if request.url.path.startswith("/api/"):
             return JSONResponse({"detail": "Sign-in required"}, status_code=401)
-        return RedirectResponse("/signin/mfa" if exc.mfa_pending else "/signin", status_code=303)
+        if exc.mfa_pending:
+            return RedirectResponse("/signin/mfa", status_code=303)
+        if request.url.path == "/":  # ADR-047: Home for members, the landing page for everyone else
+            return page(request, "landing.html", year=datetime.now(timezone.utc).year)
+        return RedirectResponse("/signin", status_code=303)
 
     @app.exception_handler(RequestValidationError)
     async def bad_request(request: Request, exc: RequestValidationError):
@@ -233,6 +238,9 @@ def create_app(
 
     @app.get("/signin", response_class=HTMLResponse)
     def signin_form(request: Request):
+        session = accounts.get_session(request.cookies.get(COOKIE))
+        if session is not None and session.mfa_passed:  # the landing page's "Sign in", for a member already in
+            return RedirectResponse("/", status_code=303)
         return page(request, "signin.html")
 
     @app.post("/signin")

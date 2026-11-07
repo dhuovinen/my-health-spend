@@ -390,6 +390,11 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
             response.delete_cookie(VIEW_COOKIE, path="/")
         return response
 
+    @app.get("/welcome", response_class=HTMLResponse)
+    def welcome(request: Request):
+        """ADR-047: the public landing page. Reads no records, so it never asks the host for a store."""
+        return render(request, "landing.html", year=date.today().year)
+
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request, year: int | None = None):
         """ADR-023 and ADR-041: the summary, then the attention queue, then the year's visits as cards."""

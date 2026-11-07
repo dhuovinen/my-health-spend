@@ -73,7 +73,9 @@ def create_app(config: Config | None = None) -> FastAPI:
     config = config or load_config()
     app = FastAPI(title="My Health Spend", docs_url=None, redoc_url=None)
     app.mount("/static", StaticFiles(directory=WEB / "static"), name="static")
-    templates = make_templates([], lambda request: {"show_nav": True, "path_import": True})
+    # No sign-in here, so Home stays at "/" and the landing page (ADR-047) is only at /welcome.
+    templates = make_templates([], lambda request: {"show_nav": True, "path_import": True,
+                                                    "landing_link": {"href": "/", "label": "Open the app"}})
 
     @app.get("/health")
     def health():

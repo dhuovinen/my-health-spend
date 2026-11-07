@@ -53,6 +53,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 043 | HSA and tax: dated reference tables, "likely" tags per visit, account rules on the account record, receipt vault, contribution limits by month, year-end summary | 2026-10-18 | Accepted |
 | 044 | False-positive tracking: the member says real or wrong when closing a finding; the rate is wrong over decided, per kind and release, counts only for the owner | 2026-10-18 | Accepted |
 | 046 | Visits as rows with date sort; a different date can't propose a visit; REC-14 flags as their own result; UX-11 as server-drawn SVG | 2026-11-06 | Accepted |
+| 047 | The public landing page is a server-rendered page in the app; `/` shows it to anyone not signed in; no React, Supabase or Google/Microsoft sign-in | 2026-11-07 | Proposed |
 
 ## Records
 
@@ -379,3 +380,16 @@ REC-14, split out of REC-10's changed-price rule and widened, because that rule 
 - **Priority stays P2,** and can be built ahead of Release 2, as disputes (ADR-042) and tax (ADR-043) were.
 
 **Consequences.** It's a new cross-visit check in `core/`, with no schema change, since EOB lines already hold code, units, billed, allowed and cost sharing. It adds no AI step. Because prices have no tolerance, small changes will show up; if members mark them wrong too often (ADR-044, the 5% target), reconsider that first.
+
+### ADR-047 · Public landing page in the app (Proposed)
+The landing page was built separately in Lovable (`dhuovinen/health-reconciler`: TanStack Start, React, Tailwind, Supabase). Proposed by the build session on 2026-11-07 when bringing it into the app.
+
+**Decision.**
+- **Rebuilt, not merged.** The page is a Jinja template with its own stylesheet and a small script (`templates/landing.html`, `static/landing.css`, `static/landing.js`). A React runtime can't run under the app's policy (PRV-08) without weakening it, and a second build chain isn't worth one page.
+- **`/` depends on who is asking.** On Release 1, anyone without a session sees the landing page, a member who has passed MFA sees Home, and a member between password and code goes to `/signin/mfa`. Data routes still redirect to `/signin`. The page reads no household data. `/` stays `no-store`, since one URL now answers differently per session.
+- **Release 0 keeps Home at `/`.** It has one owner, no sign-in and no anonymous visitor, and every "Home" link points there. Both apps serve the page at `/welcome`.
+- **Sign-in stays ADR-031's.** The Google and Microsoft sign-in, `/auth` and `/account` from the Lovable project aren't brought over. They would replace email, password and TOTP with a third-party identity service outside the hosting boundary and the data-processing agreement (ADR-028). "Sign in" links to `/signin`.
+- **Only the billing-chaos concept.** The Lovable project's own rule keeps the alternative concept out of the main site, so its coral theme and photo stay behind.
+- **The page follows `docs/UI_GUIDE.md`.** `$500B+` and `$25-50B` are unverified, so that band now asks the questions from the problem statement. Nothing is below 12px. Copy that called the product a concept or said uploads don't exist is corrected, and lines implying savings are reworded. The fade over the hero photo is the one gradient, and only to keep text readable over the picture.
+
+**Consequences.** A signed-out visitor to `/` no longer lands on the sign-in form; it's one click away. Sign-out and expired sessions on data routes still go to `/signin`. The FAQ describes access as early access by invitation, because members are created by `mhs-admin`; change it when sign-up exists. The Lovable repository stops being the source for this page.

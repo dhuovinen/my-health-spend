@@ -186,6 +186,53 @@ def test_tc_ux_10_1_phone_release0(browser, release0):
     context.close()
 
 
+def check_landing(browser, server, path: str, device: dict, label: str):
+    """ADR-047: the landing page in a real browser, under the app's own policy, with nobody signed in."""
+    context, page = open_page(browser, server, [], device)
+    violations = []
+    page.on("console", lambda m: violations.append(m.text) if m.type == "error" else None)
+    assert page.goto(server.url + path).status == 200
+    assert page.locator("h1").inner_text().startswith("Medical bills.")
+    assert page.evaluate("() => document.querySelector('.hero-photo').naturalWidth") == 1920
+    assert page.evaluate("() => document.fonts.check('16px \"DM Sans\"')")
+    assert page.evaluate(SIDEWAYS) <= 0
+    assert page.evaluate(SMALL_TARGETS) == []
+    # nothing below the guide's 12px
+    small = page.evaluate("""() => [...document.querySelectorAll('body *')]
+        .filter(e => e.childNodes.length && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()))
+        .filter(e => parseFloat(getComputedStyle(e).fontSize) < 12).map(e => e.textContent.slice(0, 40))""")
+    assert small == []
+    shot(page, f"{label}-landing.png")
+    # the sample review opens, its tabs switch and it closes
+    dialog = page.locator("dialog#sample")
+    assert not dialog.is_visible()
+    page.locator("[data-open-sample]").first.click()
+    assert dialog.is_visible() and page.locator("#panel-overview").is_visible()
+    assert page.evaluate(SMALL_TARGETS) == []
+    shot(page, f"{label}-landing-sample.png")
+    page.locator("#tab-finding").click()
+    assert page.locator("#panel-finding").is_visible() and not page.locator("#panel-overview").is_visible()
+    page.keyboard.press("ArrowRight")
+    assert page.locator("#panel-next").is_visible()
+    page.locator("[data-close-sample]").click()
+    assert not dialog.is_visible()
+    assert violations == []
+    context.close()
+
+
+def test_landing_page_phone_and_desktop_release0(browser, release0):
+    server, _ = release0
+    check_landing(browser, server, "/welcome", PHONE, "r0-375")
+    check_landing(browser, server, "/welcome", DESKTOP, "r0-1280")
+
+
+@pytest.mark.postgres
+def test_landing_page_is_root_for_visitors_release1(browser, release1):
+    server, _, _ = release1
+    check_landing(browser, server, "/", PHONE, "r1-375")
+    check_landing(browser, server, "/", DESKTOP, "r1-1280")
+
+
 def test_tc_ux_10_2_desktop_release0(browser, release0):
     server, cookies = release0
     context, page = open_page(browser, server, cookies, DESKTOP)
