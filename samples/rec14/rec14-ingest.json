@@ -1,0 +1,3372 @@
+{
+  "schema_version": "0.1",
+  "source": {
+    "prepared_by": "tools/make_rec14_sample.py",
+    "prepared_on": "2026-11-06",
+    "notes": "Made-up data for REC-14. Every name, provider, amount and claim number is invented."
+  },
+  "members": [
+    {
+      "id": "mbr-riley-test",
+      "name": "Riley Test",
+      "relationship": "self"
+    },
+    {
+      "id": "mbr-sam-test",
+      "name": "Sam Test",
+      "relationship": "child"
+    }
+  ],
+  "accounts": [
+    {
+      "id": "acct-hsa",
+      "name": "HSA",
+      "type": "hsa"
+    }
+  ],
+  "plans": [
+    {
+      "id": "plan-2026",
+      "plan_year": 2026,
+      "insurer": "Test Insurer",
+      "plan_name": "Test HDHP",
+      "coverage_order": "primary",
+      "coverage_start": "2026-01-01",
+      "coverage_end": "2026-12-31",
+      "hsa_eligible_plan": true,
+      "coinsurance_rate": 0.2,
+      "member_ids": [
+        "mbr-riley-test",
+        "mbr-sam-test"
+      ],
+      "limits": [
+        {
+          "type": "deductible",
+          "network": "in_network",
+          "level": "individual",
+          "amount": 10000
+        }
+      ]
+    },
+    {
+      "id": "plan-2026-b",
+      "plan_year": 2026,
+      "insurer": "Test Insurer",
+      "plan_name": "Test Second Plan",
+      "coverage_order": "primary",
+      "coverage_start": "2026-01-01",
+      "coverage_end": "2026-12-31",
+      "hsa_eligible_plan": true,
+      "coinsurance_rate": 0.2,
+      "member_ids": [
+        "mbr-riley-test",
+        "mbr-sam-test"
+      ],
+      "limits": [
+        {
+          "type": "deductible",
+          "network": "in_network",
+          "level": "individual",
+          "amount": 10000
+        }
+      ]
+    },
+    {
+      "id": "plan-2025",
+      "plan_year": 2025,
+      "insurer": "Test Insurer",
+      "plan_name": "Test HDHP 2025",
+      "coverage_order": "primary",
+      "coverage_start": "2025-01-01",
+      "coverage_end": "2025-12-31",
+      "hsa_eligible_plan": true,
+      "coinsurance_rate": 0.2,
+      "member_ids": [
+        "mbr-riley-test",
+        "mbr-sam-test"
+      ],
+      "limits": [
+        {
+          "type": "deductible",
+          "network": "in_network",
+          "level": "individual",
+          "amount": 10000
+        }
+      ]
+    },
+    {
+      "id": "plan-2026-low",
+      "plan_year": 2026,
+      "insurer": "Test Insurer",
+      "plan_name": "Test Low Deductible",
+      "coverage_order": "primary",
+      "coverage_start": "2026-01-01",
+      "coverage_end": "2026-12-31",
+      "hsa_eligible_plan": true,
+      "coinsurance_rate": 0.2,
+      "member_ids": [
+        "mbr-riley-test",
+        "mbr-sam-test"
+      ],
+      "limits": [
+        {
+          "type": "deductible",
+          "network": "in_network",
+          "level": "individual",
+          "amount": 500
+        }
+      ]
+    }
+  ],
+  "providers": [
+    {
+      "id": "prov-control-clinic",
+      "name": "Control Clinic",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-one-infusion",
+      "name": "Case One Infusion",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-two-practice",
+      "name": "Case Two Practice",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-three-infusion",
+      "name": "Case Three Infusion",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-four-infusion",
+      "name": "Case Four Infusion",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-five-person",
+      "name": "Case Five Person",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-five-group-one",
+      "name": "Case Five Group One",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-five-group-two",
+      "name": "Case Five Group Two",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-five-plan",
+      "name": "Case Five Plan",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-five-year",
+      "name": "Case Five Year",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-six-units",
+      "name": "Case Six Units",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-six-modifier",
+      "name": "Case Six Modifier",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-seven-series",
+      "name": "Case Seven Series",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-seven-short",
+      "name": "Case Seven Short",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-eight-totals",
+      "name": "Case Eight Totals",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-eight-unconfirmed",
+      "name": "Case Eight Unconfirmed",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-case-nine-infusion",
+      "name": "Case Nine Infusion",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-extra-tolerance",
+      "name": "Extra Tolerance",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-extra-both",
+      "name": "Extra Both",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-extra-back",
+      "name": "Extra Back",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-extra-denied",
+      "name": "Extra Denied",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-extra-deductible",
+      "name": "Extra Deductible",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-extra-statements",
+      "name": "Extra Statements",
+      "kind": "physician_practice",
+      "network_status": "in_network"
+    }
+  ],
+  "visits": [
+    {
+      "id": "v-control-1",
+      "date": "2026-01-05",
+      "provider_id": "prov-control-clinic",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-control-2",
+      "date": "2026-02-05",
+      "provider_id": "prov-control-clinic",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-control-3",
+      "date": "2026-03-05",
+      "provider_id": "prov-control-clinic",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc1-a",
+      "date": "2026-02-02",
+      "provider_id": "prov-case-one-infusion",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc1-b",
+      "date": "2026-03-02",
+      "provider_id": "prov-case-one-infusion",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc2-a",
+      "date": "2026-02-03",
+      "provider_id": "prov-case-two-practice",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc2-b",
+      "date": "2026-03-03",
+      "provider_id": "prov-case-two-practice",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc3-a",
+      "date": "2026-02-04",
+      "provider_id": "prov-case-three-infusion",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc3-b",
+      "date": "2026-03-04",
+      "provider_id": "prov-case-three-infusion",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc4-a",
+      "date": "2026-02-05",
+      "provider_id": "prov-case-four-infusion",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc4-b",
+      "date": "2026-03-05",
+      "provider_id": "prov-case-four-infusion",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc5a-a",
+      "date": "2026-02-06",
+      "provider_id": "prov-case-five-person",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc5a-b",
+      "date": "2026-03-06",
+      "provider_id": "prov-case-five-person",
+      "member_id": "mbr-sam-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc5b-a",
+      "date": "2026-02-07",
+      "provider_id": "prov-case-five-group-one",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc5b-b",
+      "date": "2026-03-07",
+      "provider_id": "prov-case-five-group-two",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc5c-a",
+      "date": "2026-02-08",
+      "provider_id": "prov-case-five-plan",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc5c-b",
+      "date": "2026-03-08",
+      "provider_id": "prov-case-five-plan",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026-b",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc5d-a",
+      "date": "2025-12-09",
+      "provider_id": "prov-case-five-year",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2025",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc5d-b",
+      "date": "2026-01-09",
+      "provider_id": "prov-case-five-year",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc6a-a",
+      "date": "2026-02-10",
+      "provider_id": "prov-case-six-units",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc6a-b",
+      "date": "2026-03-10",
+      "provider_id": "prov-case-six-units",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc6b-a",
+      "date": "2026-02-11",
+      "provider_id": "prov-case-six-modifier",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc6b-b",
+      "date": "2026-03-11",
+      "provider_id": "prov-case-six-modifier",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc7a-1",
+      "date": "2026-01-12",
+      "provider_id": "prov-case-seven-series",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc7a-2",
+      "date": "2026-02-12",
+      "provider_id": "prov-case-seven-series",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc7a-3",
+      "date": "2026-03-12",
+      "provider_id": "prov-case-seven-series",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc7a-4",
+      "date": "2026-04-12",
+      "provider_id": "prov-case-seven-series",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc7a-5",
+      "date": "2026-05-12",
+      "provider_id": "prov-case-seven-series",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc7b-1",
+      "date": "2026-01-13",
+      "provider_id": "prov-case-seven-short",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc7b-2",
+      "date": "2026-02-13",
+      "provider_id": "prov-case-seven-short",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc7b-3",
+      "date": "2026-03-13",
+      "provider_id": "prov-case-seven-short",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc8a-a",
+      "date": "2026-02-14",
+      "provider_id": "prov-case-eight-totals",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc8a-b",
+      "date": "2026-03-14",
+      "provider_id": "prov-case-eight-totals",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc8b-a",
+      "date": "2026-02-15",
+      "provider_id": "prov-case-eight-unconfirmed",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc9-1",
+      "date": "2026-01-16",
+      "provider_id": "prov-case-nine-infusion",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc9-2",
+      "date": "2026-02-16",
+      "provider_id": "prov-case-nine-infusion",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc9-3",
+      "date": "2026-03-16",
+      "provider_id": "prov-case-nine-infusion",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc9-4",
+      "date": "2026-04-16",
+      "provider_id": "prov-case-nine-infusion",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tc9-5",
+      "date": "2026-05-16",
+      "provider_id": "prov-case-nine-infusion",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tol-a",
+      "date": "2026-02-17",
+      "provider_id": "prov-extra-tolerance",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-tol-b",
+      "date": "2026-03-17",
+      "provider_id": "prov-extra-tolerance",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-both-a",
+      "date": "2026-02-18",
+      "provider_id": "prov-extra-both",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-both-b",
+      "date": "2026-03-18",
+      "provider_id": "prov-extra-both",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-back-a",
+      "date": "2026-02-19",
+      "provider_id": "prov-extra-back",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-back-b",
+      "date": "2026-03-19",
+      "provider_id": "prov-extra-back",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-back-c",
+      "date": "2026-04-19",
+      "provider_id": "prov-extra-back",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-den-a",
+      "date": "2026-02-20",
+      "provider_id": "prov-extra-denied",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-den-b",
+      "date": "2026-03-20",
+      "provider_id": "prov-extra-denied",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-ded-a",
+      "date": "2026-02-21",
+      "provider_id": "prov-extra-deductible",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026-low",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-ded-b",
+      "date": "2026-03-21",
+      "provider_id": "prov-extra-deductible",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026-low",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-stmt-a",
+      "date": "2026-02-22",
+      "provider_id": "prov-extra-statements",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    },
+    {
+      "id": "v-stmt-b",
+      "date": "2026-03-22",
+      "provider_id": "prov-extra-statements",
+      "member_id": "mbr-riley-test",
+      "plan_id": "plan-2026",
+      "category": "provider_visit"
+    }
+  ],
+  "documents": [
+    {
+      "id": "eob-v-control-1",
+      "type": "eob",
+      "date": "2026-01-05",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-control-clinic",
+      "visit_id": "v-control-1",
+      "claim_number": "CLM-v-control-1",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-01-05",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-control-1",
+      "type": "payment",
+      "date": "2026-01-05",
+      "kind": "payment",
+      "provider_id": "prov-control-clinic",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-control-1",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-control-2",
+      "type": "eob",
+      "date": "2026-02-05",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-control-clinic",
+      "visit_id": "v-control-2",
+      "claim_number": "CLM-v-control-2",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-05",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-control-2",
+      "type": "payment",
+      "date": "2026-02-05",
+      "kind": "payment",
+      "provider_id": "prov-control-clinic",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-control-2",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-control-3",
+      "type": "eob",
+      "date": "2026-03-05",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-control-clinic",
+      "visit_id": "v-control-3",
+      "claim_number": "CLM-v-control-3",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-03-05",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-control-3",
+      "type": "payment",
+      "date": "2026-03-05",
+      "kind": "payment",
+      "provider_id": "prov-control-clinic",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-control-3",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc1-a",
+      "type": "eob",
+      "date": "2026-02-02",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-one-infusion",
+      "visit_id": "v-tc1-a",
+      "claim_number": "CLM-v-tc1-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-02",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc1-a",
+      "type": "payment",
+      "date": "2026-02-02",
+      "kind": "payment",
+      "provider_id": "prov-case-one-infusion",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc1-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc1-b",
+      "type": "eob",
+      "date": "2026-03-02",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-one-infusion",
+      "visit_id": "v-tc1-b",
+      "claim_number": "CLM-v-tc1-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 250,
+      "adjustment": 250,
+      "insurer_paid": 0,
+      "deductible": 250,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-03-02",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 250,
+          "adjustment": 250,
+          "insurer_paid": 0,
+          "deductible": 250,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 250
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc1-b",
+      "type": "payment",
+      "date": "2026-03-02",
+      "kind": "payment",
+      "provider_id": "prov-case-one-infusion",
+      "account_id": "acct-hsa",
+      "amount": 250,
+      "allocations": [
+        {
+          "visit_id": "v-tc1-b",
+          "amount": 250
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc2-a",
+      "type": "eob",
+      "date": "2026-02-03",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-two-practice",
+      "visit_id": "v-tc2-a",
+      "claim_number": "CLM-v-tc2-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 150,
+      "allowed": 90,
+      "adjustment": 60,
+      "insurer_paid": 0,
+      "deductible": 90,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 90,
+      "lines": [
+        {
+          "service_date": "2026-02-03",
+          "code": "99214",
+          "description": "Treatment",
+          "billed": 150,
+          "allowed": 90,
+          "adjustment": 60,
+          "insurer_paid": 0,
+          "deductible": 90,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 90
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc2-a",
+      "type": "payment",
+      "date": "2026-02-03",
+      "kind": "payment",
+      "provider_id": "prov-case-two-practice",
+      "account_id": "acct-hsa",
+      "amount": 90,
+      "allocations": [
+        {
+          "visit_id": "v-tc2-a",
+          "amount": 90
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc2-b",
+      "type": "eob",
+      "date": "2026-03-03",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-two-practice",
+      "visit_id": "v-tc2-b",
+      "claim_number": "CLM-v-tc2-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 150.1,
+      "allowed": 90,
+      "adjustment": 60.099999999999994,
+      "insurer_paid": 0,
+      "deductible": 90,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 90,
+      "lines": [
+        {
+          "service_date": "2026-03-03",
+          "code": "99214",
+          "description": "Treatment",
+          "billed": 150.1,
+          "allowed": 90,
+          "adjustment": 60.099999999999994,
+          "insurer_paid": 0,
+          "deductible": 90,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 90
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc2-b",
+      "type": "payment",
+      "date": "2026-03-03",
+      "kind": "payment",
+      "provider_id": "prov-case-two-practice",
+      "account_id": "acct-hsa",
+      "amount": 90,
+      "allocations": [
+        {
+          "visit_id": "v-tc2-b",
+          "amount": 90
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc3-a",
+      "type": "eob",
+      "date": "2026-02-04",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-three-infusion",
+      "visit_id": "v-tc3-a",
+      "claim_number": "CLM-v-tc3-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-04",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc3-a",
+      "type": "payment",
+      "date": "2026-02-04",
+      "kind": "payment",
+      "provider_id": "prov-case-three-infusion",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc3-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc3-b",
+      "type": "eob",
+      "date": "2026-03-04",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-three-infusion",
+      "visit_id": "v-tc3-b",
+      "claim_number": "CLM-v-tc3-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 320,
+      "deductible": 0,
+      "copay": 0,
+      "coinsurance": 80,
+      "not_covered": 0,
+      "patient_responsibility": 80,
+      "lines": [
+        {
+          "service_date": "2026-03-04",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 320,
+          "deductible": 0,
+          "copay": 0,
+          "coinsurance": 80,
+          "not_covered": 0,
+          "patient_responsibility": 80
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc3-b",
+      "type": "payment",
+      "date": "2026-03-04",
+      "kind": "payment",
+      "provider_id": "prov-case-three-infusion",
+      "account_id": "acct-hsa",
+      "amount": 80,
+      "allocations": [
+        {
+          "visit_id": "v-tc3-b",
+          "amount": 80
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc4-a",
+      "type": "eob",
+      "date": "2026-02-05",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-four-infusion",
+      "visit_id": "v-tc4-a",
+      "claim_number": "CLM-v-tc4-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-05",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc4-a",
+      "type": "payment",
+      "date": "2026-02-05",
+      "kind": "payment",
+      "provider_id": "prov-case-four-infusion",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc4-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc4-b",
+      "type": "eob",
+      "date": "2026-03-05",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-four-infusion",
+      "visit_id": "v-tc4-b",
+      "claim_number": "CLM-v-tc4-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 150,
+      "deductible": 250,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-03-05",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 150,
+          "deductible": 250,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 250
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc4-b",
+      "type": "payment",
+      "date": "2026-03-05",
+      "kind": "payment",
+      "provider_id": "prov-case-four-infusion",
+      "account_id": "acct-hsa",
+      "amount": 250,
+      "allocations": [
+        {
+          "visit_id": "v-tc4-b",
+          "amount": 250
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc5a-a",
+      "type": "eob",
+      "date": "2026-02-06",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-five-person",
+      "visit_id": "v-tc5a-a",
+      "claim_number": "CLM-v-tc5a-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-06",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc5a-a",
+      "type": "payment",
+      "date": "2026-02-06",
+      "kind": "payment",
+      "provider_id": "prov-case-five-person",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc5a-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc5a-b",
+      "type": "eob",
+      "date": "2026-03-06",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-five-person",
+      "visit_id": "v-tc5a-b",
+      "claim_number": "CLM-v-tc5a-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 250,
+      "adjustment": 250,
+      "insurer_paid": 0,
+      "deductible": 250,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-03-06",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 250,
+          "adjustment": 250,
+          "insurer_paid": 0,
+          "deductible": 250,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 250
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc5a-b",
+      "type": "payment",
+      "date": "2026-03-06",
+      "kind": "payment",
+      "provider_id": "prov-case-five-person",
+      "account_id": "acct-hsa",
+      "amount": 250,
+      "allocations": [
+        {
+          "visit_id": "v-tc5a-b",
+          "amount": 250
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc5b-a",
+      "type": "eob",
+      "date": "2026-02-07",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-five-group-one",
+      "visit_id": "v-tc5b-a",
+      "claim_number": "CLM-v-tc5b-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-07",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc5b-a",
+      "type": "payment",
+      "date": "2026-02-07",
+      "kind": "payment",
+      "provider_id": "prov-case-five-group-one",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc5b-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc5b-b",
+      "type": "eob",
+      "date": "2026-03-07",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-five-group-two",
+      "visit_id": "v-tc5b-b",
+      "claim_number": "CLM-v-tc5b-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 250,
+      "adjustment": 250,
+      "insurer_paid": 0,
+      "deductible": 250,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-03-07",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 250,
+          "adjustment": 250,
+          "insurer_paid": 0,
+          "deductible": 250,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 250
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc5b-b",
+      "type": "payment",
+      "date": "2026-03-07",
+      "kind": "payment",
+      "provider_id": "prov-case-five-group-two",
+      "account_id": "acct-hsa",
+      "amount": 250,
+      "allocations": [
+        {
+          "visit_id": "v-tc5b-b",
+          "amount": 250
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc5c-a",
+      "type": "eob",
+      "date": "2026-02-08",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-five-plan",
+      "visit_id": "v-tc5c-a",
+      "claim_number": "CLM-v-tc5c-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-08",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc5c-a",
+      "type": "payment",
+      "date": "2026-02-08",
+      "kind": "payment",
+      "provider_id": "prov-case-five-plan",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc5c-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc5c-b",
+      "type": "eob",
+      "date": "2026-03-08",
+      "plan_id": "plan-2026-b",
+      "provider_id": "prov-case-five-plan",
+      "visit_id": "v-tc5c-b",
+      "claim_number": "CLM-v-tc5c-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 250,
+      "adjustment": 250,
+      "insurer_paid": 0,
+      "deductible": 250,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-03-08",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 250,
+          "adjustment": 250,
+          "insurer_paid": 0,
+          "deductible": 250,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 250
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc5c-b",
+      "type": "payment",
+      "date": "2026-03-08",
+      "kind": "payment",
+      "provider_id": "prov-case-five-plan",
+      "account_id": "acct-hsa",
+      "amount": 250,
+      "allocations": [
+        {
+          "visit_id": "v-tc5c-b",
+          "amount": 250
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc5d-a",
+      "type": "eob",
+      "date": "2025-12-09",
+      "plan_id": "plan-2025",
+      "provider_id": "prov-case-five-year",
+      "visit_id": "v-tc5d-a",
+      "claim_number": "CLM-v-tc5d-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2025-12-09",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc5d-a",
+      "type": "payment",
+      "date": "2025-12-09",
+      "kind": "payment",
+      "provider_id": "prov-case-five-year",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc5d-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc5d-b",
+      "type": "eob",
+      "date": "2026-01-09",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-five-year",
+      "visit_id": "v-tc5d-b",
+      "claim_number": "CLM-v-tc5d-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 250,
+      "adjustment": 250,
+      "insurer_paid": 0,
+      "deductible": 250,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-01-09",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 250,
+          "adjustment": 250,
+          "insurer_paid": 0,
+          "deductible": 250,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 250
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc5d-b",
+      "type": "payment",
+      "date": "2026-01-09",
+      "kind": "payment",
+      "provider_id": "prov-case-five-year",
+      "account_id": "acct-hsa",
+      "amount": 250,
+      "allocations": [
+        {
+          "visit_id": "v-tc5d-b",
+          "amount": 250
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc6a-a",
+      "type": "eob",
+      "date": "2026-02-10",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-six-units",
+      "visit_id": "v-tc6a-a",
+      "claim_number": "CLM-v-tc6a-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 200,
+      "allowed": 200,
+      "adjustment": 0,
+      "insurer_paid": 0,
+      "deductible": 200,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 200,
+      "lines": [
+        {
+          "service_date": "2026-02-10",
+          "code": "97110",
+          "description": "Treatment",
+          "billed": 200,
+          "allowed": 200,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 200,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 200,
+          "units": 2
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc6a-a",
+      "type": "payment",
+      "date": "2026-02-10",
+      "kind": "payment",
+      "provider_id": "prov-case-six-units",
+      "account_id": "acct-hsa",
+      "amount": 200,
+      "allocations": [
+        {
+          "visit_id": "v-tc6a-a",
+          "amount": 200
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc6a-b",
+      "type": "eob",
+      "date": "2026-03-10",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-six-units",
+      "visit_id": "v-tc6a-b",
+      "claim_number": "CLM-v-tc6a-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 100,
+      "allowed": 100,
+      "adjustment": 0,
+      "insurer_paid": 0,
+      "deductible": 100,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 100,
+      "lines": [
+        {
+          "service_date": "2026-03-10",
+          "code": "97110",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100,
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc6a-b",
+      "type": "payment",
+      "date": "2026-03-10",
+      "kind": "payment",
+      "provider_id": "prov-case-six-units",
+      "account_id": "acct-hsa",
+      "amount": 100,
+      "allocations": [
+        {
+          "visit_id": "v-tc6a-b",
+          "amount": 100
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc6b-a",
+      "type": "eob",
+      "date": "2026-02-11",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-six-modifier",
+      "visit_id": "v-tc6b-a",
+      "claim_number": "CLM-v-tc6b-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-11",
+          "code": "99214",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc6b-a",
+      "type": "payment",
+      "date": "2026-02-11",
+      "kind": "payment",
+      "provider_id": "prov-case-six-modifier",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc6b-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc6b-b",
+      "type": "eob",
+      "date": "2026-03-11",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-six-modifier",
+      "visit_id": "v-tc6b-b",
+      "claim_number": "CLM-v-tc6b-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 250,
+      "adjustment": 250,
+      "insurer_paid": 0,
+      "deductible": 250,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-03-11",
+          "code": "99214-25",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 250,
+          "adjustment": 250,
+          "insurer_paid": 0,
+          "deductible": 250,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 250
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc6b-b",
+      "type": "payment",
+      "date": "2026-03-11",
+      "kind": "payment",
+      "provider_id": "prov-case-six-modifier",
+      "account_id": "acct-hsa",
+      "amount": 250,
+      "allocations": [
+        {
+          "visit_id": "v-tc6b-b",
+          "amount": 250
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc7a-1",
+      "type": "eob",
+      "date": "2026-01-12",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-seven-series",
+      "visit_id": "v-tc7a-1",
+      "claim_number": "CLM-v-tc7a-1",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 200,
+      "allowed": 200,
+      "adjustment": 0,
+      "insurer_paid": 0,
+      "deductible": 200,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 200,
+      "lines": [
+        {
+          "service_date": "2026-01-12",
+          "code": "A1001",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        },
+        {
+          "service_date": "2026-01-12",
+          "code": "B1002",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc7a-1",
+      "type": "payment",
+      "date": "2026-01-12",
+      "kind": "payment",
+      "provider_id": "prov-case-seven-series",
+      "account_id": "acct-hsa",
+      "amount": 200,
+      "allocations": [
+        {
+          "visit_id": "v-tc7a-1",
+          "amount": 200
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc7a-2",
+      "type": "eob",
+      "date": "2026-02-12",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-seven-series",
+      "visit_id": "v-tc7a-2",
+      "claim_number": "CLM-v-tc7a-2",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 200,
+      "allowed": 200,
+      "adjustment": 0,
+      "insurer_paid": 0,
+      "deductible": 200,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 200,
+      "lines": [
+        {
+          "service_date": "2026-02-12",
+          "code": "A1001",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        },
+        {
+          "service_date": "2026-02-12",
+          "code": "B1002",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc7a-2",
+      "type": "payment",
+      "date": "2026-02-12",
+      "kind": "payment",
+      "provider_id": "prov-case-seven-series",
+      "account_id": "acct-hsa",
+      "amount": 200,
+      "allocations": [
+        {
+          "visit_id": "v-tc7a-2",
+          "amount": 200
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc7a-3",
+      "type": "eob",
+      "date": "2026-03-12",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-seven-series",
+      "visit_id": "v-tc7a-3",
+      "claim_number": "CLM-v-tc7a-3",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 200,
+      "allowed": 200,
+      "adjustment": 0,
+      "insurer_paid": 0,
+      "deductible": 200,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 200,
+      "lines": [
+        {
+          "service_date": "2026-03-12",
+          "code": "A1001",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        },
+        {
+          "service_date": "2026-03-12",
+          "code": "B1002",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc7a-3",
+      "type": "payment",
+      "date": "2026-03-12",
+      "kind": "payment",
+      "provider_id": "prov-case-seven-series",
+      "account_id": "acct-hsa",
+      "amount": 200,
+      "allocations": [
+        {
+          "visit_id": "v-tc7a-3",
+          "amount": 200
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc7a-4",
+      "type": "eob",
+      "date": "2026-04-12",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-seven-series",
+      "visit_id": "v-tc7a-4",
+      "claim_number": "CLM-v-tc7a-4",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 200,
+      "allowed": 200,
+      "adjustment": 0,
+      "insurer_paid": 0,
+      "deductible": 200,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 200,
+      "lines": [
+        {
+          "service_date": "2026-04-12",
+          "code": "A1001",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        },
+        {
+          "service_date": "2026-04-12",
+          "code": "B1002",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc7a-4",
+      "type": "payment",
+      "date": "2026-04-12",
+      "kind": "payment",
+      "provider_id": "prov-case-seven-series",
+      "account_id": "acct-hsa",
+      "amount": 200,
+      "allocations": [
+        {
+          "visit_id": "v-tc7a-4",
+          "amount": 200
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc7a-5",
+      "type": "eob",
+      "date": "2026-05-12",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-seven-series",
+      "visit_id": "v-tc7a-5",
+      "claim_number": "CLM-v-tc7a-5",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 300,
+      "allowed": 300,
+      "adjustment": 0,
+      "insurer_paid": 0,
+      "deductible": 300,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 300,
+      "lines": [
+        {
+          "service_date": "2026-05-12",
+          "code": "A1001",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        },
+        {
+          "service_date": "2026-05-12",
+          "code": "B1002",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        },
+        {
+          "service_date": "2026-05-12",
+          "code": "C1003",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc7a-5",
+      "type": "payment",
+      "date": "2026-05-12",
+      "kind": "payment",
+      "provider_id": "prov-case-seven-series",
+      "account_id": "acct-hsa",
+      "amount": 300,
+      "allocations": [
+        {
+          "visit_id": "v-tc7a-5",
+          "amount": 300
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc7b-1",
+      "type": "eob",
+      "date": "2026-01-13",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-seven-short",
+      "visit_id": "v-tc7b-1",
+      "claim_number": "CLM-v-tc7b-1",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 200,
+      "allowed": 200,
+      "adjustment": 0,
+      "insurer_paid": 0,
+      "deductible": 200,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 200,
+      "lines": [
+        {
+          "service_date": "2026-01-13",
+          "code": "A1001",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        },
+        {
+          "service_date": "2026-01-13",
+          "code": "B1002",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc7b-1",
+      "type": "payment",
+      "date": "2026-01-13",
+      "kind": "payment",
+      "provider_id": "prov-case-seven-short",
+      "account_id": "acct-hsa",
+      "amount": 200,
+      "allocations": [
+        {
+          "visit_id": "v-tc7b-1",
+          "amount": 200
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc7b-2",
+      "type": "eob",
+      "date": "2026-02-13",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-seven-short",
+      "visit_id": "v-tc7b-2",
+      "claim_number": "CLM-v-tc7b-2",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 200,
+      "allowed": 200,
+      "adjustment": 0,
+      "insurer_paid": 0,
+      "deductible": 200,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 200,
+      "lines": [
+        {
+          "service_date": "2026-02-13",
+          "code": "A1001",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        },
+        {
+          "service_date": "2026-02-13",
+          "code": "B1002",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc7b-2",
+      "type": "payment",
+      "date": "2026-02-13",
+      "kind": "payment",
+      "provider_id": "prov-case-seven-short",
+      "account_id": "acct-hsa",
+      "amount": 200,
+      "allocations": [
+        {
+          "visit_id": "v-tc7b-2",
+          "amount": 200
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc7b-3",
+      "type": "eob",
+      "date": "2026-03-13",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-seven-short",
+      "visit_id": "v-tc7b-3",
+      "claim_number": "CLM-v-tc7b-3",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 300,
+      "allowed": 300,
+      "adjustment": 0,
+      "insurer_paid": 0,
+      "deductible": 300,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 300,
+      "lines": [
+        {
+          "service_date": "2026-03-13",
+          "code": "A1001",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        },
+        {
+          "service_date": "2026-03-13",
+          "code": "B1002",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        },
+        {
+          "service_date": "2026-03-13",
+          "code": "C1003",
+          "description": "Treatment",
+          "billed": 100,
+          "allowed": 100,
+          "adjustment": 0,
+          "insurer_paid": 0,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 100
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc7b-3",
+      "type": "payment",
+      "date": "2026-03-13",
+      "kind": "payment",
+      "provider_id": "prov-case-seven-short",
+      "account_id": "acct-hsa",
+      "amount": 300,
+      "allocations": [
+        {
+          "visit_id": "v-tc7b-3",
+          "amount": 300
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc8a-a",
+      "type": "eob",
+      "date": "2026-02-14",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-eight-totals",
+      "visit_id": "v-tc8a-a",
+      "claim_number": "CLM-v-tc8a-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400
+    },
+    {
+      "id": "pay-v-tc8a-a",
+      "type": "payment",
+      "date": "2026-02-14",
+      "kind": "payment",
+      "provider_id": "prov-case-eight-totals",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc8a-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc8a-b",
+      "type": "eob",
+      "date": "2026-03-14",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-eight-totals",
+      "visit_id": "v-tc8a-b",
+      "claim_number": "CLM-v-tc8a-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400
+    },
+    {
+      "id": "pay-v-tc8a-b",
+      "type": "payment",
+      "date": "2026-03-14",
+      "kind": "payment",
+      "provider_id": "prov-case-eight-totals",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc8a-b",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc8b-a",
+      "type": "eob",
+      "date": "2026-02-15",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-eight-unconfirmed",
+      "visit_id": "v-tc8b-a",
+      "claim_number": "CLM-v-tc8b-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-15",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc8b-a",
+      "type": "payment",
+      "date": "2026-02-15",
+      "kind": "payment",
+      "provider_id": "prov-case-eight-unconfirmed",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc8b-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc9-1",
+      "type": "eob",
+      "date": "2026-01-16",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-nine-infusion",
+      "visit_id": "v-tc9-1",
+      "claim_number": "CLM-v-tc9-1",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-01-16",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc9-1",
+      "type": "payment",
+      "date": "2026-01-16",
+      "kind": "payment",
+      "provider_id": "prov-case-nine-infusion",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc9-1",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc9-2",
+      "type": "eob",
+      "date": "2026-02-16",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-nine-infusion",
+      "visit_id": "v-tc9-2",
+      "claim_number": "CLM-v-tc9-2",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-16",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc9-2",
+      "type": "payment",
+      "date": "2026-02-16",
+      "kind": "payment",
+      "provider_id": "prov-case-nine-infusion",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tc9-2",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc9-3",
+      "type": "eob",
+      "date": "2026-03-16",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-nine-infusion",
+      "visit_id": "v-tc9-3",
+      "claim_number": "CLM-v-tc9-3",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 250,
+      "adjustment": 250,
+      "insurer_paid": 0,
+      "deductible": 250,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-03-16",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 250,
+          "adjustment": 250,
+          "insurer_paid": 0,
+          "deductible": 250,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 250
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc9-3",
+      "type": "payment",
+      "date": "2026-03-16",
+      "kind": "payment",
+      "provider_id": "prov-case-nine-infusion",
+      "account_id": "acct-hsa",
+      "amount": 250,
+      "allocations": [
+        {
+          "visit_id": "v-tc9-3",
+          "amount": 250
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc9-4",
+      "type": "eob",
+      "date": "2026-04-16",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-nine-infusion",
+      "visit_id": "v-tc9-4",
+      "claim_number": "CLM-v-tc9-4",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 250,
+      "adjustment": 250,
+      "insurer_paid": 0,
+      "deductible": 250,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-04-16",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 250,
+          "adjustment": 250,
+          "insurer_paid": 0,
+          "deductible": 250,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 250
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc9-4",
+      "type": "payment",
+      "date": "2026-04-16",
+      "kind": "payment",
+      "provider_id": "prov-case-nine-infusion",
+      "account_id": "acct-hsa",
+      "amount": 250,
+      "allocations": [
+        {
+          "visit_id": "v-tc9-4",
+          "amount": 250
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tc9-5",
+      "type": "eob",
+      "date": "2026-05-16",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-case-nine-infusion",
+      "visit_id": "v-tc9-5",
+      "claim_number": "CLM-v-tc9-5",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 250,
+      "adjustment": 250,
+      "insurer_paid": 0,
+      "deductible": 250,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-05-16",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 250,
+          "adjustment": 250,
+          "insurer_paid": 0,
+          "deductible": 250,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 250
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tc9-5",
+      "type": "payment",
+      "date": "2026-05-16",
+      "kind": "payment",
+      "provider_id": "prov-case-nine-infusion",
+      "account_id": "acct-hsa",
+      "amount": 250,
+      "allocations": [
+        {
+          "visit_id": "v-tc9-5",
+          "amount": 250
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tol-a",
+      "type": "eob",
+      "date": "2026-02-17",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-extra-tolerance",
+      "visit_id": "v-tol-a",
+      "claim_number": "CLM-v-tol-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-17",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tol-a",
+      "type": "payment",
+      "date": "2026-02-17",
+      "kind": "payment",
+      "provider_id": "prov-extra-tolerance",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-tol-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-tol-b",
+      "type": "eob",
+      "date": "2026-03-17",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-extra-tolerance",
+      "visit_id": "v-tol-b",
+      "claim_number": "CLM-v-tol-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0.5,
+      "deductible": 399.5,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 399.5,
+      "lines": [
+        {
+          "service_date": "2026-03-17",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0.5,
+          "deductible": 399.5,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 399.5
+        }
+      ]
+    },
+    {
+      "id": "pay-v-tol-b",
+      "type": "payment",
+      "date": "2026-03-17",
+      "kind": "payment",
+      "provider_id": "prov-extra-tolerance",
+      "account_id": "acct-hsa",
+      "amount": 399.5,
+      "allocations": [
+        {
+          "visit_id": "v-tol-b",
+          "amount": 399.5
+        }
+      ]
+    },
+    {
+      "id": "eob-v-both-a",
+      "type": "eob",
+      "date": "2026-02-18",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-extra-both",
+      "visit_id": "v-both-a",
+      "claim_number": "CLM-v-both-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-18",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-both-a",
+      "type": "payment",
+      "date": "2026-02-18",
+      "kind": "payment",
+      "provider_id": "prov-extra-both",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-both-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-both-b",
+      "type": "eob",
+      "date": "2026-03-18",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-extra-both",
+      "visit_id": "v-both-b",
+      "claim_number": "CLM-v-both-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 600,
+      "allowed": 250,
+      "adjustment": 350,
+      "insurer_paid": 0,
+      "deductible": 250,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-03-18",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 600,
+          "allowed": 250,
+          "adjustment": 350,
+          "insurer_paid": 0,
+          "deductible": 250,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 250
+        }
+      ]
+    },
+    {
+      "id": "pay-v-both-b",
+      "type": "payment",
+      "date": "2026-03-18",
+      "kind": "payment",
+      "provider_id": "prov-extra-both",
+      "account_id": "acct-hsa",
+      "amount": 250,
+      "allocations": [
+        {
+          "visit_id": "v-both-b",
+          "amount": 250
+        }
+      ]
+    },
+    {
+      "id": "eob-v-back-a",
+      "type": "eob",
+      "date": "2026-02-19",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-extra-back",
+      "visit_id": "v-back-a",
+      "claim_number": "CLM-v-back-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-19",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-back-a",
+      "type": "payment",
+      "date": "2026-02-19",
+      "kind": "payment",
+      "provider_id": "prov-extra-back",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-back-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-back-b",
+      "type": "eob",
+      "date": "2026-03-19",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-extra-back",
+      "visit_id": "v-back-b",
+      "claim_number": "CLM-v-back-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 250,
+      "adjustment": 250,
+      "insurer_paid": 0,
+      "deductible": 250,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-03-19",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 250,
+          "adjustment": 250,
+          "insurer_paid": 0,
+          "deductible": 250,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 250
+        }
+      ]
+    },
+    {
+      "id": "pay-v-back-b",
+      "type": "payment",
+      "date": "2026-03-19",
+      "kind": "payment",
+      "provider_id": "prov-extra-back",
+      "account_id": "acct-hsa",
+      "amount": 250,
+      "allocations": [
+        {
+          "visit_id": "v-back-b",
+          "amount": 250
+        }
+      ]
+    },
+    {
+      "id": "eob-v-back-c",
+      "type": "eob",
+      "date": "2026-04-19",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-extra-back",
+      "visit_id": "v-back-c",
+      "claim_number": "CLM-v-back-c",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-04-19",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-back-c",
+      "type": "payment",
+      "date": "2026-04-19",
+      "kind": "payment",
+      "provider_id": "prov-extra-back",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-back-c",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-den-a",
+      "type": "eob",
+      "date": "2026-02-20",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-extra-denied",
+      "visit_id": "v-den-a",
+      "claim_number": "CLM-v-den-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-20",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-den-a",
+      "type": "payment",
+      "date": "2026-02-20",
+      "kind": "payment",
+      "provider_id": "prov-extra-denied",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-den-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-den-b",
+      "type": "eob",
+      "date": "2026-03-20",
+      "plan_id": "plan-2026",
+      "provider_id": "prov-extra-denied",
+      "visit_id": "v-den-b",
+      "claim_number": "CLM-v-den-b",
+      "claim_status": "denied",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 0,
+      "adjustment": 500,
+      "insurer_paid": 0,
+      "deductible": 0,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 0,
+      "lines": [
+        {
+          "service_date": "2026-03-20",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 0,
+          "adjustment": 500,
+          "insurer_paid": 0,
+          "deductible": 0,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 0
+        }
+      ]
+    },
+    {
+      "id": "eob-v-ded-a",
+      "type": "eob",
+      "date": "2026-02-21",
+      "plan_id": "plan-2026-low",
+      "provider_id": "prov-extra-deductible",
+      "visit_id": "v-ded-a",
+      "claim_number": "CLM-v-ded-a",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 0,
+      "deductible": 400,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 400,
+      "lines": [
+        {
+          "service_date": "2026-02-21",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 0,
+          "deductible": 400,
+          "copay": 0,
+          "coinsurance": 0,
+          "not_covered": 0,
+          "patient_responsibility": 400
+        }
+      ]
+    },
+    {
+      "id": "pay-v-ded-a",
+      "type": "payment",
+      "date": "2026-02-21",
+      "kind": "payment",
+      "provider_id": "prov-extra-deductible",
+      "account_id": "acct-hsa",
+      "amount": 400,
+      "allocations": [
+        {
+          "visit_id": "v-ded-a",
+          "amount": 400
+        }
+      ]
+    },
+    {
+      "id": "eob-v-ded-b",
+      "type": "eob",
+      "date": "2026-03-21",
+      "plan_id": "plan-2026-low",
+      "provider_id": "prov-extra-deductible",
+      "visit_id": "v-ded-b",
+      "claim_number": "CLM-v-ded-b",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 500,
+      "allowed": 400,
+      "adjustment": 100,
+      "insurer_paid": 250,
+      "deductible": 100,
+      "copay": 0,
+      "coinsurance": 50,
+      "not_covered": 0,
+      "patient_responsibility": 150,
+      "lines": [
+        {
+          "service_date": "2026-03-21",
+          "code": "96413",
+          "description": "Treatment",
+          "billed": 500,
+          "allowed": 400,
+          "adjustment": 100,
+          "insurer_paid": 250,
+          "deductible": 100,
+          "copay": 0,
+          "coinsurance": 50,
+          "not_covered": 0,
+          "patient_responsibility": 150
+        }
+      ]
+    },
+    {
+      "id": "pay-v-ded-b",
+      "type": "payment",
+      "date": "2026-03-21",
+      "kind": "payment",
+      "provider_id": "prov-extra-deductible",
+      "account_id": "acct-hsa",
+      "amount": 150,
+      "allocations": [
+        {
+          "visit_id": "v-ded-b",
+          "amount": 150
+        }
+      ]
+    },
+    {
+      "id": "bill-v-stmt-a",
+      "type": "provider_bill",
+      "date": "2026-02-22",
+      "provider_id": "prov-extra-statements",
+      "balance_due": 400,
+      "lines": [
+        {
+          "visit_id": "v-stmt-a",
+          "billed_charge": 400,
+          "patient_amount": 400,
+          "items": [
+            {
+              "code": "96413",
+              "description": "Treatment",
+              "service_date": "2026-02-22",
+              "charge": 400,
+              "patient_amount": 400
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bill-v-stmt-b",
+      "type": "provider_bill",
+      "date": "2026-03-22",
+      "provider_id": "prov-extra-statements",
+      "balance_due": 250,
+      "lines": [
+        {
+          "visit_id": "v-stmt-b",
+          "billed_charge": 250,
+          "patient_amount": 250,
+          "items": [
+            {
+              "code": "96413",
+              "description": "Treatment",
+              "service_date": "2026-03-22",
+              "charge": 250,
+              "patient_amount": 250
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

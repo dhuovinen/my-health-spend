@@ -72,6 +72,12 @@ The test harness runs the made-up data in `samples/harness/` (README there) thro
 uv run tools/run_harness.py
 ```
 
+REC-14's test plan, data and checker are in `samples/rec14/` (`TEST_PLAN.md`); this imports the data into a running stack, reads the pages and writes `harness-output/rec14/` (`uv run tools/run_rec14_check.py login` prints the login):
+
+```bash
+uv run tools/run_rec14_check.py
+```
+
 Extraction accuracy on the synthetic corpus (development set `tests/corpus`, held-out set `tests/corpus-holdout`; regenerate with `uv run python tools/make_corpus.py`; add `--extractor claude` with an API key to measure Claude):
 
 ```bash

@@ -161,6 +161,25 @@ def test_tc_rec_14_10_a_flagged_visit_on_the_pages_and_finding_accuracy(web, tmp
     assert "Worth a closer look: 1" not in text_of(web.client.get("/visits?year=2026").text)
 
 
+def test_the_rec14_test_data_is_what_its_generator_writes_and_is_valid():
+    import importlib.util
+    import json
+    from pathlib import Path
+
+    import jsonschema
+
+    root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location("make_rec14_sample", root / "tools" / "make_rec14_sample.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    data, expected = module.build()
+    assert json.loads((root / "samples/rec14/rec14-ingest.json").read_text()) == data
+    assert json.loads((root / "samples/rec14/rec14-expected.json").read_text()) == expected
+    schema = json.loads((root / "schema/mhs-ingest.schema.json").read_text())
+    assert not list(jsonschema.Draft202012Validator(schema).iter_errors(data))
+    assert {v["id"] for v in data["visits"]} == set(expected)
+
+
 # ---------- ADR-046: repeat treatment stays separate visits ----------
 
 def test_a_far_off_date_does_not_propose_a_visit_however_alike():
