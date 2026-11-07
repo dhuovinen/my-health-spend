@@ -1,0 +1,57 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 792 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+40 760 Td
+(Dr. Timothy Sterling, MD) Tj T*
+(PATIENT STATEMENT) Tj T*
+(Lakeside Pediatric Associates) Tj T*
+(Statement date: 06/25/2026) Tj T*
+(Account number: 1066255) Tj T*
+(Patient: Truman, Lucas) Tj T*
+(Guarantor: Mark Truman) Tj T*
+(Date of service: 06/10/2026) Tj T*
+(Primary insurance: Aegis Health Plans) Tj T*
+(Claim number: EOB-TRU-1011) Tj T*
+(Due date: 07/25/2026) Tj T*
+() Tj T*
+(Date Code Description Charges Insurance Adjustments Payments Balance) Tj T*
+(06/10/2026 99394 Well-Care Exam \(Age 12-17\) $290.00 $170.00 $120.00 $0.00 $0.00) Tj T*
+() Tj T*
+(Total charges: $290.00) Tj T*
+(Contractual adjustments: $120.00) Tj T*
+(Allowed amount: $170.00) Tj T*
+(Insurance payments: $170.00) Tj T*
+(Patient responsibility: $0.00) Tj T*
+(Amount due: $0.00) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000001028 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1154
+%%EOF
