@@ -54,6 +54,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 044 | False-positive tracking: the member says real or wrong when closing a finding; the rate is wrong over decided, per kind and release, counts only for the owner | 2026-10-18 | Accepted |
 | 046 | Visits as rows with date sort; a different date can't propose a visit; REC-14 flags as their own result; UX-11 as server-drawn SVG | 2026-11-06 | Accepted |
 | 047 | The public landing page is a server-rendered page in the app; `/` shows it to anyone not signed in; no React, Supabase or Google/Microsoft sign-in | 2026-11-07 | Proposed |
+| 048 | Social sign-in (PRV-12): Google and Microsoft through direct OpenID Connect, replacing the password but not the code; invitation only, linked by provider subject | 2026-11-07 | Proposed |
 
 ## Records
 
@@ -388,8 +389,28 @@ The landing page was built separately in Lovable (`dhuovinen/health-reconciler`:
 - **Rebuilt, not merged.** The page is a Jinja template with its own stylesheet and a small script (`templates/landing.html`, `static/landing.css`, `static/landing.js`). A React runtime can't run under the app's policy (PRV-08) without weakening it, and a second build chain isn't worth one page.
 - **`/` depends on who is asking.** On Release 1, anyone without a session sees the landing page, a member who has passed MFA sees Home, and a member between password and code goes to `/signin/mfa`. Data routes still redirect to `/signin`. The page reads no household data. `/` stays `no-store`, since one URL now answers differently per session.
 - **Release 0 keeps Home at `/`.** It has one owner, no sign-in and no anonymous visitor, and every "Home" link points there. Both apps serve the page at `/welcome`.
-- **Sign-in stays ADR-031's.** The Google and Microsoft sign-in, `/auth` and `/account` from the Lovable project aren't brought over. They would replace email, password and TOTP with a third-party identity service outside the hosting boundary and the data-processing agreement (ADR-028). "Sign in" links to `/signin`.
+- **The landing page doesn't bring sign-in with it.** The Lovable project's `/auth`, `/account` and Supabase session code aren't brought over, because they would replace email, password and TOTP with a third-party identity service outside the hosting boundary and the data-processing agreement (ADR-028). "Sign in" links to `/signin`. The owner does want social sign-in (2026-11-07): it is PRV-12, proposed in ADR-048 without that service.
 - **Only the billing-chaos concept.** The Lovable project's own rule keeps the alternative concept out of the main site, so its coral theme and photo stay behind.
 - **The page follows `docs/UI_GUIDE.md`.** `$500B+` and `$25-50B` are unverified, so that band now asks the questions from the problem statement. Nothing is below 12px. Copy that called the product a concept or said uploads don't exist is corrected, and lines implying savings are reworded. The fade over the hero photo is the one gradient, and only to keep text readable over the picture.
 
 **Consequences.** A signed-out visitor to `/` no longer lands on the sign-in form; it's one click away. Sign-out and expired sessions on data routes still go to `/signin`. The FAQ describes access as early access by invitation, because members are created by `mhs-admin`; change it when sign-up exists. The Lovable repository stops being the source for this page.
+
+### ADR-048 · Social sign-in (Proposed)
+PRV-12: the owner wants Google and Microsoft sign-in, first built in the Lovable project on Supabase and never tried with a real account. Proposed by the build session on 2026-11-07; nothing is built.
+
+**Decision.**
+- **Direct OpenID Connect from the application tier.** Authorization code flow with PKCE, `state` and `nonce`, over the httpx the app already uses, plus one library to check ID tokens. No Supabase, Lovable or other broker, so no outside service holds sessions or the member list.
+- **It replaces the password, not the code.** After the provider, the member still enters their authenticator code (PRV-11). The app can't rely on what a provider says about its own second factor, and the session keeps ADR-031's cookie, timeouts and rotation.
+- **Invitation only.** A social account never creates a member or a household. An unlinked account gets the same answer whether or not its email belongs to a member.
+- **Linked by provider and subject, never by email.** A new table, `app.member_identities` (provider, subject, member), in its own migration. Emails can change and be reassigned, so matching on them could hand over a household's data. A member links an account from the Account page, or at enrolment, after proving who they are.
+- **Least data.** Only the `openid` and `email` scopes. Provider tokens are used once and not kept, and no document, amount or provider name goes to them. Sign-ins and link changes go in the access log (PRV-10).
+- **Passwords and recovery stay** (ADR-037's recovery codes), so a member who loses the Google or Microsoft account can still get in. Going password-free is a later decision.
+- **Release 1 stack only.** Release 0 has no sign-in.
+
+**What the build has to allow for.**
+- The buttons must be plain links (GET), not forms: the policy's `form-action 'self'` can block a form post that redirects to the provider. The policy itself doesn't change.
+- The session cookie is `SameSite=Strict`, so it isn't sent on the redirect chain that started at the provider. The callback shows the code step itself rather than redirecting to it, and the short-lived `state` cookie is `SameSite=Lax`.
+- The app tier needs outbound HTTPS to the two providers' token endpoints, allowed by host, in compose and in Google Cloud.
+- New OAuth clients for each environment, with secrets in the `secrets` volume and Secret Manager. Lovable's are managed by Lovable and can't be carried over.
+
+**Consequences.** Google or Microsoft learns each time a member signs in to a medical billing app, though nothing about their records; the sign-in page should say so, and a member can keep using a password. Losing the provider account removes that route only. Open: whether to add Apple; whether the privacy notice (CMP) and ADR-028 need updating before real households use it. Test cases: TC-PRV-12-1 to TC-PRV-12-6.

@@ -656,6 +656,12 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-PRV-11-1 | PRV-11 | Sign in with password only | Second factor required; no data reachable before it | S | New |
 | TC-PRV-11-2 | PRV-11 | Member of household A requests visit, document and API ids belonging to household B | Not found or forbidden; nothing from household B returned or leaked in errors | S | New |
 | TC-PRV-11-3 | PRV-11 | Sign out; session idle past the timeout | Session tokens invalid; next request needs sign-in | S | New |
+| TC-PRV-12-1 | PRV-12 | Member with a linked Google, then Microsoft, account signs in through the provider | Authenticator code still required; no data reachable before it; Home after it | S | New |
+| TC-PRV-12-2 | PRV-12 | Sign in with a provider account linked to no member, including one whose email matches a member's | No access, no account created, no link made, and the response doesn't reveal whether the email is a member's | S | New |
+| TC-PRV-12-3 | PRV-12 | Callback with a wrong or missing `state`, a wrong `nonce`, a reused code, or a token for another client or issuer | Refused; no session started | S | New |
+| TC-PRV-12-4 | PRV-12 | Member links, then unlinks, a provider account on the Account page; provider account's email changes | Link needs a passed sign-in; after unlinking that account no longer signs in; a changed email still matches the same member | S | New |
+| TC-PRV-12-5 | PRV-12 | Full sign-in in a real browser under the app's policy and SameSite=Strict session cookie | Reaches the provider and returns to the code step with the session intact; no policy violations | S | New |
+| TC-PRV-12-6 | PRV-12 | Delete the member; check the access log and what is requested from the provider | Links deleted with the member; sign-ins and link changes logged; only `openid` and `email` requested | S | New |
 
 ### 3.10 Regulatory and compliance (CMP)
 
@@ -792,6 +798,7 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | PRV-09 | P2 | 1, 2, 3 (3) | IS | — | — |
 | PRV-10 | P2 | 1, 2 (2) | SU | — | — |
 | PRV-11 | P1 | 1, 2, 3 (3) | S | — | — |
+| PRV-12 | P2 | 1, 2, 3, 4, 5, 6 (6) | S | — | — |
 | CMP-01 | P2 | 1, 2, 3 (3) | MRS | — | — |
 | CMP-02 | P2 | 1, 2, 3 (3) | EI | — | — |
 | CMP-03 | P2 | 1, 2 (2) | R | — | — |

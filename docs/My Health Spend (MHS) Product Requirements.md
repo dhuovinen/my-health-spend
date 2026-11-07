@@ -1,6 +1,6 @@
 # My Health Spend (MHS): Product Requirements
 
-Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026)); Nov 5, 2026 added REC-14; Nov 6, 2026 added UX-11
+Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026)); Nov 5, 2026 added REC-14; Nov 6, 2026 added UX-11; Nov 7, 2026 added PRV-12
 
 ## Scope and sizing
 
@@ -18,7 +18,7 @@ The count is driven by multiplication: three parties (provider, insurer, member)
 | Pre-visit strategy | PRE | 7 | Priority two; needs plan and price data the core already collects |
 | Disputes and follow-up | DSP | 7 | Findings are worthless unless the member can act on them |
 | User experience | UX | 11 | Visit cards, household view, dashboards, charges over time, exports |
-| Privacy and security | PRV | 11 | Pseudonymization and consumer health data obligations |
+| Privacy and security | PRV | 12 | Pseudonymization and consumer health data obligations |
 | Regulatory and compliance | CMP | 6 | FTC, state health data laws, future HIPAA path |
 | Platform and non-functional | PLT | 8 | Integrations, accuracy targets, performance, auditability |
 
@@ -225,6 +225,7 @@ The visit card list from the original plan stays the home screen. The rest of th
 | PRV-09 | Let the member export all their data and delete their account and data, with a deletion confirmation. Deletion removes records, originals and vault entries at once and backups on their normal rotation within 35 days; only security and access logs without health content are kept, for one year | P2 |
 | PRV-10 | Keep an access log of who and what touched each record, viewable by the member | P2 |
 | PRV-11 | Authenticate every member with multi-factor sign-in, and isolate each household's data so no query can return another household's records | P1 |
+| PRV-12 | Let a member sign in with a Google or Microsoft account in place of a password, linked to their existing membership. The second factor (PRV-11) still applies, household isolation is unchanged, and a social account with no link to a member gets no access and no new account | P2 |
 
 ## Regulatory and compliance
 
