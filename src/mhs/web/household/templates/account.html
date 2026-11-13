@@ -19,6 +19,8 @@
     <button class="btn" type="submit">Make new recovery codes</button>
   </form>
   {% endif %}
+  <h2 class="section">Consent and privacy</h2>
+  <p><a class="btn" href="/consent">Your consent</a> <a class="btn" href="/privacy-notice">Privacy notice</a></p>
   {% if sign_in_providers %}
   <h2 class="section">Sign-in accounts</h2>
   <p class="muted small">Link an account to use it in place of your password. {{ sign_in_providers | map(attribute="label") | join(" or ") }} will know you signed in here, but sees nothing of your records.</p>

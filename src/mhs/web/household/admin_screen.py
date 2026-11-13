@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from mhs.data.db import Database
 from mhs.stack import AppConfig
 from mhs.web.household.auth import Accounts, Session
-from mhs.web.household.features import REQUIRE_CODE, Features, provider_setting
+from mhs.web.household.features import REQUIRE_CODE, REQUIRE_CONSENT, Features, provider_setting
 
 KNOWN_PROVIDERS = {"google": "Google", "microsoft": "Microsoft"}
 
@@ -32,6 +32,7 @@ def add_admin_screen(app: FastAPI, *, config: AppConfig, accounts: Accounts, fea
         providers = [{"name": name, "label": label, "configured": name in configured,
                       "on": settings.get(provider_setting(name), True)} for name, label in KNOWN_PROVIDERS.items()]
         return page(request, "admin.html", status, require_code=settings[REQUIRE_CODE], providers=providers,
+                    require_consent=settings[REQUIRE_CONSENT],
                     counts=features.counts(), changes=features.changes(), **ctx)
 
     @app.get("/admin", response_class=HTMLResponse)
@@ -51,6 +52,16 @@ def add_admin_screen(app: FastAPI, *, config: AppConfig, accounts: Accounts, fea
             return screen(request, 401, error="That code didn't work, so the code is still required. Use the "
                                               "current code from your authenticator app.")
         features.set(REQUIRE_CODE, on, member_id=session.member_id, household_id=session.household_id)
+        return RedirectResponse("/admin", status_code=303)
+
+    @app.post("/admin/require-consent")
+    def require_consent(request: Request, state: str = Form(""), csrf_token: str = Form("")):
+        """CMP-02 (ADR-055): ask every member for consent before collecting their documents and claims."""
+        session = owner(request)
+        check_csrf(session, csrf_token)
+        if state not in ("on", "off"):
+            raise HTTPException(400)
+        features.set(REQUIRE_CONSENT, state == "on", member_id=session.member_id, household_id=session.household_id)
         return RedirectResponse("/admin", status_code=303)
 
     @app.post("/admin/providers/{name}")

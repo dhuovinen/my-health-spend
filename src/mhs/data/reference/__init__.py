@@ -37,3 +37,9 @@ def tables_from(limits: dict, categories: dict) -> TaxTables:
 def load_tables() -> TaxTables:
     return tables_from(json.loads((HERE / "irs_limits.json").read_text()),
                        json.loads((HERE / "pub502_categories.json").read_text()))
+
+
+@lru_cache(maxsize=1)
+def load_claim_codes() -> dict:
+    """REC-09 (ADR-050): claim adjustment group, reason and remark codes in plain words."""
+    return json.loads((HERE / "claim_codes.json").read_text())

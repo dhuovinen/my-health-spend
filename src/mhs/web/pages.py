@@ -22,7 +22,7 @@ from jinja2 import pass_context
 from markupsafe import Markup, escape
 
 from mhs import RELEASE
-from mhs.core import charges, disputes, edits
+from mhs.core import charges, costshare, disputes, edits, onboarding
 from mhs.core.accuracy import NOT_CLOSABLE, TARGET, accuracy, open_findings, percent
 from mhs.core.household import NOBODY, household_totals, visits_for
 from mhs.core.lines import BUCKETS, LineMatch
@@ -35,6 +35,7 @@ from mhs.data.repository import PREFERENCE, RECONCILIATION, load_dataset, waitin
 from mhs.data.settings_file import settings_document
 from mhs.data.store import Store
 from mhs.web import letters
+from mhs.web.plan_pages import add_plan_pages
 from mhs.web.tax_pages import add_tax_pages, visit_tax
 
 WEB = Path(__file__).parent
@@ -248,6 +249,16 @@ def case_history(v: VisitResult, notes: list[dict], accounts: dict[str, dict]) -
         events.append((e["date"], "Insurance decision (EOB)",
                        f"Claim {e.get('claim_number') or 'without a number'}: you owe "
                        f"{money_text(e.get('patient_responsibility'))} of {money_text(e.get('billed'))} billed"))
+    for e in v.versions:
+        events.append((e["date"], "Earlier EOB, since replaced",
+                       f"Claim {e.get('claim_number') or 'without a number'}: you owed "
+                       f"{money_text(e.get('patient_responsibility'))}"))
+    for e in v.claims + v.secondary_claims:
+        if e.get("version_reason"):
+            events.append((e["date"], f"EOB {humanize(e['version_reason']).lower()}", "Replaces the earlier EOB"))
+    for e in v.secondary_claims:
+        events.append((e["date"], "Second insurer's decision (EOB)",
+                       f"Paid {money_text(e.get('insurer_paid'))}; you owe {money_text(e.get('patient_responsibility'))}"))
     for bill, line in reversed(v.bill_lines):
         balance = f", balance {money_text(line['balance'])}" if line.get("balance") is not None else ""
         events.append((bill["date"], "Provider statement", f"Asks {money_text(line.get('patient_amount'))}{balance}"))
@@ -412,9 +423,13 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
             totals, status_counts, limits = report.totals, report.status_counts, report.limits
         attention = attention_queue(visits)
         cards = sorted(visits, key=lambda v: (v.visit["date"], v.id), reverse=True)
+        first = next((v.id for v in reversed(report.visits) if v.claims or v.bill_lines or v.receipts), None)
+        start = onboarding.steps(load_dataset(store), report.year, "/import" if host.path_import else "/uploads",
+                                 first)  # UX-09 (ADR-055)
         return render(request, "home.html", report=report, totals=totals, status_counts=status_counts, limits=limits,
                       visits=visits, attention=attention[:HOME_ATTENTION], attention_more=len(attention) - HOME_ATTENTION,
-                      cards=cards[:HOME_CARDS], view=view, members=store.all("member"))
+                      cards=cards[:HOME_CARDS], view=view, members=store.all("member"), start=start,
+                      start_left=onboarding.remaining(start))
 
     @app.get("/household", response_class=HTMLResponse)
     def household(request: Request, year: int | None = None):
@@ -512,7 +527,8 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         return render(request, "visit.html", status_code=status_code, report=report, v=vr, group=group, error=error,
                       notes=notes, plan=store.get("plan", visit.get("plan_id", "")), accounts=accounts,
                       others=[o for o in group.visits if o.id != visit_id], lines=line_rows(vr.line_match),
-                      history=case_history(vr, notes, accounts), tax=visit_tax(store, visit_id))
+                      history=case_history(vr, notes, accounts), tax=visit_tax(store, visit_id),
+                      service_types=costshare.SERVICE_TYPES)
 
     @app.get("/visits/{visit_id}", response_class=HTMLResponse)
     def visit_detail(request: Request, visit_id: str):
@@ -898,6 +914,30 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
             return ""
         return await decide(request, visit_id, change)
 
+    @app.post("/visits/{visit_id}/versions/{doc_id}")
+    async def version_choice(request: Request, visit_id: str, doc_id: str):
+        """MAT-08 (ADR-052): use the newer EOB, or keep the one the member corrected."""
+        def change(store, visit, form):
+            doc = document_on(store, visit_id, doc_id)
+            save_record(store, "document", edits.choose_version(doc, form.get("choice") or ""))
+            return ""
+        return await decide(request, visit_id, change)
+
+    @app.post("/visits/{visit_id}/service-type")
+    async def set_service_type(request: Request, visit_id: str):
+        """REC-06, PRE-02: the kind of service, for the plan's copay and preventive rules (ADR-050)."""
+        store, form = await posted(request)
+        visit = visit_or_404(store, visit_id)
+        kind = form.get("service_type") or ""
+        if kind in costshare.SERVICE_TYPES:
+            visit["service_type"] = kind
+        elif kind == "":
+            visit.pop("service_type", None)
+        else:
+            raise FormError("Choose a kind of service")
+        save_record(store, "visit", visit)
+        return back_to(visit_id, "visit-actions")
+
     @app.post("/visits/{visit_id}/payment-path")
     async def payment_path(request: Request, visit_id: str):
         def change(store, visit, form):
@@ -1016,6 +1056,10 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
     @app.post("/import", response_class=HTMLResponse)
     async def import_preview(request: Request):
         store, form = await posted(request)
+        if not getattr(host, "may_collect", lambda r: True)(request):  # CMP-02 (ADR-055)
+            return import_page_for(request, store, status_code=403,
+                                   error="MHS can't import data for you without your consent. Give it on the Consent "
+                                         "page (from your Account page).")
         upload = form.get("file")
         path_text = (form.get("path") or "").strip() if host.path_import else ""
         attachments = [a for a in form.getlist("attachments") if getattr(a, "filename", "")]
@@ -1125,6 +1169,12 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                 plan.pop(key, None)
         plan["hsa_eligible_plan"] = form.get("hsa_eligible_plan") == "on"
         plan["member_ids"] = form.getlist("member_ids")
+        plan["terms_confirmed"] = form.get("terms_confirmed") == "on"  # REC-06: findings, not flags (ADR-050)
+        cash = form.get("cash_counts_toward_deductible") or ""
+        if cash in ("yes", "no"):
+            plan["cash_counts_toward_deductible"] = cash
+        else:
+            plan.pop("cash_counts_toward_deductible", None)
         rate = (form.get("coinsurance_pct") or "").strip()
         plan["coinsurance_rate"] = float(Decimal(rate) / 100) if rate else None
         copays = {}
@@ -1250,4 +1300,5 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         return render(request, "help.html", CHECK_NAMES=CHECK_NAMES, CHECK_HELP=CHECK_HELP, STATUS_HELP=STATUS_HELP)
 
     add_tax_pages(app, render, host, posted)  # the HSA and tax page (ADR-043)
+    add_plan_pages(app, render, host, posted)  # plan ahead: planned visits and estimates (ADR-053)
     return preview_import

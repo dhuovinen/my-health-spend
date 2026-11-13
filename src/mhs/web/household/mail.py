@@ -45,6 +45,9 @@ def handle_message(raw: bytes, recipient: str, it: Intake) -> tuple[int, str]:
     if member_id is None:
         log.info("refused mail for household %s: sender isn't a member", household_id)
         return 550, "The sender isn't a member of this household"
+    if not it.collect_for(household_id, member_id):  # CMP-02 (ADR-055): no consent, nothing stored
+        log.info("refused mail for household %s: no consent from the sender", household_id)
+        return 550, "The sender hasn't given consent to collect documents"
 
     stored, skipped = 0, 0
     for part in msg.walk():

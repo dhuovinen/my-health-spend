@@ -37,6 +37,9 @@ from mhs.web.household.features import Features
 from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.intake import TOKEN, Intake, add_intake
 from mhs.web.household.qr import qr_svg
+from mhs.web.household import consent
+from mhs.web.household.connect import add_insurer_connection
+from mhs.web.household.consent import add_consent
 from mhs.web.household.social import add_social_sign_in
 from mhs.web.pages import VIEW_COOKIE, WEB, add_pages, make_templates
 
@@ -116,7 +119,9 @@ class HouseholdHost:
 
     def save_preview(self, request: Request, preview: dict) -> str:
         """Sealed in the database (ADR-036), so any app instance can confirm it; replaces the household's last one."""
-        hid = self.session(request).household_id
+        return self.save_preview_for(self.session(request).household_id, preview)
+
+    def save_preview_for(self, hid: str, preview: dict) -> str:
         token = secrets.token_urlsafe(16)
         sealed = self.keyring.encrypt(hid, json.dumps(preview).encode(), f"preview:{token}")
         with self.db.tx(hid) as c:
@@ -486,10 +491,25 @@ def create_app(
 
     # --- the Release 0 pages, for the signed-in household ---
 
-    preview_import = add_pages(app, templates, HouseholdHost(app.state, db, keyring, objects, config.cookie_secure, vault))
-    add_intake(app, templates, Intake(db, keyring, objects, vault, queue, member, check_csrf, accounts.household_name,
-                                      preview_import, get_engine(config.ocr_engine),
-                                      scrubber_class(config.scrubber), accounts.ai_extraction))
+    def collect_for(household_id: str, member_id: str) -> bool:
+        """CMP-02 (ADR-055): whether this member's documents and claims may be collected now."""
+        return consent.may_collect(db, household_id, member_id, features.require_consent())
+
+    def consented(session: Session) -> bool:
+        return collect_for(session.household_id, session.member_id)
+
+    add_consent(app, db=db, page=page, member=member, check_csrf=check_csrf, required=features.require_consent,
+                set_ai=accounts.set_ai_extraction)
+    host = HouseholdHost(app.state, db, keyring, objects, config.cookie_secure, vault)
+    host.may_collect = lambda request: consented(host.session(request))
+    preview_import = add_pages(app, templates, host)
+    intake = Intake(db, keyring, objects, vault, queue, member, check_csrf, accounts.household_name,
+                    preview_import, get_engine(config.ocr_engine), scrubber_class(config.scrubber),
+                    accounts.ai_extraction)
+    intake.collect_for = collect_for
+    add_intake(app, templates, intake)
+    add_insurer_connection(app, config=config, accounts=accounts, db=db, page=page, member=member, host=host,
+                           preview_import=preview_import, consented=consented)
     return app
 
 

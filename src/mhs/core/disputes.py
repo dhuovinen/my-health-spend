@@ -42,7 +42,8 @@ LETTER_PARTY = {"itemized_bill": "provider", "billing_correction": "provider", "
 LETTER_FOR = {"missed_adjustment": "billing_correction", "balance_billing": "billing_correction",
               "billed_mismatch": "billing_correction", "duplicate_charge": "billing_correction",
               "over_estimate": "billing_correction", "overpayment": "refund", "not_filed": "claim_resubmission",
-              "unexplained": "itemized_bill", "self_pay": "billing_correction", "C1": "appeal", "C3": "appeal"}
+              "unexplained": "itemized_bill", "self_pay": "billing_correction", "C1": "appeal", "C3": "appeal",
+              "cost_share": "appeal", "appealable_denial": "appeal", "refund_to_hsa": "refund"}
 
 
 def letter_for(finding: dict) -> str:

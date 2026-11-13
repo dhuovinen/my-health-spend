@@ -36,6 +36,9 @@
 
 <form method="post" action="/uploads/{{ rec.id }}/confirm" class="card section review">{{ csrf_input() }}
   {% if extracted %}
+  {% if copy and copy.kind == 'version' and ext.doc_type == 'eob' %}
+  <label>This EOB is<select name="version_reason"><option value="corrected">A corrected EOB</option><option value="reprocessed">The claim reprocessed</option><option value="appealed">The insurer's answer to an appeal</option></select></label>
+  {% endif %}
   <div class="grid two">
     <label>Provider
       <select name="provider_id">

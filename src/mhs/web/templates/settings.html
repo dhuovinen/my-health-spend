@@ -49,8 +49,11 @@
         {% for m in members %}<label class="check-label"><input type="checkbox" name="member_ids" value="{{ m.id }}" {{ 'checked' if m.id in (p.member_ids or []) }}> {{ m.name }}</label>{% endfor %}
       </div>
       <label class="check-label"><input type="checkbox" name="hsa_eligible_plan" {{ 'checked' if p.hsa_eligible_plan }}> HSA-eligible plan</label>
+      <label>Cash price counts toward the deductible<select name="cash_counts_toward_deductible">{{ options(['yes', 'no'], p.cash_counts_toward_deductible, "I don't know") }}</select></label>
+      <label class="check-label"><input type="checkbox" name="terms_confirmed" {{ 'checked' if p.terms_confirmed }}> These terms match my plan documents</label>
       <button class="btn primary">Save plan</button>
     </form>
+    <p class="muted small">Copay names MHS uses: preventive, primary_care, specialist, urgent_care, emergency. MHS checks each EOB's deductible, copay and coinsurance against these terms. Until you tick "These terms match my plan documents", a difference is shown as worth a closer look, not as a finding, because wrong terms would make every claim look wrong.{% if p.coinsurance_rate is not defined or p.coinsurance_rate is none %} <strong>Add the coinsurance rate</strong> to check coinsurance.{% endif %}{% if not p.limits %} <strong>Add the in-network deductible</strong> to check deductibles.{% endif %}</p>
 
     <h3 class="section">Deductibles and out-of-pocket maximums</h3>
     {% if p.limits %}

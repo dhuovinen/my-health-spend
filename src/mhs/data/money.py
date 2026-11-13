@@ -8,7 +8,7 @@ MONEY_KEYS = {
     "copay", "coinsurance", "not_covered", "patient_responsibility", "balance_due", "billed_charge",
     "insurance_paid", "rate", "patient_amount", "patient_paid", "balance", "charge", "total",
     "account_balance_after", "secondary_paid", "write_off", "self_pay_discount", "recovered", "good_faith_estimate",
-    "carryover",
+    "carryover", "expected_allowed", "cash_price", "estimated_share",
 }
 MONEY_MAP_KEYS = {"copays"}  # objects whose values are all money
 

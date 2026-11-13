@@ -8,7 +8,10 @@ from mhs.data.db import Database
 from mhs.web.household import privacy
 
 REQUIRE_CODE = "require_code"
-DEFAULTS = {REQUIRE_CODE: True}  # the code starts on: an upgrade never quietly removes protection (ADR-049)
+REQUIRE_CONSENT = "require_consent"
+# The code starts on: an upgrade never quietly removes protection (ADR-049). Consent before collection starts off for
+# the owner's own household and must be on before anyone else is invited (the launch gate, ADR-055).
+DEFAULTS = {REQUIRE_CODE: True, REQUIRE_CONSENT: False}
 
 
 def provider_setting(provider: str) -> str:
@@ -31,6 +34,9 @@ class Features:
 
     def require_code(self) -> bool:
         return self.get(REQUIRE_CODE)
+
+    def require_consent(self) -> bool:
+        return self.get(REQUIRE_CONSENT)
 
     def provider_on(self, provider: str) -> bool:
         return self.get(provider_setting(provider))

@@ -220,6 +220,18 @@
           "minimum": 1,
           "maximum": 3650,
           "description": "Days after an EOB to appeal it to the insurer (DSP-05). Default 180, the ACA minimum for internal appeals."
+        },
+        "terms_confirmed": {
+          "type": "boolean",
+          "description": "The member confirmed the deductible, out-of-pocket maximum, coinsurance rate and copays match the plan documents. Until then, cost-sharing differences are flags, not findings (REC-06, ADR-050)."
+        },
+        "cash_counts_toward_deductible": {
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ],
+          "description": "Whether a self-pay (cash) amount counts toward the deductible under this plan (PRE-04, ADR-053). Default unknown."
         }
       }
     },
@@ -533,7 +545,8 @@
               "itemized_bill",
               "eob",
               "receipt",
-              "payment"
+              "payment",
+              "secondary_eob"
             ]
           },
           "additionalProperties": {
@@ -735,6 +748,40 @@
               "type": "boolean"
             }
           }
+        },
+        "service_type": {
+          "enum": [
+            "preventive",
+            "primary_care",
+            "specialist",
+            "urgent_care",
+            "emergency",
+            "other"
+          ],
+          "description": "Kind of service, for the plan's copay and preventive rules (REC-06, PRE-02)."
+        },
+        "planned": {
+          "type": "boolean",
+          "description": "A visit planned ahead (PRE-01, ADR-053). Not reconciled until a document arrives for it."
+        },
+        "expected_allowed": {
+          "$ref": "#/$defs/money",
+          "description": "The allowed amount the member expects for a planned visit (PRE-02)."
+        },
+        "cash_price": {
+          "$ref": "#/$defs/money",
+          "description": "The provider's self-pay price for a planned visit (PRE-04)."
+        },
+        "planned_outcome": {
+          "enum": [
+            "happened",
+            "cancelled"
+          ],
+          "description": "The member's answer once a planned date has passed with no documents (TC-PRE-01-3)."
+        },
+        "estimated_share": {
+          "$ref": "#/$defs/money",
+          "description": "What MHS estimated the member would owe, saved when the planned visit was last edited, for comparison once the EOB arrives (PRE-01)."
         }
       }
     },
@@ -1084,6 +1131,36 @@
         "secondary_paid": {
           "$ref": "#/$defs/money",
           "description": "Paid by a second plan under coordination of benefits (ALC-05). Zero with one plan."
+        },
+        "remark_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Claim-level adjustment and remark codes, e.g. CO-16 (REC-09)."
+        },
+        "version_of": {
+          "$ref": "#/$defs/id",
+          "description": "The earlier EOB for the same claim that this one corrects, reprocesses or appeals (MAT-08, ADR-052)."
+        },
+        "version_reason": {
+          "enum": [
+            "corrected",
+            "reprocessed",
+            "appealed"
+          ],
+          "description": "Why this version was issued."
+        },
+        "member_edited": {
+          "type": "boolean",
+          "description": "The member corrected this EOB's values. A newer version doesn't replace it until the member accepts (MAT-08)."
+        },
+        "version_choice": {
+          "enum": [
+            "use_newer",
+            "keep_mine"
+          ],
+          "description": "On a newer version of an EOB the member edited: the member's choice (MAT-08)."
         }
       },
       "unevaluatedProperties": false
@@ -1159,6 +1236,13 @@
             "member",
             "statement"
           ]
+        },
+        "refund_of": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "description": "For a refund: the payments it gives money back for (ALC-08)."
         }
       },
       "unevaluatedProperties": false

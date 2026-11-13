@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ payer.label }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ payer.label }}</h1></div>
+{% if error %}
+<p class="alert bad">{{ error }}</p>
+<p><a class="btn" href="/connect">Back to Connect your insurer</a></p>
+{% else %}
+<section class="card section">
+  <p>Read {{ result.read }} claim{{ 's' if result.read != 1 }}{% if result.versions %}, {{ result.versions }} of them newer versions of claims you have{% endif %}. Nothing is saved until you review it.</p>
+  {% for n in notes %}<p class="small muted">{{ n }}</p>{% endfor %}
+  <p><a class="btn primary" href="/connect/review/{{ token }}">Review what was read</a></p>
+</section>
+{% endif %}
+{% endblock %}

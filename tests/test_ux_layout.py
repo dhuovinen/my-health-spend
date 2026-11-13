@@ -31,8 +31,8 @@ PHONE = {"viewport": {"width": 375, "height": 812}, "is_mobile": True, "has_touc
 DESKTOP = {"viewport": {"width": 1280, "height": 800}}
 PAGES = ["/", "/visits?year=2026", f"/visits/{PEDS}", "/visits/v-2026-04-02-pcp", "/household", "/providers",
          "/providers/prov-peds?year=2026", "/charges?year=2026", "/tax?year=2026", "/settings", "/help", "/accuracy", "/import", "/cases",
-         f"/visits/{PEDS}/cases/case-1"]
-R1_PAGES = ["/uploads", "/account", "/data", "/admin"]
+         f"/visits/{PEDS}/cases/case-1", "/plan"]
+R1_PAGES = ["/uploads", "/account", "/data", "/admin", "/consent", "/connect"]
 SHOTS = os.environ.get("MHS_UX_SCREENSHOTS")
 
 # Every visible control smaller than 44px in either direction, except a link inside running text.

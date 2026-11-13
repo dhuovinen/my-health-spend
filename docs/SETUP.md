@@ -156,6 +156,20 @@ The code starts required. Turning it off on the screen takes your current code; 
 docker compose exec app mhs-admin require-code status
 ```
 
+### Insurer connection (optional, off until a payer is set; ING-09, ADR-054)
+
+Members can bring in claims from their insurer's Patient Access API (SMART on FHIR, CARIN Blue Button) from Uploads, "Connect your insurer". Each payer needs its own app registration, and a redirect URI of `<MHS_PUBLIC_URL>/connect/<name>/callback`, so real payers work from staging on. Set `MHS_FHIR_PAYERS` in the git-ignored `.env`, inline or as a path the app container can read:
+
+```bash
+MHS_FHIR_PAYERS='[{"name": "examplehealth", "label": "Example Health", "fhir_base": "https://fhir.example.com/r4", "authorize_url": "https://auth.example.com/authorize", "token_url": "https://auth.example.com/token", "client_id": "your-client-id"}]'
+```
+
+A confidential client's secret goes in `MHS_FHIR_<NAME>_SECRET` (or `_FILE`), or as `client_secret` in the entry. MHS keeps no payer token: each pull is one sign-in at the payer, and what was read is shown as an import preview before anything is saved. The household needs the year's plan in Settings first; claims for a year without one are left out with a note.
+
+### Consent and the privacy notice (CMP-02, CMP-03, ADR-055)
+
+Each member gives or withdraws consent at `/consent` (linked from their Account page): collection of their documents and claims, and separately sharing with the AI service. The privacy notice is public at `/privacy-notice`; it and `docs/BREACH_RESPONSE.md` are drafts until the privacy attorney reviews them. Requiring consent before any upload, import, forwarded email or insurer pull is an owner toggle on the admin screen ("Consent before collection"), off by default for your own household; turn it on before inviting anyone else. A member who withdrew is refused either way, and withdrawing AI sharing turns AI extraction off for the household.
+
 ### Export and delete your data (PRV-09)
 
 "Your data" in the header: download everything as a ZIP (records as an ingest file with its files, uploads, identifiers, a manifest), or delete your account. Deleting the last member's account deletes the household's records, files and identifiers at once (ADR-038). The same page shows the access log: who viewed or changed which record, and when (ADR-040).

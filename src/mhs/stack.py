@@ -56,6 +56,13 @@ class SignInProvider:
     issuer: str
 
 
+def fhir_payers() -> tuple:
+    """The insurers configured for the Patient Access connection (ADR-054); none unless MHS_FHIR_PAYERS names a file."""
+    from mhs.ingest.fhir import payers_from
+
+    return payers_from(os.environ.get("MHS_FHIR_PAYERS"), secret)
+
+
 def sign_in_providers() -> tuple[SignInProvider, ...]:
     """The providers with a client configured; a provider with none doesn't appear on the sign-in page."""
     known = (
@@ -90,6 +97,7 @@ class AppConfig:
     scrubber: str = "rules"  # MHS_SCRUBBER: rules | presidio (ingest/scrub.py)
     public_url: str = f"http://127.0.0.1:{APP_PORT}"  # MHS_PUBLIC_URL: where members open the app (enrolment links)
     sign_in_providers: tuple[SignInProvider, ...] = ()  # MHS_GOOGLE_CLIENT_ID and _SECRET, MHS_MICROSOFT_...
+    fhir_payers: tuple = ()  # MHS_FHIR_PAYERS: insurers members can connect to (ING-09, ADR-054)
 
 
 def load_app_config() -> AppConfig:
@@ -109,6 +117,7 @@ def load_app_config() -> AppConfig:
         scrubber=os.environ.get("MHS_SCRUBBER", "rules"),
         public_url=os.environ.get("MHS_PUBLIC_URL", f"http://127.0.0.1:{port}").rstrip("/"),
         sign_in_providers=sign_in_providers(),
+        fhir_payers=fhir_payers(),
     )
 
 

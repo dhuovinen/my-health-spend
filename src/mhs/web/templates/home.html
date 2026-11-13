@@ -16,6 +16,18 @@
   </div>
 </section>
 
+{% if start_left %}
+<section class="card section onboarding" id="start">
+  <h2>Getting started</h2>
+  <p class="muted small">{{ start|length - start_left }} of {{ start|length }} done. Leave whenever you like: this list picks up where you left off.</p>
+  <ol class="steps">
+    {% for s in start %}
+    <li class="{{ 'done' if s.done }}">{% if s.done %}<span class="good-ink">✓</span> <span class="muted">{{ s.title }}</span>{% else %}<a class="btn small{{ ' primary' if s is sameas (start|rejectattr('done')|first) }}" href="{{ s.href }}">{{ s.title }}</a> <span class="small muted">{{ s.why }}</span>{% endif %}</li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+
 {% if not report.visits and not report.groups %}
 <div class="card empty">
   <h2>No visits yet</h2>

@@ -13,7 +13,7 @@ from mhs.core.accuracy import NOT_CLOSABLE
 LINE_FROM_ITEM = {"billed_charge": "charge", "adjustment": "adjustment", "insurance_paid": "insurance_paid",
                   "patient_amount": "patient_amount", "patient_paid": "patient_paid", "balance": "balance",
                   "write_off": "write_off"}
-DOCUMENT_KINDS = ("bill", "itemized_bill", "eob", "receipt", "payment")
+DOCUMENT_KINDS = ("bill", "itemized_bill", "eob", "secondary_eob", "receipt", "payment")
 EXPECTATIONS = ("expected", "not_applicable")
 VERDICTS = ("real", "wrong")  # the member's word on a finding they close (PLT-02, ADR-044)
 REASON_LENGTH = 200
@@ -355,4 +355,15 @@ def set_expectation(visit: dict, kind: str, state: str | None, today: str) -> di
         docs[kind] = {"state": state, "since": today}
     if not docs:
         del out["documents"]
+    return out
+
+
+def choose_version(newer: dict, choice: str) -> dict:
+    """MAT-08 (ADR-052): the member's answer when a newer EOB arrives for a claim they edited."""
+    if choice not in ("use_newer", "keep_mine"):
+        raise EditError("Choose which EOB to use.")
+    if newer.get("type") != "eob":
+        raise EditError("That isn't a newer version of an EOB.")
+    out = copy.deepcopy(newer)
+    out["version_choice"] = choice
     return out

@@ -1,6 +1,7 @@
 """Load the stored records into the engine's Dataset."""
 
 from mhs.core.reconcile import WAITING_DAYS, Dataset
+from mhs.data.reference import load_claim_codes
 from mhs.data.store import Store
 
 # Household preferences live in their own record kind, which imports never touch.
@@ -25,4 +26,5 @@ def load_dataset(store: Store) -> Dataset:
         documents=store.all("document"),
         waiting_days=waiting_days(store),
         notes=store.all("provider_note"),
+        claim_codes=load_claim_codes(),
     )

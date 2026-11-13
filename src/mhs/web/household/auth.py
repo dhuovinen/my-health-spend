@@ -395,6 +395,26 @@ class Accounts:
                             "RETURNING member_id, expires_at > now() AS valid", (_hash_token(state),)).fetchone()
         return str(row["member_id"]) if row and row["valid"] else None
 
+    def start_payer_pull(self, member_id: str, state: str, minutes: int) -> None:
+        """ING-09 (ADR-054): remember who started an insurer pull, until the payer sends them back."""
+        with self.db.tx() as c:
+            c.execute("DELETE FROM app.enrolment_links WHERE expires_at <= now()")
+            c.execute("INSERT INTO app.enrolment_links (token_hash, member_id, expires_at, purpose) "
+                      "VALUES (%s, %s, now() + make_interval(mins => %s), 'payer_pull')",
+                      (_hash_token(state), member_id, minutes))
+
+    def take_payer_pull(self, state: str) -> Member | None:
+        """The member who started the pull under this state, if still valid and not locked. Used up either way."""
+        with self.db.tx() as c:
+            row = c.execute("DELETE FROM app.enrolment_links WHERE token_hash = %s AND purpose = 'payer_pull' "
+                            "RETURNING member_id, expires_at > now() AS valid", (_hash_token(state),)).fetchone()
+            if not row or not row["valid"]:
+                return None
+            member = c.execute("SELECT * FROM app.members WHERE id = %s", (row["member_id"],)).fetchone()
+        if member is None or self._locked(member):
+            return None
+        return _member(member)
+
     def link_identity(self, member_id: str, provider: str, subject: str, email: str) -> None:
         with self.db.tx() as c:
             added = c.execute("INSERT INTO app.member_identities (provider, subject, member_id, email) "

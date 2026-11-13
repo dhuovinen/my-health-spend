@@ -56,6 +56,12 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 047 | The public landing page is a server-rendered page in the app; `/` shows it to anyone not signed in; no React, Supabase or Google/Microsoft sign-in | 2026-11-07 | Proposed |
 | 048 | Social sign-in (PRV-12): Google and Microsoft through direct OpenID Connect; invitation only for now; linked by provider subject | 2026-11-07 | Accepted |
 | 049 | Owner-only admin screen with feature toggles (PLT-09); the authenticator code becomes owner-controlled | 2026-11-07 | Accepted |
+| 050 | Plan cost-sharing check (REC-06) in insurer processing order, soft until the member confirms the plan's terms; denial and adjustment codes from a dated reference table (REC-09) | 2026-11-12 | Accepted |
+| 051 | Learning from corrections (ING-06): per-household label hints keyed by document layout, applied after the layout rules, never across layouts | 2026-11-12 | Accepted |
+| 052 | EOB versions kept side by side (MAT-08), refunds traced to the paying account (ALC-08), secondary insurance as a second adjudication step (ALC-05) | 2026-11-12 | Accepted |
+| 053 | Planned visits and the pre-visit estimate (PRE-01, 02, 04 to 07) as a visit field and a pure estimator; not a tenth status | 2026-11-12 | Accepted |
+| 054 | Insurer connection (ING-09) by SMART on FHIR from the application tier: one pull per consent, no stored tokens, results reviewed like an import | 2026-11-12 | Accepted |
+| 055 | Onboarding checklist (UX-09), per-member consent records (CMP-02), a published privacy notice and breach plan (CMP-01, CMP-03); the launch gate still needs an attorney | 2026-11-12 | Accepted |
 
 ## Records
 
@@ -430,3 +436,69 @@ PLT-09. The owner wants one screen to manage features and toggles, and wants the
 - **First toggles:** the required code, and each social sign-in provider that is configured (on by default). A provider's client settings stay in the environment; the toggle only hides or shows it. AI extraction per household stays in `mhs-admin` for now, since moving it here would put household names on the screen.
 
 **Consequences.** With the code off, a single stolen credential exposes real health data, so the screen says so in the toggle's own words. The launch gate for other users should decide whether the code must be on for them. A member who signed in without a code and whose password is then stolen can have the authenticator set up by the thief when the code comes back on; the owner can reset it with `mhs-admin reset-mfa`. Test cases: TC-PLT-09-1 to TC-PLT-09-3.
+
+### ADR-050 · Plan cost-sharing check and plain-language codes (Accepted)
+REC-06 and REC-09. The identities (ADR-014) prove the documents agree with each other, not that the insurer applied the plan. The owner asked for these on 2026-11-12 ("make these enhancements"); the build session set the details below.
+
+**Decision.**
+- **Expected cost share per claim, from the plan record.** `core/costshare.py` replays the plan year's in-network, non-denied claims in the insurer's processing order (EOB date, then claim number; TC-REC-06-4), keeping individual and family deductible and out-of-pocket totals. For each claim it works out what the plan's terms say: deductible up to what is left (an embedded individual deductible ends at the individual or the family amount, whichever comes first), the copay for the visit's service type, coinsurance at the plan's rate on what is left of the allowed amount, everything capped at the out-of-pocket maximum left, and $0 for a preventive visit. It compares the EOB's deductible, copay and coinsurance with that and reports each difference over the $1.00 tolerance (ADR-015) as one finding, `plan` / `cost_share`, with the math in the sentence.
+- **Soft until the terms are confirmed.** Wrong plan terms make every claim look wrong, and accuracy beats speed. Until the member ticks "These terms match my plan documents" on the plan (`terms_confirmed`), a difference is a `flag` (like REC-14, ADR-045): shown, but it doesn't change the status or the dollars at stake. Once confirmed it's a `fail` and counts as a discrepancy. Out-of-network claims, claims without a cost-sharing breakdown and plans without the needed terms get `na` with the reason.
+- **A new visit field, `service_type`** (preventive, primary_care, specialist, urgent_care, emergency, other), set by the member; the copay comes from the plan's `copays` map by that key. Without it, the copay isn't checked.
+- **Codes from a dated reference table** (`data/reference/claim_codes.json`, PLT-01), CARC group-and-reason codes and common RARC remark codes, each described in our own plain words with whether it usually means the member owes and whether it looks appealable. The visit page explains every code on an EOB. An unknown code says so and is never guessed (TC-REC-09-3).
+- **An appealable denial is a finding** (`denial` / `appealable_denial`) on a denied claim or a line the member is charged for under an appealable code (missing information, coding, authorization, timely filing by the provider). It is an insurer finding, so it starts the appeal deadline and drafts the appeal letter (ADR-042), and it prints the CMP-04 disclaimer. Codes that aren't appealable are explained, not flagged.
+
+**Consequences.** Plans need their coinsurance rate, copays and limits in Settings for the check to say anything; the Settings page says what is missing. The replay order means an EOB processed late can change earlier findings' expectations only for the claims after it, as at the insurer. Out-of-network cost sharing and per-service coinsurance rates are not checked yet.
+
+### ADR-051 · Learning from corrections per layout (Accepted)
+ING-06. The layout rules read 61.5% of held-out amounts correctly; members see the same few providers and insurers over and over, so their corrections are the cheapest training data there is. Owner's request of 2026-11-12; details by the build session.
+
+**Decision.**
+- **A layout key** is the document type plus the issuer as read (the insurer or provider name, normalized), so corrections on one provider's statements never change another's (TC-ING-06-2). It is computed from scrubbed text, so it never holds a member identifier.
+- **A hint is the label the member's value sits behind.** When a member confirms a document with a corrected money or date field, `ingest/learn.py` finds the confirmed value in the scrubbed text and keeps the words before it on that line as that field's label for the layout. Hints are household records (`layout_hint`), so they stay inside the household, go with export and delete, and are never shared between households.
+- **Hints apply after the rules and the AI,** in the worker, only for the same layout, and only where the label is found with a value after it. A field filled or changed by a hint says so on the review page ("read with the label you corrected on an earlier document from this sender"), with confidence 0.9, and the review page lists the fields hints changed. Two corrections that disagree keep the latest.
+- **Measured, not assumed:** the corpus test corrects two documents of a layout and checks that the field error rate on the next five drops by at least half (TC-ING-06-1).
+
+**Consequences.** A layout whose labels change every time won't improve; the AI path (ADR-028) remains the plan for those. Hints never leave the household, so a new household starts from the rules alone.
+
+### ADR-052 · EOB versions, refunds to the paying account, secondary insurance (Accepted)
+MAT-08, ALC-08 and ALC-05. Disputes (ADR-042) end in a reprocessed EOB and a refund, and two-plan families get two EOBs per visit; until now the newer EOB replaced the older one in place, refunds weren't traced and a secondary EOB was added up as a second claim. Owner's request of 2026-11-12; details by the build session.
+
+**Decision.**
+- **Versions are kept.** A corrected, reprocessed or appealed EOB for a claim number already on file is stored as a new document (`version_of` the earlier one, `version_reason`), not over it. The latest by processed date is current, whatever order they arrive in (TC-MAT-08-3); earlier ones stay on the visit page as history.
+- **A member's edit wins until they say otherwise** (ADR-011). If the member changed the earlier version (`member_edited`, set when they corrected a field at review), the new version is not applied: the visit goes to Needs review with both side by side, and the member chooses "Use the newer EOB" or "Keep mine". The member says on the review page whether a version is corrected, reprocessed or the answer to an appeal; the visit's history shows it. Updating an open insurer case from an appealed version (TC-MAT-08-4) is left for later.
+- **Refunds are traced to the account that paid.** A refund goes back against the visit's overpayment as before, and is now compared with the accounts the overpaid payments came from. A refund owed for an HSA-paid overpayment that arrives in another account is a finding (`refund` / `refund_to_hsa`): deposit it back to the HSA as a returned mistaken distribution. What is still owed back is shown per visit (TC-ALC-08-3).
+- **Secondary insurance is a second step, not a second claim.** An EOB from a plan with `coverage_order` secondary (or tertiary) for the same visit is the secondary adjudication. The member's share is the last plan's patient responsibility; insurer paid adds up across plans; the visit's billed is the primary's. A coordination check verifies that the primary's patient responsibility equals the secondary's payment, its adjustments and the member's final share within tolerance. When the member is covered by a secondary plan and only the primary EOB is in, the member's share is pending and the visit is Awaiting EOB (TC-ALC-05-2).
+
+**Consequences.** Document ids for corrected EOBs gain a suffix (`-v2`); the claim number stays the link. Bills compare against the final share after every plan. A family with a secondary plan that never sends an EOB (because nothing was left) needs the member to mark the secondary EOB not applicable, as for any expected document.
+
+### ADR-053 · Planned visits and the pre-visit estimate (Accepted)
+PRE-01, PRE-02, PRE-04 to PRE-07, the vision's priority two. Owner's request of 2026-11-12; details by the build session.
+
+**Decision.**
+- **A planned visit is a visit with `planned: true`,** an expected allowed amount and optionally a cash price, a good-faith estimate (PRE-06 reuses the existing field and check) and a service type. It isn't reconciled and doesn't get one of the nine statuses (ADR-009 stays nine): while it has no documents it is left out of the report and listed on the Plan page. The first EOB, bill or receipt matched to it turns it into an ordinary visit and keeps the estimate for comparison. A planned date in the past with no documents asks "Did this visit happen?" (TC-PRE-01-3).
+- **The estimate is pure (`core/estimate.py`)** over the plan's terms and this year's totals from the same replay as ADR-050, and shows its math: deductible left, coinsurance on the rest, a copay instead when the service has one, $0 for preventive care, capped at the out-of-pocket maximum left (TC-PRE-02-1 to 3).
+- **Cash or insurance (PRE-04).** The comparison shows both prices and whether paying cash counts toward the deductible. That is the PRD's open question, so it's a plan setting (`cash_counts_toward_deductible`: yes, no or unknown) that defaults to unknown, and the recommendation says what changes either way.
+- **Which account (PRE-07)** comes from `core.tax.recommend` with the same inputs as TAX-03; **questions to ask (PRE-05)** are a fixed list by network status and whether a good-faith estimate is expected. Every block that suggests an action prints the CMP-04 disclaimer.
+
+**Consequences.** Estimates are only as good as the plan's terms and the expected allowed amount the member enters; PRE-03 (price transparency data) stays P3.
+
+### ADR-054 · Insurer connection by SMART on FHIR (Accepted)
+ING-09. Gathering EOBs is the biggest effort for members and the least accurate step. Payers regulated by CMS publish a Patient Access API (FHIR R4, CARIN Blue Button `ExplanationOfBenefit`). Owner's request of 2026-11-12; details by the build session.
+
+**Decision.**
+- **The application tier connects, from the Uploads page.** Authorization code with PKCE and `state` against the payer's SMART endpoints, scope `patient/ExplanationOfBenefit.read patient/Coverage.read launch/patient openid`. Payers are configured by the operator (`MHS_FHIR_PAYERS`, a JSON file of name, FHIR base, authorize and token URLs and client id; secrets in the secrets volume), because each needs its own registration.
+- **One pull per consent, no stored tokens.** The access token is used for one pull and dropped, like ADR-048's provider tokens. Pulling again means signing in at the payer again. Revoking at the payer therefore stops all pulls (TC-ING-09-4), and MHS holds no long-lived credential to a member's insurer.
+- **Mapped, not trusted.** `ingest/fhir.py` maps each `ExplanationOfBenefit` (adjudication categories submitted, eligible, benefit, deductible, copay, coinsurance, noncovered, memberliability, discount) to an ingest EOB with lines, CARC codes as `remark_codes`, and the claim number from `identifier`. Patient names and member ids from the bundle are never stored; the member picks which household member the pull is for, and the provider's display name becomes a provider. The result goes through the import preview (validate, show counts, confirm) like any ingest file, and its records are marked as from the payer feed, so a member's edits win (ADR-011) and the same claim already uploaded is matched by claim number, not added twice (TC-ING-09-3).
+- **Retries are bounded:** a 429 or 5xx is retried with back-off three times, then the pull reports the failure; nothing is half-imported, because nothing is committed before the preview is confirmed (TC-ING-09-5).
+
+**Consequences.** Real payers need registration per environment and a public redirect URL, so this works for real only from staging on; tests use a fake FHIR server, as for social sign-in. The payer learns that the member uses MHS. Release 0 doesn't get it.
+
+### ADR-055 · Onboarding, consent and the published privacy pages (Accepted)
+UX-09 and the parts of the launch gate the software can carry (CMP-01 to CMP-03). Owner's request of 2026-11-12; details by the build session.
+
+**Decision.**
+- **Onboarding is a checklist computed from the household's records,** not a separate wizard state: members, a plan with its limits and terms, an HSA or other account, a first document, a first reconciled visit. Home shows it until every step is done, with a link to each step's page and a "Show me the first result" link at the end. Leaving and coming back resumes where the records say (TC-UX-09-2).
+- **Consent is a record per member** (`consent`, kept in the household like a preference): collection of health data, and separately sharing with the AI service (ADR-028), both unticked by default, each with the notice version and date, and a history of changes. It is checked where data comes in, not on every page: uploads, forwarded email, imports and insurer pulls. Requiring it is an owner toggle on the admin screen (`require_consent`, ADR-049's pattern), **off by default for the owner's own household and to be turned on before anyone else is invited**; with it on, nothing is collected from a member until they tick it (TC-CMP-02-1). A member who withdrew is refused whatever the toggle says, and withdrawing AI sharing turns AI extraction off for the household (TC-CMP-02-2). Release 0 has one owner and no consent page.
+- **The privacy notice is a page in the app** (`/privacy-notice`), written to match what the code does, with each statement pointing to its ADR, and the breach response plan is `docs/BREACH_RESPONSE.md`. Both are drafts until the healthcare privacy attorney reviews them, and say so.
+
+**Consequences.** The launch gate is still closed: attorney review, a tabletop exercise (TC-CMP-01-2) and anomaly alerts (TC-CMP-01-3) remain. Self-service sign-up is still out of scope, so onboarding starts once `mhs-admin` has created the member.

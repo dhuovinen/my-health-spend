@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_plan_form.html" import plan_fields %}
+{% block title %}Plan ahead{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>Plan ahead</h1>
+  <div class="muted">Before a visit: what you'll likely owe, whether cash is cheaper, what to ask and which account should pay.</div>
+</div></div>
+{% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
+
+<section class="card section" id="planned">
+  <h2>Planned visits</h2>
+  {% if planned %}
+  <ol class="queue">
+    {% for e in planned %}
+    <li><a href="/plan/{{ e.visit.id }}">
+      <span class="q-head"><span class="provider">{{ providers_by_id.get(e.visit.provider_id, {}).get('name', e.visit.provider_id) }}</span>{% if e.past_due %}<span class="badge s-awaiting_documents">Did it happen?</span>{% else %}<span class="badge s-na">Planned</span>{% endif %}</span>
+      <span class="q-meta muted small">{{ e.visit.date|nice_date }}{% if e.visit.member_id %} · {{ members_by_id.get(e.visit.member_id, {}).get('name', '') }}{% endif %}{% if e.visit.description %} · {{ e.visit.description }}{% endif %}</span>
+      <span class="q-why small">{% if e.total is not none %}You'll likely owe about {{ e.total|money }}{% if e.cash and e.cash.cheaper == 'cash' %}; cash is cheaper{% endif %}{% else %}{{ e.missing }}{% endif %}</span>
+      <span class="q-amount num">{% if e.total is not none %}<strong>{{ e.total|money }}</strong>{% endif %}</span>
+    </a></li>
+    {% endfor %}
+  </ol>
+  {% else %}<p class="muted">Nothing planned. Add a visit below to see what it will likely cost.</p>{% endif %}
+</section>
+
+<section class="card section" id="add">
+  <h2>Plan a visit</h2>
+  <form method="post" action="/plan" class="inline">{{ csrf_input() }}
+    {{ plan_fields({}, providers, members, plans, service_types) }}
+    <button class="btn primary">Plan it</button>
+  </form>
+  <p class="muted small">The plan's allowed amount is the negotiated rate: ask the provider for the service codes and the plan (or its cost estimator) for the rate. When documents for this visit arrive, it becomes an ordinary visit and keeps the estimate for comparison.</p>
+</section>
+<p class="muted small">{{ disclaimer }}</p>
+{% endblock %}

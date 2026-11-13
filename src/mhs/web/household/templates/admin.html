@@ -45,6 +45,16 @@
     <p class="small muted">Off hides the button and refuses the sign-in. Links members made are kept for when it's back on.</p>
   </section>
 </div>
+<section class="card section" id="consent">
+  <h2>Consent before collection</h2>
+  {% if require_consent %}
+  <p><span class="chip good">Required</span> Each member agrees to the <a href="/privacy-notice">privacy notice</a> before MHS takes their uploads, forwarded email, imports or insurer claims.</p>
+  <form method="post" action="/admin/require-consent">{{ csrf_input() }}<input type="hidden" name="state" value="off"><button class="btn" type="submit">Stop requiring it</button></form>
+  {% else %}
+  <p><span class="chip idle">Not required</span> Members can give or withdraw consent on their Consent page; one who withdrew is never collected from. Turn this on before inviting anyone outside your household.</p>
+  <form method="post" action="/admin/require-consent">{{ csrf_input() }}<input type="hidden" name="state" value="on"><button class="btn primary" type="submit">Require consent</button></form>
+  {% endif %}
+</section>
 <section class="card section">
   <h2>Members</h2>
   <div class="table-wrap">

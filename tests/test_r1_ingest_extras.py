@@ -100,7 +100,17 @@ def test_a_corrected_eob_is_a_new_version(member):
     text, values = member.review(uid)
     assert "A corrected EOB for claim C-2026-0042" in text and "$45.00 → $25.00" in text
     member.confirm(uid, values)
-    assert member.store.get("document", "eob-c-2026-0042")["patient_responsibility"] == 2500
+    # MAT-08 (ADR-052): both kept; the newer one is current, the original stays in the visit's history.
+    assert member.store.get("document", "eob-c-2026-0042")["patient_responsibility"] == 4500
+    newer = member.store.get("document", "eob-c-2026-0042-v2")
+    assert newer["patient_responsibility"] == 2500 and newer["version_of"] == "eob-c-2026-0042"
+    from datetime import date
+
+    from mhs.core.reconcile import build_report
+    from mhs.data.repository import load_dataset
+
+    v = build_report(load_dataset(member.store), 2026, date(2026, 12, 1)).visit(newer["visit_id"])
+    assert v.insurer_owed == 2500 and [e["id"] for e in v.versions] == ["eob-c-2026-0042"]
 
 
 def visit_figures(member, visit_id: str) -> dict:
