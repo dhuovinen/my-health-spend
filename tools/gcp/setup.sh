@@ -13,6 +13,14 @@ ALL_STEPS=(apis network bucket kms accounts secrets sql registry docai)
 apis() {
   step "Enable the APIs"
   run gcloud services enable "${APIS[@]}" "${P[@]}"
+  # A newly enabled API can take a few minutes to answer; wait for Compute Engine, the first one the next steps use.
+  [[ "$DRY_RUN" == 1 ]] && return
+  for _ in $(seq 1 30); do
+    gcloud compute networks list "${P[@]}" --format=none >/dev/null 2>&1 && return
+    note "Waiting for the Compute Engine API to be ready..."
+    sleep 10
+  done
+  die "The Compute Engine API still isn't answering after 5 minutes; wait a little and rerun setup.sh."
 }
 
 network() {
@@ -47,7 +55,7 @@ sql() {
     || run gcloud sql instances create "$SQL_INSTANCE" --database-version=POSTGRES_17 --edition=ENTERPRISE \
          --tier="$SQL_TIER" --region="$REGION" --availability-type=ZONAL \
          --storage-type=SSD --storage-size=10GB --storage-auto-increase \
-         --network="projects/$PROJECT_ID/global/networks/$NETWORK" --allocated-ip-range-name="$PSA_RANGE" \
+         --network="projects/$PROJECT_ID/global/networks/$NETWORK" \
          --no-assign-ip --ssl-mode=ENCRYPTED_ONLY \
          --backup-start-time=07:00 --retained-backups-count=7 \
          --enable-point-in-time-recovery --retained-transaction-log-days=7 \
@@ -146,7 +154,7 @@ secrets() {
   if exists gcloud secrets describe "$AI_KEY_SECRET" "${P[@]}"; then
     bind_secret "$AI_KEY_SECRET" mhs-worker-ai
   else
-    note "No $AI_KEY_SECRET secret: fine unless AI extraction will be turned on (docs/GCP_SETUP.md step B11)."
+    note "No $AI_KEY_SECRET secret: fine unless AI extraction will be turned on (docs/GCP_SETUP.md step B10)."
   fi
 }
 

@@ -103,7 +103,7 @@ The Release 0 JSON importer stays as an admin path for migrating the owner's dat
 
 ## Environments
 
-The same containers run in every environment. Only four adapters change, so the local stack runs offline (ADR-030).
+What each container does, with diagrams of how they work together, is in [CONTAINERS.md](CONTAINERS.md). The same containers run in every environment. Only four adapters change, so the local stack runs offline (ADR-030).
 
 | Adapter | Local (Docker Compose) | Staging and production (Google Cloud) |
 | --- | --- | --- |

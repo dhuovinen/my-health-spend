@@ -202,8 +202,10 @@ def test_deploy_uses_only_settings_the_code_reads(fake_bin):
             if key.endswith("_FILE"):
                 assert value in mounts, f"{name}: {key}={value} has no secret mounted there"
         assert all(v.endswith(":latest") for v in mounts.values())
-        # Cloud Run mounts each secret as its own folder.
-        folders = [str(Path(p).parent) for p in mounts]
+        # Cloud Run mounts each file secret as its own folder; worker pools take theirs as environment variables.
+        folders = [str(Path(p).parent) for p in mounts if p.startswith("/")]
+        if name.startswith("mhs-worker"):
+            assert not folders and all(k in known for k in mounts), name
         assert len(folders) == len(set(folders)), name
 
 
@@ -238,7 +240,9 @@ def test_deploy_services_and_jobs(fake_bin):
     assert flag(worker, "network-tags") == "mhs-no-egress" and flag(worker, "vpc-egress") == "all-traffic"
     assert env["MHS_DB_USER"] == "mhs_worker" and env["MHS_EXTRACTOR"] == "rules"
     assert not {"MHS_KMS_KEY", "MHS_GCS_BUCKET", "MHS_VAULT_URL"} & set(env)
-    assert list(pairs(flag(worker, "set-secrets")).values()) == ["mhs-db-worker-password:latest"]
+    # Worker pools can't mount secret files, so the password comes as an environment variable.
+    assert pairs(flag(worker, "set-secrets")) == {"MHS_DB_PASSWORD": "mhs-db-worker-password:latest"}
+    assert "MHS_DB_PASSWORD_FILE" not in env
 
     migrate = d["mhs-migrate"]
     assert migrate[:4] == ["gcloud", "run", "jobs", "deploy"] and flag(migrate, "args") == "migrate"
@@ -269,7 +273,7 @@ def test_ai_worker_needs_its_proxy(fake_bin):
     ai = deploys(fake_bin, "worker-ai", MHS_AI_PROXY="http://proxy.internal:3128")["mhs-worker-ai"]
     env = pairs(flag(ai, "set-env-vars"))
     assert env["MHS_EXTRACTOR"] == "claude" and env["MHS_AI_PROXY"] == "http://proxy.internal:3128"
-    assert pairs(flag(ai, "set-secrets"))[env["MHS_ANTHROPIC_API_KEY_FILE"]] == "mhs-anthropic-api-key:latest"
+    assert pairs(flag(ai, "set-secrets"))["MHS_ANTHROPIC_API_KEY"] == "mhs-anthropic-api-key:latest"
 
 
 # --- admin.sh, check.sh, teardown.sh -----------------------------------------------------------------------

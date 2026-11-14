@@ -39,6 +39,12 @@ db_env() {  # role
     "$SQL_IP" "$DB_NAME" "$1" "$DB_PASSWORD_FILE"
 }
 
+# Worker pools can't mount secrets as files yet, so they get theirs as environment variables (MHS_DB_PASSWORD,
+# MHS_ANTHROPIC_API_KEY), which stack.secret() reads the same way.
+pool_db_env() {  # role
+  printf 'MHS_DB_HOST=%s,MHS_DB_NAME=%s,MHS_DB_USER=%s' "$SQL_IP" "$DB_NAME" "$1"
+}
+
 # What the app and the mhs-admin job share: database, KMS app key, bucket, Document AI, Presidio, public URL.
 app_env() {
   printf '%s,MHS_KEYS=kms,MHS_KMS_KEY=%s,MHS_OBJECT_STORE=gcs,MHS_GCS_BUCKET=%s' \
@@ -113,8 +119,8 @@ worker() {
   run gcloud run worker-pools deploy mhs-worker --image="$IMAGE" --region="$REGION" "${P[@]}" \
     --service-account="$(sa_email mhs-worker)" --command=mhs-worker \
     "${VPC[@]}" "${NO_EGRESS[@]}" --cpu=1 --memory=1Gi --instances="$WORKER_INSTANCES" \
-    --set-env-vars="$(db_env mhs_worker),MHS_EXTRACTOR=rules" \
-    --set-secrets="$DB_PASSWORD_FILE=mhs-db-worker-password:latest"
+    --set-env-vars="$(pool_db_env mhs_worker),MHS_EXTRACTOR=rules" \
+    --set-secrets="MHS_DB_PASSWORD=mhs-db-worker-password:latest"
 }
 
 worker-ai() {
@@ -124,9 +130,8 @@ worker-ai() {
   run gcloud run worker-pools deploy mhs-worker-ai --image="$IMAGE" --region="$REGION" "${P[@]}" \
     --service-account="$(sa_email mhs-worker-ai)" --command=mhs-worker \
     "${VPC[@]}" --cpu=1 --memory=1Gi --instances=1 \
-    --set-env-vars="$(db_env mhs_worker),MHS_EXTRACTOR=claude,\
-MHS_ANTHROPIC_API_KEY_FILE=/secrets/anthropic/key,MHS_AI_PROXY=$MHS_AI_PROXY" \
-    --set-secrets="$DB_PASSWORD_FILE=mhs-db-worker-password:latest,/secrets/anthropic/key=$AI_KEY_SECRET:latest"
+    --set-env-vars="$(pool_db_env mhs_worker),MHS_EXTRACTOR=claude,MHS_AI_PROXY=$MHS_AI_PROXY" \
+    --set-secrets="MHS_DB_PASSWORD=mhs-db-worker-password:latest,MHS_ANTHROPIC_API_KEY=$AI_KEY_SECRET:latest"
 }
 
 admin() {

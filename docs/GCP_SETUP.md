@@ -1,6 +1,6 @@
 # Google Cloud staging setup, step by step
 
-How to stand up the `mhs-staging` project (phase 1.3) from nothing. The plan behind it is in [DEPLOYMENT.md](DEPLOYMENT.md). **Staging holds synthetic data only.** Nothing here has been run against a real project yet; the scripts are tested with `--dry-run` (`tests/test_gcp_scripts.py`).
+How to stand up the `mhs-staging` project (phase 1.3) from nothing. It is Stages 1 and 2 of [OWNER_SETUP.md](OWNER_SETUP.md), the checklist of everything the owner sets up outside the code. The plan behind it is in [DEPLOYMENT.md](DEPLOYMENT.md). **Staging holds synthetic data only.** Parts A to C were first run against a real project on 2026-11-14 (`mhs-staging-512010`), which fixed three things the dry runs couldn't catch: a Cloud SQL flag this gcloud doesn't have, the wait for newly enabled APIs, and secrets for worker pools. The scripts are also tested with `--dry-run` (`tests/test_gcp_scripts.py`).
 
 Every script takes `PROJECT_ID` (required) and `REGION` (default `us-east4`), checks whether each resource exists before creating it, and prints every command without running anything under `--dry-run`. Try that first:
 
@@ -12,7 +12,7 @@ PROJECT_ID=mhs-staging-12345 tools/gcp/setup.sh --dry-run
 
 1. **Google Cloud account and billing.** Sign in at console.cloud.google.com, create a billing account and add a payment method.
 2. **Budget alerts.** Billing > Budgets & alerts: a budget of, say, $50 a month for the project, with alerts at 50%, 90% and 100%.
-3. **Install gcloud** (`brew install --cask google-cloud-sdk`), then sign in twice (the second is for tools on your laptop, such as the accuracy run):
+3. **Install gcloud** (`brew install --cask google-cloud-sdk`; Homebrew now names it `gcloud-cli`). Homebrew's gcloud lacks the `grpc` module that `gcloud run worker-pools` needs, so give gcloud its own environment once: `gcloud config virtualenv create --enable-virtualenv`. Then sign in twice (the second is for tools on your laptop, such as the accuracy run):
    ```bash
    gcloud auth login
    ```
@@ -67,7 +67,7 @@ PROJECT_ID=mhs-staging-12345 tools/gcp/deploy.sh
 | `migrate` | Cloud Run job `mhs-migrate` (`mhs-stack migrate`, admin user `postgres`), then runs it |
 | `vault` | Service `mhs-vault`: ingress internal, port 8100, `vault` KMS key |
 | `app` | Service `mhs-app`: public, port 3063, `MHS_COOKIE_SECURE=1`, `MHS_PUBLIC_URL` = its run.app address (or `PUBLIC_URL`), GCS, KMS `app` key, Document AI, Presidio |
-| `worker` | Worker pool `mhs-worker` (layout rules), tag `mhs-no-egress`; `WORKER_INSTANCES=0` pauses it |
+| `worker` | Worker pool `mhs-worker` (layout rules), tag `mhs-no-egress`; `WORKER_INSTANCES=0` pauses it. Worker pools can't mount secrets as files yet, so its database password (and the AI worker's key) arrive as environment variables |
 | `admin` | Job `mhs-admin` running as `mhs-app` |
 | `worker-ai` | Only with `--with-ai` and `MHS_AI_PROXY` set (see open items) |
 

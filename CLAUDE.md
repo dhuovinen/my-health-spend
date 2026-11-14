@@ -102,7 +102,7 @@ Build an ingest file from real source files, then import it on the Import page b
 uv run tools/build_ingest.py --settings data/settings.json --claims data/source/2026-10-09/claims.csv --hsa data/source/2026-10-09/TransactionHistory.xls --statements data/source/2026-10-09/patient-statements --out data/ingest-2026.json
 ```
 
-First-time setup and the converter's warnings are in `docs/SETUP.md`.
+First-time setup and the converter's warnings are in `docs/SETUP.md`. Everything the owner sets up outside the code (Google Cloud, OAuth clients, Anthropic, insurer registrations, the BAA and the launch gate), in order, is the checklist in `docs/OWNER_SETUP.md`.
 
 ## Gotchas
 
