@@ -14,6 +14,17 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!window.confirm(form.dataset.confirm)) event.preventDefault();
     });
   });
+  // Menus (the account menu, the phone's More): one open at a time; a click elsewhere or Escape closes them.
+  const menus = document.querySelectorAll("details.menu");
+  menus.forEach((menu) => menu.addEventListener("toggle", () => {
+    if (menu.open) menus.forEach((other) => { if (other !== menu) other.open = false; });
+  }));
+  document.addEventListener("click", (event) => {
+    menus.forEach((menu) => { if (menu.open && !menu.contains(event.target)) menu.open = false; });
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") menus.forEach((menu) => { menu.open = false; });
+  });
   // Progress bars take their width from data-pct.
   // UX-11: a dot's details, on hover, keyboard focus or a tap.
   const detail = document.getElementById("dot-detail");

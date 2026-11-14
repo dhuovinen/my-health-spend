@@ -26,11 +26,11 @@
 
 <section class="card section" id="add">
   <h2>Plan a visit</h2>
-  <form method="post" action="/plan" class="inline">{{ csrf_input() }}
+  <p class="muted small">The plan's allowed amount is the negotiated rate: ask the provider for the service codes, and the plan (or its cost estimator) for the rate. When documents for this visit arrive, it becomes an ordinary visit and keeps the estimate for comparison.</p>
+  <form method="post" action="/plan">{{ csrf_input() }}
     {{ plan_fields({}, providers, members, plans, service_types) }}
-    <button class="btn primary">Plan it</button>
+    <div class="form-actions"><button class="btn primary">Plan it</button></div>
   </form>
-  <p class="muted small">The plan's allowed amount is the negotiated rate: ask the provider for the service codes and the plan (or its cost estimator) for the rate. When documents for this visit arrive, it becomes an ordinary visit and keeps the estimate for comparison.</p>
+  <p class="disclaimer">{{ disclaimer }}</p>
 </section>
-<p class="muted small">{{ disclaimer }}</p>
 {% endblock %}

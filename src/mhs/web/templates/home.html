@@ -12,17 +12,29 @@
     {{ year_select(report, "/") }}
     {{ view_switch(members, view, "/?year=%s" % report.year) }}
     <a class="btn secondary" href="/visits?year={{ report.year }}&flagged=1">Review flagged visits</a>
-    <a class="btn primary" href="{{ add_url }}">{{ 'Add documents' if session else 'Import data' }}</a>
   </div>
 </section>
 
 {% if start_left %}
-<section class="card section onboarding" id="start">
-  <h2>Getting started</h2>
-  <p class="muted small">{{ start|length - start_left }} of {{ start|length }} done. Leave whenever you like: this list picks up where you left off.</p>
+{% set next_step = start|rejectattr('done')|first %}
+<section class="card section onboarding" id="start" aria-labelledby="start-title">
+  <div class="onboarding-head">
+    <div>
+      <h2 id="start-title">Getting started</h2>
+      <p class="muted small flush">{{ start|length - start_left }} of {{ start|length }} done. Leave whenever you like: this list picks up where you left off.</p>
+    </div>
+    <div class="bar onboarding-bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ start|length }}" aria-valuenow="{{ start|length - start_left }}" aria-label="Steps done"><span data-pct="{{ ((start|length - start_left) * 100 / start|length)|round|int }}"></span></div>
+  </div>
   <ol class="steps">
     {% for s in start %}
-    <li class="{{ 'done' if s.done }}">{% if s.done %}<span class="good-ink">✓</span> <span class="muted">{{ s.title }}</span>{% else %}<a class="btn small{{ ' primary' if s is sameas (start|rejectattr('done')|first) }}" href="{{ s.href }}">{{ s.title }}</a> <span class="small muted">{{ s.why }}</span>{% endif %}</li>
+    <li class="step {{ 'done' if s.done else ('next' if s is sameas next_step else 'todo') }}">
+      <span class="step-mark" aria-hidden="true">{{ '✓' if s.done else loop.index }}</span>
+      <div class="step-body">
+        <div class="step-title">{{ s.title }}{% if s.done %}<span class="visually-hidden"> (done)</span>{% endif %}</div>
+        {% if not s.done %}<div class="small muted">{{ s.why }}</div>{% endif %}
+      </div>
+      {% if not s.done %}<a class="btn small{{ ' primary' if s is sameas next_step }}" href="{{ s.href }}">{{ 'Do this next' if s is sameas next_step else 'Open' }}</a>{% endif %}
+    </li>
     {% endfor %}
   </ol>
 </section>
@@ -102,7 +114,7 @@
 </section>
 
 <h2 class="section year-detail">The year in detail</h2>
-<div class="grid two">
+<div class="grid detail-grid">
   <div class="card" id="hsa">
     <h2>HSA{% if view %} <span class="muted small">(whole family)</span>{% endif %}</h2>
     {% set hc = report.hsa_counts %}
@@ -126,18 +138,16 @@
     {% for l in limits %}
     <div class="limit">
       <div class="row"><span>{{ l.label }}</span><span class="num">{{ l.used|money }} of {{ l.limit.amount|money }}</span></div>
-      <div class="bar"><span data-pct="{{ l.pct }}"></span></div>
+      <div class="bar{{ ' over' if l.used > l.limit.amount }}"><span data-pct="{{ l.pct }}"></span></div>
+      {% if l.used > l.limit.amount %}<div class="small bad-ink">{{ (l.used - l.limit.amount)|money }} more than the limit: worth a closer look</div>{% endif %}
       {% if l.note %}<div class="muted small">{{ l.note }}</div>{% endif %}
     </div>
     {% else %}
     <p class="muted">No limits set for {{ report.year }}. Add your deductible and out-of-pocket maximum in <a href="/settings#plans">Settings</a>.</p>
     {% endfor %}
   </div>
-</div>
-
 {% set yb = report.buckets %}
 {% if yb %}
-<div class="grid two section">
   <div class="card" id="buckets">
     <h2>Where {{ report.year }}'s billed dollars went{% if view %} <span class="muted small">(whole family)</span>{% endif %}</h2>
     <ul class="kv">
@@ -146,7 +156,7 @@
     </ul>
     <p class="muted small">From the insurers' decisions (and self-pay bills). Visits still waiting for an EOB aren't in it yet.</p>
   </div>
-</div>
 {% endif %}
+</div>
 {% endif %}
 {% endblock %}

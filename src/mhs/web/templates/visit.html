@@ -24,7 +24,7 @@
 <div class="page-head">
   <div>
     <h1>{{ v.provider.name }}</h1>
-    <div class="muted">{{ v.visit.date|nice_date }} · {{ v.visit.category|humanize }}{% if not v.insured %} · no insurance claim{% endif %}{% if v.member %} · {{ v.member.name }}{% endif %}{% if plan %} · {{ plan.insurer }} {{ plan.plan_name }} {{ plan.plan_year }}{% endif %}</div>
+    <div class="muted">{{ v.visit.date|nice_date }} · {{ v.visit.category|humanize }}{% if not v.insured %} · no insurance claim{% endif %}{% if v.member %} · {{ v.member.name }}{% endif %}{% if plan %} · {{ plan.insurer }}{% if plan.plan_name %}, {{ plan.plan_name }}{% endif %} ({{ plan.plan_year }}){% endif %}</div>
     {% if v.visit.description %}<div class="small">{{ v.visit.description }}</div>{% endif %}
   </div>
   {{ badge(v.status) }}
@@ -293,7 +293,8 @@
     {% if v.claims|length > 1 %}<h4>Claim {{ e.claim_number or loop.index }}</h4>{% endif %}
     <ul class="kv">
       <li><span>Claim</span><span>{{ e.claim_number or '—' }} · {{ e.claim_status|humanize }}</span></li>
-      <li><span>Received / processed</span><span>{{ e.received_date|nice_date }} / {{ e.date|nice_date }}</span></li>
+      {% if e.received_date %}<li><span>Received</span><span>{{ e.received_date|nice_date }}</span></li>{% endif %}
+      <li><span>Processed</span><span>{{ e.date|nice_date }}</span></li>
       <li><span>Network</span><span>{{ (e.network_status or 'unknown')|humanize }}</span></li>
       <li><span>Billed</span><span class="num">{{ e.billed|money }}</span></li>
       <li><span>Plan discount</span><span class="num">{{ e.adjustment|money }}</span></li>
@@ -308,9 +309,9 @@
     {% set notes_here = v.code_notes %}
     {% if notes_here and loop.last %}
     <h4 class="section" id="codes">What the codes mean</h4>
-    <ul class="kv codes">
-      {% for n in notes_here %}<li><span><strong>{{ n.code }}</strong> <span class="muted">{{ n.where }}</span></span><span>{{ n.text }}{% if n.appealable %} <span class="chip">can often be corrected or appealed</span>{% elif not n.known %} <span class="chip idle">unknown code</span>{% endif %}</span></li>{% endfor %}
-    </ul>
+    <dl class="codes">
+      {% for n in notes_here %}<div class="code-row"><dt><code>{{ n.code }}</code><span class="small muted">{{ n.where }}</span></dt><dd>{{ n.text }}{% if n.appealable %} <span class="chip">Can often be corrected or appealed</span>{% elif not n.known %} <span class="chip idle">Unknown code</span>{% endif %}</dd></div>{% endfor %}
+    </dl>
     <p class="muted small">Plain-language meanings from MHS's code table. Information, not legal advice.</p>
     {% endif %}
     {% if e.match and e.match.status in ('auto', 'proposed') %}<p class="small muted">Matched to this visit automatically ({{ (e.match.score * 100)|round|int }}%: {{ e.match.reasons|join(', ') }}).</p>{% endif %}

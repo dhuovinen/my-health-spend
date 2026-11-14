@@ -251,18 +251,21 @@ def explain(code: str, table: dict) -> CodeNote:
 
 
 def code_notes(claims: list[dict], table: dict) -> list[CodeNote]:
-    out, seen = [], set()
+    """Each code once, in the order it first appears, with every place it was printed ("claim, line 1 (76700)")."""
+    out: dict[str, CodeNote] = {}
     for c in claims:
         for where, codes in [("claim", c.get("remark_codes") or [])] + [
                 (f"line {i + 1}" + (f" ({l['code']})" if l.get("code") else ""), l.get("remark_codes") or [])
                 for i, l in enumerate(c.get("lines") or [])]:
             for code in codes:
-                note = explain(code, table)
-                note.where = where
-                if (code, where) not in seen:
-                    seen.add((code, where))
-                    out.append(note)
-    return out
+                if code in out:
+                    if where not in out[code].where.split(", "):
+                        out[code].where += f", {where}"
+                else:
+                    note = explain(code, table)
+                    note.where = where
+                    out[code] = note
+    return list(out.values())
 
 
 def _group(code: str) -> str:

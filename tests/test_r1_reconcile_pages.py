@@ -194,7 +194,7 @@ def test_mat_10_3_and_4_document_checklist(web, tmp_path):
     web.client.post("/visits/A/expected", data={"kind": "itemized_bill", "state": "expected"})
     page = text_of(web.client.get("/visits/A").text)
     assert "Awaiting documents" in page and "Itemized bill Expected you asked for it" in page
-    assert "… Itemized bill" in text_of(web.client.get("/visits?year=2026").text)
+    assert "Needs: Itemized bill" in text_of(web.client.get("/visits?year=2026").text)
     web.client.post("/visits/A/expected", data={"kind": "itemized_bill", "state": "not_applicable"})
     assert "Complete" in text_of(web.client.get("/visits/A").text)
     web.client.post("/visits/A/expected", data={"kind": "itemized_bill", "state": "default"})

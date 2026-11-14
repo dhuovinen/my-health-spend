@@ -16,7 +16,7 @@
   {% endif %}
 </div>
 
-<nav class="toc small"><a href="#plans">Insurance plans</a><a href="#members">Household members</a><a href="#accounts">Payment accounts</a><a href="#providers">Providers</a><a href="#relationships">Provider matches</a><a href="#reconciliation">Reconciliation</a><a href="#later">Coming later</a></nav>
+<nav class="toc small"><a href="#plans">Insurance plans</a><a href="#members">Household members</a><a href="#accounts">Payment accounts</a><a href="#providers">Providers</a><a href="#relationships">Provider matches</a><a href="#reconciliation">Reconciliation</a></nav>
 
 <section id="reconciliation" class="section">
   <h2>Reconciliation</h2>
@@ -34,7 +34,7 @@
   {% for p in plans %}
   <div class="card section">
     <h3>{{ p.insurer }} · {{ p.plan_name }} {{ p.plan_year }}{% if p.coverage_order %} <span class="badge s-matched">{{ p.coverage_order|humanize }}</span>{% endif %}</h3>
-    <form method="post" action="/settings/plans/{{ p.id }}" class="inline">{{ csrf_input() }}
+    <form method="post" action="/settings/plans/{{ p.id }}" class="form-grid">{{ csrf_input() }}
       <label>Insurer<input name="insurer" value="{{ p.insurer }}" required></label>
       <label>Plan name<input name="plan_name" value="{{ p.plan_name }}"></label>
       <label>Plan year<input name="plan_year" type="number" value="{{ p.plan_year }}" class="w-6"></label>
@@ -43,15 +43,15 @@
       <label>Coverage end<input name="coverage_end" type="date" value="{{ p.coverage_end or '' }}"></label>
       <label>Coinsurance %<input name="coinsurance_pct" type="number" step="0.1" min="0" max="100" class="w-6"
         value="{{ (p.coinsurance_rate * 100)|round(1) if p.coinsurance_rate is defined and p.coinsurance_rate is not none else '' }}"></label>
-      <label>Copays (one per line, "specialist: 60")<textarea name="copays" rows="2">{% for k, v in (p.copays or {}).items() %}{{ k }}: {{ '%.2f'|format(v / 100) }}
+      <label>Copays (one per line, "specialist: 60")<textarea name="copays" rows="3">{% for k, v in (p.copays or {}).items() %}{{ k }}: {{ '%.2f'|format(v / 100) }}
 {% endfor %}</textarea></label>
       <div><div class="muted small">Members covered</div>
         {% for m in members %}<label class="check-label"><input type="checkbox" name="member_ids" value="{{ m.id }}" {{ 'checked' if m.id in (p.member_ids or []) }}> {{ m.name }}</label>{% endfor %}
       </div>
       <label class="check-label"><input type="checkbox" name="hsa_eligible_plan" {{ 'checked' if p.hsa_eligible_plan }}> HSA-eligible plan</label>
       <label>Cash price counts toward the deductible<select name="cash_counts_toward_deductible">{{ options(['yes', 'no'], p.cash_counts_toward_deductible, "I don't know") }}</select></label>
-      <label class="check-label"><input type="checkbox" name="terms_confirmed" {{ 'checked' if p.terms_confirmed }}> These terms match my plan documents</label>
-      <button class="btn primary">Save plan</button>
+      <label class="check-label full terms-confirm"><input type="checkbox" name="terms_confirmed" {{ 'checked' if p.terms_confirmed }}> These terms match my plan documents</label>
+      <div class="form-actions full"><button class="btn primary">Save plan</button></div>
     </form>
     <p class="muted small">Copay names MHS uses: preventive, primary_care, specialist, urgent_care, emergency. MHS checks each EOB's deductible, copay and coinsurance against these terms. Until you tick "These terms match my plan documents", a difference is shown as worth a closer look, not as a finding, because wrong terms would make every claim look wrong.{% if p.coinsurance_rate is not defined or p.coinsurance_rate is none %} <strong>Add the coinsurance rate</strong> to check coinsurance.{% endif %}{% if not p.limits %} <strong>Add the in-network deductible</strong> to check deductibles.{% endif %}</p>
 
@@ -133,6 +133,8 @@
   <p class="muted small">"Names in source files" maps the insurer's provider name and the HSA card merchant name to this provider. Assigning members lets HSA payments with no claim be attributed.</p>
   <div class="card">
     {% for p in providers %}
+    <details class="settings-item">
+    <summary><strong>{{ p.name }}</strong> <span class="small muted">{{ (p.kind or 'other')|humanize }} · {{ (p.network_status or 'unknown')|humanize }}{% if p.aliases and p.aliases|length > 1 %} · {{ p.aliases|length }} names{% endif %}</span></summary>
     <form method="post" action="/settings/providers/{{ p.id }}" class="inline settings-row">{{ csrf_input() }}
       <label>Name<input name="name" value="{{ p.name }}" required></label>
       <label>Kind<select name="kind">{{ options(opts.provider_kinds, p.kind) }}</select></label>
@@ -143,7 +145,8 @@
       </div>
       <button class="btn">Save</button>
     </form>
-    {% endfor %}
+    </details>
+    {% else %}<p class="muted">No providers yet: they're added from your documents.</p>{% endfor %}
   </div>
 </section>
 
@@ -165,11 +168,4 @@
   </div>
 </section>
 
-<section id="later" class="section">
-  <h2>Coming later</h2>
-  <div class="grid two">
-    <div class="card"><h3>Data</h3><p class="muted small">Export, backup and delete all data.</p></div>
-    <div class="card"><h3>Rules</h3><p class="muted small">"Waiting" threshold (fixed at 30 days for now) and FSA rules.</p></div>
-  </div>
-</section>
 {% endblock %}

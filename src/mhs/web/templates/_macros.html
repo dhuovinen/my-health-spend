@@ -32,8 +32,8 @@
   <span class="vr-status">{{ badge(v.status) }}</span>
   <span class="vr-num"><span class="vr-label">Billed</span>{{ v.total_billed|money }}</span>
   <span class="vr-num"><span class="vr-label">Still owed</span>{{ v.remaining|money if v.remaining else '—' }}</span>
-  <span class="vr-num"><span class="vr-label">At issue</span>{% if v.at_stake %}<strong class="bad-ink">{{ v.at_stake|money }}</strong>{% else %}<span class="muted">None</span>{% endif %}</span>
-  <span class="vr-docs small {{ 'good-ink' if have == docs|length else 'warn-ink' }}" title="{% for d in docs %}{{ '✓' if d.state == 'present' else '…' }} {{ d.label }}{{ ', ' if not loop.last }}{% endfor %}">{{ have }} of {{ docs|length }} documents{% for d in docs if d.state != 'present' %}<br>… {{ d.label }}{% endfor %}</span>
+  <span class="vr-num"><span class="vr-label">At issue</span>{% if v.at_stake %}<strong class="bad-ink">{{ v.at_stake|money }}</strong>{% else %}<span class="muted" aria-label="None">—</span>{% endif %}</span>
+  <span class="vr-docs small {{ 'good-ink' if have == docs|length else 'warn-ink' }}" title="{% for d in docs %}{{ '✓' if d.state == 'present' else '…' }} {{ d.label }}{{ ', ' if not loop.last }}{% endfor %}">{{ have }} of {{ docs|length }} documents{% set needed = docs|rejectattr('state', 'equalto', 'present')|map(attribute='label')|list %}{% if needed %}<span class="vr-needs">Needs: {{ needed|join(', ') }}</span>{% endif %}</span>
   {% if v.status != 'complete' or v.hsa_flags or v.repeat_flags %}<span class="vr-note small">{% if v.status != 'complete' %}<span class="reason">{{ reason(v) }}</span>{% endif %}{% for f in v.hsa_flags %} <span class="chip">HSA: {{ f }}</span>{% endfor %}{% if v.repeat_flags %} <span class="chip">Worth a closer look: {{ v.repeat_flags|length }}</span>{% endif %}</span>{% endif %}
 </a>
 {% endmacro %}

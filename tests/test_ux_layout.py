@@ -271,6 +271,7 @@ def test_tc_prv_12_5_social_sign_in_in_a_real_browser(browser, make_household):
         assert "/signin/with/google/callback" in page.url and "is linked" in page.locator("main").inner_text()
         page.locator('a[href="/account"]').click()
         assert "person@example.test" in page.locator("main").inner_text()  # the session survived the round trip
+        page.locator("details.account-menu > summary").click()  # Sign out is in the account menu
         page.locator("form[action='/signout'] button").first.click()
 
         # sign in through the provider; the code step works from the callback page
