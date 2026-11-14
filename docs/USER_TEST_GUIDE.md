@@ -35,10 +35,11 @@ A step-by-step walk through the whole app as a member, with made-up data you imp
 
 | Where | What's there |
 | --- | --- |
-| Top menu | Home, Visits, Plan ahead, Household, Providers, Cases, HSA and tax |
-| Blue **Add documents** button (top right) | The Uploads page. Its "Import it" link, under the upload box, opens the Import page |
+| Top menu | Home, Visits, Plan ahead, Household, Coverage, Providers, Cases, HSA and tax |
+| Blue **Add** button (top right) | The Uploads page. Its "Import it" link, under the upload box, opens the Import page |
 | **?** and gear icons (top right) | Help and Settings |
 | Round avatar with your initial (top right) | The account menu: Account and sign-in, Your consent, Your data and access log, Privacy notice, Sign out |
+| **Coverage** | Your insurance plans: what each covers, progress toward deductibles and out-of-pocket maximums, the claims behind it, and **Edit this plan** |
 | Providers page → **Charges over time** | Charges per provider and code |
 | Phone: bar at the bottom | Home, Visits, Add, Plan, and **More** for everything else |
 
@@ -61,7 +62,7 @@ Jordan saw Riverbend Orthopedics on 14 August for a knee. The statement asked fo
 | # | Do | You should see | OK? |
 | --- | --- | --- | --- |
 | 1.1 | **Home** | "Getting started": a progress bar and six steps, the finished ones ticked green, the next one highlighted with **Do this next**; under it, "No visits yet" | ☐ |
-| 1.2 | **Add documents** (top right) → choose `1-riverbend-statement.pdf` → **Upload** | The row says *Reading*, then shows **Review** within a few seconds (refresh if needed) | ☐ |
+| 1.2 | **Add** (top right) → choose `1-riverbend-statement.pdf` → **Upload** | The row says *Reading*, then shows **Review** within a few seconds (refresh if needed) | ☐ |
 | 1.3 | **Review** | "Read from the pdf text layer"; type Provider statement; amount due $480.00; two lines (99214, 73562); the provider name marked **check** | ☐ |
 | 1.4 | **Confirm and add to my visits** | The visit opens: Riverbend Orthopedics, Aug 14, 2026, **Balance outstanding**, missing the EOB | ☐ |
 | 1.5 | Upload `2-riverbend-eob.pdf` → **Review** | Recognised as an EOB; the Aug 14 visit already chosen ("Matched automatically"); billed $480.00, discount $180.00, allowed $300.00, you owe $300.00 | ☐ |
@@ -77,7 +78,7 @@ The file adds **Alex Sample**, Jordan's spouse. Alex's plan is Granite PPO 1000 
 
 | # | Do | You should see | OK? |
 | --- | --- | --- | --- |
-| 2.1 | **Add documents** → **Import it** (the link under the upload box) → choose `walkthrough-ingest.json` → **Check** | "What will change": 1 member, 2 plans, 1 account, 10 providers, 12 visits, 18 documents, all new; no problems | ☐ |
+| 2.1 | **Add** → **Import it** (the link under the upload box) → choose `walkthrough-ingest.json` → **Check** | "What will change": 1 member, 2 plans, 1 account, 10 providers, 12 visits, 18 documents, all new; no problems | ☐ |
 | 2.2 | **Save import** | "Import saved." | ☐ |
 | 2.3 | **Visits** | Ten visits for Alex Sample, Feb to Nov 2026, with these statuses: | ☐ |
 
@@ -106,9 +107,10 @@ MHS checks each EOB's deductible, copay and coinsurance against the plan's terms
 | 3.2 | Open **May 20, Cedar Valley Labs** | A flag: deductible $300.00 (plan says $0.00), "Deductible already met", coinsurance should be 20% of $300.00 = $60.00 | ☐ |
 | 3.3 | Open **Jun 2, Lakeside Family Medicine** (Annual physical) | A flag: "preventive care should cost you $0.00", charged $25.00 | ☐ |
 | 3.4 | Open **Feb 10** and **Mar 5** | In "checks passed", "Your share matches your plan" with the math, for example "Deductible: $1,000.00 of the $1,000.00 left; Coinsurance: 20% of the $600.00 … = $120.00" | ☐ |
-| 3.5 | **Settings** (the gear icon) → the Granite Mutual plan | Coinsurance 20, copays listed, the "These terms match my plan documents" box unticked | ☐ |
-| 3.6 | Tick **These terms match my plan documents** → **Save plan** | | ☐ |
+| 3.5 | **Coverage** (top menu) → the Granite Mutual card | An insurance-card summary (Granite Mutual, Granite PPO 1000, Primary, covers Alex Sample); **What you pay**: 20% coinsurance, copays of $25.00 primary care, $60.00 specialist, $75.00 urgent care; "Check these terms against your plan documents" with **Confirm these terms** | ☐ |
+| 3.6 | **Confirm these terms** (opens **Edit this plan**) → tick **These terms match my plan documents** → **Save plan** | Back on the card: "Saved." at the top and "✓ You confirmed these terms…" | ☐ |
 | 3.6b | **Home** | Getting started now has all six steps ticked and disappears | ☐ |
+| 3.6c | **Coverage**, Granite Mutual card → **2026 so far** and **Claims under this plan** | Alex's deductible $1,300.00 of $1,000.00 in red ("$300.00 more than the limit"), out-of-pocket $1,905.00 of $4,000.00; ten claims, each linking to its visit | ☐ |
 | 3.7 | **Visits** | Apr 14, May 20 and Jun 2 are now **Discrepancy found**, at $15.00, $240.00 and $25.00 | ☐ |
 | 3.8 | Open one of them | The finding is now ✕ with **Open a case** and **Close this finding** | ☐ |
 | 3.9 | On Jun 2, **Change this visit** → Kind of service → set **Primary care** → **Save** | The preventive finding goes away; the copay now matches ($25.00) | ☐ |
@@ -148,7 +150,7 @@ MHS checks each EOB's deductible, copay and coinsurance against the plan's terms
 | 6.2 | Open **Oakview Imaging, MRI of the left knee** (Jordan) | "What you'll likely owe" through insurance, with the steps. With Part 1 done: $720.00 ($600.00 deductible left, plus 20% of $600.00). Without it: $1,200.00 | ☐ |
 | 6.3 | **Cash or insurance** | Paying cash ($650.00) costs less, and a question to ask the plan whether cash counts toward the deductible | ☐ |
 | 6.4 | **Which account should pay** and **Ask before the visit** | An HSA recommendation; questions about network, codes, prior authorization, balance billing and a good-faith estimate (the provider's network status is unknown), cash price, itemized bill; the "Information, not legal, tax or medical advice" note | ☐ |
-| 6.5 | **Settings** → Jordan's plan → "Cash price counts toward the deductible" → **No** → **Save plan**; reopen the MRI | The cash text now says paying cash leaves the deductible still to meet | ☐ |
+| 6.5 | **Coverage** → Jordan's plan (Example Health) → **Edit this plan** → "Cash counts toward deductible" → **No** → **Save plan**; reopen the MRI | The cash text now says paying cash leaves the deductible still to meet | ☐ |
 | 6.6 | Open **Summit Eye Associates, Annual eye exam** (Alex) | "Did this visit happen?"; the estimate is the $60.00 specialist copay | ☐ |
 | 6.7 | **No, it was cancelled** | It leaves the Plan ahead list | ☐ |
 | 6.8 | **Plan a visit**: tomorrow's date, a new provider "Test Clinic", for Alex, Specialist, allowed 200 → **Plan it** | The new plan's page: $60.00, the copay | ☐ |
@@ -185,13 +187,14 @@ Granite Mutual's EOBs use labels the app doesn't recognise yet ("Contracted rate
 | # | Do | You should see | OK? |
 | --- | --- | --- | --- |
 | 9.1 | The avatar (top right) | A menu with your name, **Account and sign-in**, **Your consent**, **Your data and access log**, **Privacy notice** and **Sign out**; a click elsewhere or Escape closes it | ☐ |
+| 9.1a | **Settings** (the gear icon) → **Insurance plans** | A short list of your plans with whether their terms are confirmed, and **Open Coverage**: plans are edited on Coverage now | ☐ |
 | 9.1b | **Account and sign-in** | Recovery codes, sign-in accounts, links to consent, privacy notice and your data | ☐ |
 | 9.2 | **Privacy notice** | What's collected, how it's protected, who else sees it, your choices; marked as a draft for the attorney. Also open it signed out: it's public | ☐ |
 | 9.3 | **Your consent** | Two unticked boxes: collection, and AI sharing, separately | ☐ |
 | 9.4 | Tick the first only → **Save my choice** | "Saved." and the history lists your choice | ☐ |
 | 9.5 | Untick everything → **Save** → try an upload | The upload is refused: "MHS can't take documents from you without your consent". Tick it again afterwards | ☐ |
 | 9.6 | Avatar → **Your data and access log** | The access log of what you viewed and changed; **Export** (asks for your password) | ☐ |
-| 9.7 | **Add documents** → **Connect your insurer instead** (beside the page title) | "No insurer is set up for connection on this server yet" (none is configured) | ☐ |
+| 9.7 | **Add** → **Connect your insurer instead** (beside the page title) | "No insurer is set up for connection on this server yet" (none is configured) | ☐ |
 | 9.8 | *Optional, owners only:* `tools/gcp/admin.sh owner --email demo@example.com on`, sign in again with the code, open `/admin` | Counts only, the code setting, sign-in providers, and **Consent before collection** | ☐ |
 
 ## Part 10: on a phone
@@ -201,7 +204,7 @@ Staging works on a real phone: open the app's address in the phone's browser. Lo
 | # | Do | You should see | OK? |
 | --- | --- | --- | --- |
 | 10.1 | Home, a visit, Plan ahead, Uploads | A bar at the bottom (Home, Visits, Add, Plan, More); nothing scrolls sideways; buttons big enough to tap | ☐ |
-| 10.1b | **More** | A list: Household, Providers, Charges over time, Cases, HSA and tax, Import a file, Settings, Help; tapping outside closes it | ☐ |
+| 10.1b | **More** | A list: Household, Coverage, Providers, Charges over time, Cases, HSA and tax, Import a file, Settings, Help; tapping outside closes it | ☐ |
 | 10.1c | The avatar (top right) | The same account menu as on a computer | ☐ |
 | 10.2 | **Add** → **Take a photo of a bill or EOB** (staging, real phone) | The camera opens; the photo uploads and is read by OCR | ☐ |
 

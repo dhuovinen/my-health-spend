@@ -381,6 +381,8 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
 
     @app.exception_handler(FormError)
     async def form_error(request: Request, exc: FormError):
+        if request.url.path.startswith("/settings/plans"):  # plans are edited on the Coverage page
+            return coverage_page(request, host.store(request), error=str(exc), status_code=400)
         return settings_page(request, host.store(request), error=str(exc), status_code=400)
 
     def view_of(request: Request, store: Store) -> dict | None:
@@ -1135,6 +1137,37 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
     def back(section: str) -> RedirectResponse:
         return RedirectResponse(f"/settings?saved={section}#{section}", status_code=303)
 
+    def back_to_plan(plan: dict) -> RedirectResponse:
+        return RedirectResponse(f"/coverage?year={plan['plan_year']}&saved=1#plan-{plan['id']}", status_code=303)
+
+    def coverage_page(request: Request, store: Store, year: int | None = None, edit: str = "", saved: str = "",
+                      error: str = "", status_code: int = 200) -> HTMLResponse:
+        """The household's insurance plans in one place: what each covers, the year's progress toward its limits,
+        the claims behind that progress, and the plan's terms to edit (REC-06, ADR-050)."""
+        all_plans = store.all("plan")
+        years = sorted({p["plan_year"] for p in all_plans} | {date.today().year}, reverse=True)
+        report = report_for(store, year)
+        plans = sorted((p for p in all_plans if p["plan_year"] == report.year),
+                       key=lambda p: (p.get("coverage_order") not in (None, "primary"), p.get("coverage_order") or "",
+                                      p.get("plan_name", "")))
+        claims: dict[str, list] = {p["id"]: [] for p in plans}
+        for v in report.visits:
+            for c in v.claims + v.secondary_claims:
+                if c.get("plan_id") in claims:
+                    claims[c["plan_id"]].append((v, c))
+        for rows in claims.values():
+            rows.sort(key=lambda vc: (vc[1]["date"], vc[1]["id"]), reverse=True)
+        return render(request, "coverage.html", status_code=status_code, report=report, plans=plans, years=years,
+                      limits={p["id"]: [l for l in report.limits if l.plan["id"] == p["id"]] for p in plans},
+                      claims=claims, edit=edit, saved=saved, error=error, members=store.all("member"),
+                      member_names={m["id"]: m["name"] for m in store.all("member")},
+                      other_years=[y for y in years if y != report.year],
+                      opts={"limit_types": LIMIT_TYPES, "limit_networks": LIMIT_NETWORKS})
+
+    @app.get("/coverage", response_class=HTMLResponse)
+    def coverage(request: Request, year: int | None = None, edit: str = "", saved: str = ""):
+        return coverage_page(request, host.store(request), year, edit, saved)
+
     def plan_or_404(store: Store, plan_id: str) -> dict:
         plan = store.get("plan", plan_id)
         if not plan:
@@ -1149,10 +1182,10 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         plan_id = f"plan-{year}-{slug(name)}"
         if store.get("plan", plan_id):
             raise FormError(f"A plan with id {plan_id} already exists")
-        save_settings(store, "plan", "plan", {"id": plan_id, "plan_year": year,
-                                              "insurer": (form.get("insurer") or "TBD").strip(),
-                                              "plan_name": name, "limits": []})
-        return back("plans")
+        plan = {"id": plan_id, "plan_year": year, "insurer": (form.get("insurer") or "TBD").strip(), "plan_name": name,
+                "limits": []}
+        save_settings(store, "plan", "plan", plan)
+        return RedirectResponse(f"/coverage?year={year}&edit={plan_id}#plan-{plan_id}", status_code=303)
 
     @app.post("/settings/plans/{plan_id}")
     async def edit_plan(request: Request, plan_id: str):
@@ -1188,7 +1221,7 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         else:
             plan.pop("copays", None)
         save_settings(store, "plan", "plan", plan)
-        return back("plans")
+        return back_to_plan(plan)
 
     @app.post("/settings/plans/{plan_id}/limits")
     async def add_limit(request: Request, plan_id: str):
@@ -1200,7 +1233,8 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
             limit["member_id"] = form.get("member_id")
         plan.setdefault("limits", []).append(limit)
         save_settings(store, "plan", "plan", plan)
-        return back("plans")
+        return RedirectResponse(f"/coverage?year={plan['plan_year']}&edit={plan['id']}&saved=1#plan-{plan['id']}",
+                                status_code=303)
 
     @app.post("/settings/plans/{plan_id}/limits/{index}/delete")
     async def delete_limit(request: Request, plan_id: str, index: int):
@@ -1209,7 +1243,8 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
         if 0 <= index < len(plan.get("limits", [])):
             plan["limits"].pop(index)
             save_settings(store, "plan", "plan", plan)
-        return back("plans")
+        return RedirectResponse(f"/coverage?year={plan['plan_year']}&edit={plan['id']}&saved=1#plan-{plan['id']}",
+                                status_code=303)
 
     @app.post("/settings/reconciliation")
     async def save_reconciliation(request: Request):

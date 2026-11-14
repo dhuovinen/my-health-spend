@@ -22,17 +22,20 @@ def steps(ds: Dataset, year: int, add_url: str, first_visit: str | None) -> list
     terms = any(p.get("terms_confirmed") for p in plans)
     accounts = [a for a in ds.accounts if a.get("type") in ("hsa", "fsa", "lpfsa", "hra")] or ds.accounts
     uploads = add_url == "/uploads"
+    to_confirm = next((p for p in plans if not p.get("terms_confirmed")), None)
+    terms_href = (f"/coverage?year={year}&edit={to_confirm['id']}#edit-{to_confirm['id']}" if to_confirm
+                  else f"/coverage?year={year}")
     return [
         Step("members", "Add the people in your household",
              "In Settings, under Household members, add each person whose visits you'll track. Each person has "
              "their own deductible.", "/settings#members", bool(ds.members), "Add household members"),
         Step("plan", f"Add your {year} insurance plan with its deductible and out-of-pocket maximum",
-             "In Settings, under Insurance plans, add the plan, then its in-network deductible and out-of-pocket "
-             "maximum from your plan documents.", "/settings#plans", bool(plans) and limits, "Add your plan"),
+             "On the Coverage page, add the plan, then its in-network deductible and out-of-pocket maximum from "
+             "your plan documents.", f"/coverage?year={year}", bool(plans) and limits, "Add your plan"),
         Step("terms", "Enter the plan's coinsurance and copays, then confirm them",
-             "In Settings, under Insurance plans: type the coinsurance % and the copays from your plan documents, "
-             "tick \u201cThese terms match my plan documents\u201d and press Save plan. MHS then checks whether each "
-             "EOB charged you what your plan says.", "/settings#plans", terms, "Confirm your plan's terms"),
+             "On the Coverage page, under Edit this plan: type the coinsurance % and the copays from your plan "
+             "documents, tick \u201cThese terms match my plan documents\u201d and press Save plan. MHS then checks "
+             "whether each EOB charged you what your plan says.", terms_href, terms, "Confirm your plan's terms"),
         Step("account", "Add your HSA, FSA or the card you pay with",
              "In Settings, under Payment accounts, add the accounts you pay providers from, so MHS can tell which "
              "payments came from the HSA.", "/settings#accounts", bool(accounts), "Add a payment account"),

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% from "_plan_editor.html" import plan_editor, add_plan_form with context %}
+{% block title %}Coverage{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Coverage</h1>
+    <div class="muted">Your insurance plans for {{ report.year }}: what they cover, how far into each deductible you are, and the claims behind it.</div>
+  </div>
+  <form method="get" action="/coverage" class="inline">
+    <label>Plan year<select name="year" data-autosubmit>{% for y in years %}<option value="{{ y }}" {{ 'selected' if y == report.year }}>{{ y }}</option>{% endfor %}</select></label>
+    <noscript><button class="btn small">Show</button></noscript>
+  </form>
+</div>
+{% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
+{% if saved %}<div class="alert good">Saved.</div>{% endif %}
+
+{% for p in plans %}
+{% set unconfirmed = not p.terms_confirmed and not (p.coverage_order in ('secondary', 'tertiary')) %}
+<section class="card section plan-card" id="plan-{{ p.id }}" aria-labelledby="plan-{{ p.id }}-title">
+  <div class="plan-summary">
+    <div class="insurance-card" aria-label="Plan summary">
+      <div class="ic-insurer">{{ p.insurer }}</div>
+      <h2 class="ic-plan" id="plan-{{ p.id }}-title">{{ p.plan_name or 'Medical plan' }}</h2>
+      <div class="ic-chips">
+        <span class="badge {{ 's-complete' if (p.coverage_order or 'primary') == 'primary' else 's-in_dispute' }}">{{ (p.coverage_order or 'primary')|humanize }}</span>
+        {% if p.hsa_eligible_plan %}<span class="badge s-na">HSA-eligible</span>{% endif %}
+      </div>
+      <dl class="ic-facts">
+        <div><dt>Plan year</dt><dd>{{ p.plan_year }}</dd></div>
+        <div><dt>Coverage</dt><dd>{% if p.coverage_start or p.coverage_end %}{{ p.coverage_start|nice_date if p.coverage_start else '…' }} to {{ p.coverage_end|nice_date if p.coverage_end else '…' }}{% else %}Not set{% endif %}</dd></div>
+        <div><dt>Covers</dt><dd>{% for mid in p.member_ids or [] %}{{ member_names.get(mid, mid) }}{{ ', ' if not loop.last }}{% else %}Not set{% endfor %}</dd></div>
+      </dl>
+    </div>
+    <div class="plan-terms">
+      <h3>What you pay</h3>
+      <dl class="terms-list">
+        <div><dt>Coinsurance</dt><dd class="num">{{ ((p.coinsurance_rate * 100)|round(1)|string).replace('.0', '') ~ '%' if p.coinsurance_rate is defined and p.coinsurance_rate is not none else 'Not set' }}</dd></div>
+        {% for k, v in (p.copays or {}).items() %}<div><dt>{{ k|humanize }} copay</dt><dd class="num">{{ v|money }}</dd></div>{% else %}<div><dt>Copays</dt><dd>None entered</dd></div>{% endfor %}
+        <div><dt>Cash counts toward deductible</dt><dd>{{ {'yes': 'Yes', 'no': 'No'}.get(p.cash_counts_toward_deductible, "Not known") }}</dd></div>
+      </dl>
+      {% if p.terms_confirmed %}
+      <p class="small good-ink flush">✓ You confirmed these terms match your plan documents, so differences on EOBs are findings.</p>
+      {% elif unconfirmed %}
+      <div class="alert warn small terms-prompt">
+        <strong>Check these terms against your plan documents.</strong> Until you confirm them, a difference on an EOB is only "worth a closer look".
+        <a class="btn small primary" href="/coverage?year={{ p.plan_year }}&edit={{ p.id }}#edit-{{ p.id }}">Confirm these terms</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <h3 class="section">{{ p.plan_year }} so far</h3>
+  {% set ls = limits[p.id] %}
+  {% if ls %}
+  <div class="limit-grid">
+    {% for l in ls %}
+    <div class="limit">
+      <div class="row"><span>{{ l.label }}</span><span class="num">{{ l.used|money }} of {{ l.limit.amount|money }}</span></div>
+      <div class="bar{{ ' over' if l.used > l.limit.amount }}"><span data-pct="{{ l.pct }}"></span></div>
+      {% if l.used > l.limit.amount %}<div class="small bad-ink">{{ (l.used - l.limit.amount)|money }} more than the limit: worth a closer look</div>
+      {% elif l.used >= l.limit.amount %}<div class="small good-ink">Met</div>
+      {% else %}<div class="small muted">{{ (l.limit.amount - l.used)|money }} left</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted small">No deductible or out-of-pocket maximum yet. <a href="/coverage?year={{ p.plan_year }}&edit={{ p.id }}#edit-{{ p.id }}">Add them</a> from your plan documents.</p>
+  {% endif %}
+
+  {% set rows = claims[p.id] %}
+  <details class="section plan-claims" {{ 'open' if rows and rows|length <= 4 }}>
+    <summary><strong>Claims under this plan</strong> <span class="muted small">{{ rows|length }} in {{ p.plan_year }}</span></summary>
+    {% if rows %}
+    <div class="table-wrap"><table class="small">
+      <tr><th>Processed</th><th>Visit</th><th class="num">Billed</th><th class="num">Deductible</th><th class="num">Copay</th><th class="num">Coinsurance</th><th class="num">You owe</th></tr>
+      {% for v, c in rows %}
+      <tr><td>{{ c.date|nice_date }}</td>
+        <td><a href="/visits/{{ v.id }}">{{ v.provider.name }}</a><div class="muted">{{ v.visit.date|nice_date }}{% if v.member %} · {{ v.member.name }}{% endif %}</div></td>
+        <td class="num">{{ c.billed|money }}</td><td class="num">{{ c.deductible|money }}</td><td class="num">{{ c.copay|money }}</td>
+        <td class="num">{{ c.coinsurance|money }}</td><td class="num"><strong>{{ c.patient_responsibility|money }}</strong></td></tr>
+      {% endfor %}
+    </table></div>
+    {% else %}<p class="muted small">No EOBs from this plan for {{ p.plan_year }} yet.</p>{% endif %}
+  </details>
+
+  <details class="section plan-edit" id="edit-{{ p.id }}" {{ 'open' if edit == p.id }}>
+    <summary><strong>Edit this plan</strong> <span class="muted small">terms, deductibles and out-of-pocket maximums</span></summary>
+    <div class="section">{{ plan_editor(p, members, member_names, opts) }}</div>
+  </details>
+</section>
+{% else %}
+<div class="card empty">
+  <h2>No plan for {{ report.year }} yet</h2>
+  <p class="muted">Add the plan from your insurance documents: its deductible, out-of-pocket maximum, coinsurance and copays. MHS checks each EOB against them and estimates visits before they happen.</p>
+</div>
+{% endfor %}
+
+<details class="card section" {{ 'open' if not plans }}>
+  <summary><strong>Add a plan</strong> <span class="muted small">for example a new plan year, or a second plan that pays after the first</span></summary>
+  <div class="section">{{ add_plan_form(report.year) }}</div>
+</details>
+
+{% if other_years %}
+<p class="small muted section">Other years: {% for y in other_years %}<a href="/coverage?year={{ y }}">{{ y }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>
+{% endif %}
+{% endblock %}

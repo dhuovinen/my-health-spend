@@ -5,7 +5,7 @@
 <p class="small"><a class="back" href="/plan">← Plan ahead</a></p>
 <div class="page-head"><div>
   <h1>{{ provider.name or 'Planned visit' }}</h1>
-  <div class="muted">Planned for {{ v.date|nice_date }}{% if member %} · {{ member.name }}{% endif %}{% if est.plan %} · {{ est.plan.insurer }} {{ est.plan.plan_year }}{% endif %}{% if v.description %} · {{ v.description }}{% endif %}</div>
+  <div class="muted">Planned for {{ v.date|nice_date }}{% if member %} · {{ member.name }}{% endif %}{% if est.plan %} · <a href="/coverage?year={{ est.plan.plan_year }}#plan-{{ est.plan.id }}">{{ est.plan.insurer }} {{ est.plan.plan_year }}</a>{% endif %}{% if v.description %} · {{ v.description }}{% endif %}</div>
 </div><span class="badge s-na">Planned</span></div>
 {% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
 
@@ -30,7 +30,7 @@
       {% if est.deductible_left is not none %}<li><span>Deductible left this year</span><span class="num">{{ est.deductible_left|money }}</span></li>{% endif %}
       {% if est.oop_left is not none %}<li><span>Left before the out-of-pocket maximum</span><span class="num">{{ est.oop_left|money }}</span></li>{% endif %}
     </ul>
-    <p class="muted small">From your plan's terms in Settings and the EOBs you have this year. The real amount depends on the codes billed and what the plan allows.</p>
+    <p class="muted small">From your plan's terms on <a href="/coverage">Coverage</a> and the EOBs you have this year. The real amount depends on the codes billed and what the plan allows.</p>
     {% if est.cash %}
     <h3 class="section" id="cash">Cash or insurance</h3>
     <p class="cash-text">{{ est.cash.text }}.</p>

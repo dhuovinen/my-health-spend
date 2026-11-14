@@ -444,12 +444,12 @@ a.visit-row:hover { text-decoration: none; background: var(--surface-2); }
 .menu-head { padding: .4rem .7rem .55rem; border-bottom: 1px solid var(--border); margin-bottom: .25rem; line-height: 1.4; }
 .menu-panel form { margin: .25rem 0 0; border-top: 1px solid var(--border); padding-top: .25rem; }
 .menu-panel .menu-item { color: var(--bad); }
-@media (max-width: 1140px) {
+@media (max-width: 1240px) {
   .nav a { padding: .4rem .42rem; font-size: .94rem; }
   .account-menu .who { display: none; }
   .account-menu summary { padding: .2rem; }
 }
-@media (max-width: 1010px) {
+@media (max-width: 1100px) {
   .brand > span { display: none; }
   .topbar .add-btn { padding: .35rem; margin-right: 0; font-size: 0; gap: 0; }
   .add-btn svg { width: 20px; height: 20px; }
@@ -556,3 +556,30 @@ form.inline.settings-row > .btn { margin-top: calc(26px + .2rem); }
 .check-label { align-items: flex-start; }
 .check-label > input[type=checkbox], .check-label > input[type=radio] { flex: none; margin: 6px 0 0; }
 @media (max-width: 860px) { .check-label > input[type=checkbox], .check-label > input[type=radio] { margin-top: 2px; } }
+
+/* Coverage page: one card per plan */
+.plan-summary { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.insurance-card { background: var(--dark-surface); color: #f6f9fc; border-radius: 12px; padding: 1.1rem 1.25rem 1.2rem; }
+.insurance-card .ic-insurer { font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; opacity: .8; font-weight: 600; }
+.insurance-card .ic-plan { color: #fff; font-size: 1.35rem; margin: .1rem 0 .5rem; line-height: 1.3; }
+.insurance-card .ic-chips { display: flex; gap: .35rem; flex-wrap: wrap; margin-bottom: .9rem; }
+.ic-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem 1rem; margin: 0; }
+.ic-facts dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; opacity: .7; }
+.ic-facts dd { margin: 0; font-size: .9rem; line-height: 1.4; }
+.ic-facts div:nth-child(2) { grid-column: span 2; }
+.ic-facts div:nth-child(3) { grid-column: 1 / -1; }
+.plan-terms h3 { margin-top: 0; }
+.terms-list { margin: 0 0 .75rem; }
+.terms-list div { display: flex; justify-content: space-between; gap: 1rem; padding: .35rem 0; border-bottom: 1px solid var(--border); }
+.terms-list dt { color: var(--muted); }
+.terms-list dd { margin: 0; font-weight: 600; }
+.terms-prompt { display: flex; flex-direction: column; gap: .5rem; align-items: flex-start; margin: 0; }
+.limit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .25rem 1.5rem; }
+.limit-grid .limit .row { flex-direction: column; gap: 0; }
+.limit-grid .limit .row > span:first-child { font-weight: 600; }
+.limit-grid .limit .row .num { text-align: left; color: var(--muted); font-size: .9rem; }
+.plan-claims > summary, .plan-edit > summary { display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; padding: .6rem 0; border-top: 1px solid var(--border); }
+@media (max-width: 860px) { .plan-summary { grid-template-columns: minmax(0, 1fr); } }
+.insurance-card .badge.s-na { color: #dfe6f1; border-color: rgba(255, 255, 255, .45); }
+.plan-claims > summary::before, .plan-edit > summary::before, .settings-item > summary::before { content: "▸"; color: var(--muted); width: 1em; }
+.plan-claims[open] > summary::before, .plan-edit[open] > summary::before, .settings-item[open] > summary::before { content: "▾"; }

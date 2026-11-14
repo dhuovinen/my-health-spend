@@ -24,7 +24,7 @@
 <div class="page-head">
   <div>
     <h1>{{ v.provider.name }}</h1>
-    <div class="muted">{{ v.visit.date|nice_date }} · {{ v.visit.category|humanize }}{% if not v.insured %} · no insurance claim{% endif %}{% if v.member %} · {{ v.member.name }}{% endif %}{% if plan %} · {{ plan.insurer }}{% if plan.plan_name %}, {{ plan.plan_name }}{% endif %} ({{ plan.plan_year }}){% endif %}</div>
+    <div class="muted">{{ v.visit.date|nice_date }} · {{ v.visit.category|humanize }}{% if not v.insured %} · no insurance claim{% endif %}{% if v.member %} · {{ v.member.name }}{% endif %}{% if plan %} · <a href="/coverage?year={{ plan.plan_year }}#plan-{{ plan.id }}">{{ plan.insurer }}{% if plan.plan_name %}, {{ plan.plan_name }}{% endif %} ({{ plan.plan_year }})</a>{% endif %}</div>
     {% if v.visit.description %}<div class="small">{{ v.visit.description }}</div>{% endif %}
   </div>
   {{ badge(v.status) }}

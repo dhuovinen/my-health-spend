@@ -31,69 +31,11 @@
 
 <section id="plans" class="section">
   <h2>Insurance plans</h2>
-  {% for p in plans %}
-  <div class="card section">
-    <h3>{{ p.insurer }} · {{ p.plan_name }} {{ p.plan_year }}{% if p.coverage_order %} <span class="badge s-matched">{{ p.coverage_order|humanize }}</span>{% endif %}</h3>
-    <form method="post" action="/settings/plans/{{ p.id }}" class="plan-form">{{ csrf_input() }}
-      <div class="form-grid cols-4">
-        <label>Insurer<input name="insurer" value="{{ p.insurer }}" required></label>
-        <label>Plan name<input name="plan_name" value="{{ p.plan_name }}"></label>
-        <label>Plan year<input name="plan_year" type="number" value="{{ p.plan_year }}"></label>
-        <label>Coverage order<select name="coverage_order">{{ options(['primary', 'secondary', 'tertiary'], p.coverage_order, '—') }}</select></label>
-        <label>Coverage start<input name="coverage_start" type="date" value="{{ p.coverage_start or '' }}"></label>
-        <label>Coverage end<input name="coverage_end" type="date" value="{{ p.coverage_end or '' }}"></label>
-        <label>Coinsurance %<input name="coinsurance_pct" type="number" step="0.1" min="0" max="100"
-          value="{{ (p.coinsurance_rate * 100)|round(1) if p.coinsurance_rate is defined and p.coinsurance_rate is not none else '' }}"></label>
-        <label>Cash counts toward deductible<select name="cash_counts_toward_deductible">{{ options(['yes', 'no'], p.cash_counts_toward_deductible, "I don't know") }}</select></label>
-      </div>
-      <div class="form-grid cols-4 section">
-        <label class="span-2">Copays<textarea name="copays" rows="3" placeholder="specialist: 60">{% for k, v in (p.copays or {}).items() %}{{ k }}: {{ '%.2f'|format(v / 100) }}
-{% endfor %}</textarea><span class="hint">One per line. Names MHS checks: preventive, primary_care, specialist, urgent_care, emergency.</span></label>
-        <fieldset class="checks"><legend>Members covered</legend>
-          {% for m in members %}<label class="check-label"><input type="checkbox" name="member_ids" value="{{ m.id }}" {{ 'checked' if m.id in (p.member_ids or []) }}> {{ m.name }}</label>{% else %}<span class="hint">Add household members below first.</span>{% endfor %}
-        </fieldset>
-        <fieldset class="checks"><legend>Plan type</legend>
-          <label class="check-label"><input type="checkbox" name="hsa_eligible_plan" {{ 'checked' if p.hsa_eligible_plan }}> HSA-eligible (high-deductible) plan</label>
-        </fieldset>
-      </div>
-      <div class="terms-confirm section">
-        <label class="check-label"><input type="checkbox" name="terms_confirmed" {{ 'checked' if p.terms_confirmed }}> These terms match my plan documents</label>
-        <p class="hint">MHS checks each EOB's deductible, copay and coinsurance against these terms. Until you tick this, a difference is only "worth a closer look", because wrong terms would make every claim look wrong.{% if p.coinsurance_rate is not defined or p.coinsurance_rate is none %} <strong>Add the coinsurance rate</strong> to check coinsurance.{% endif %}{% if not p.limits %} <strong>Add the in-network deductible</strong> below to check deductibles.{% endif %}</p>
-      </div>
-      <div class="form-actions"><button class="btn primary">Save plan</button></div>
-    </form>
-
-    <h3 class="section">Deductibles and out-of-pocket maximums</h3>
-    {% if p.limits %}
-    <div class="table-wrap"><table>
-      <tr><th>Type</th><th>Network</th><th>Level</th><th>Member</th><th class="num">Amount</th><th></th></tr>
-      {% for l in p.limits %}
-      <tr><td>{{ l.type|humanize }}</td><td>{{ l.network|humanize }}</td><td>{{ l.level|humanize }}</td>
-        <td>{{ member_names.get(l.member_id, 'Each member' if l.level == 'individual' else '—') }}</td>
-        <td class="num">{{ l.amount|money }}</td>
-        <td class="num"><form method="post" action="/settings/plans/{{ p.id }}/limits/{{ loop.index0 }}/delete">{{ csrf_input() }}<button class="btn small danger">Remove</button></form></td></tr>
-      {% endfor %}
-    </table></div>
-    {% else %}<p class="muted small">No limits yet.</p>{% endif %}
-    <form method="post" action="/settings/plans/{{ p.id }}/limits" class="inline section">{{ csrf_input() }}
-      <label>Type<select name="type">{{ options(opts.limit_types, 'deductible') }}</select></label>
-      <label>Network<select name="network">{{ options(opts.limit_networks, 'in_network') }}</select></label>
-      <label>Level<select name="level">{{ options(['individual', 'family'], 'individual') }}</select></label>
-      <label>Member (individual only)<select name="member_id"><option value="">Each member</option>{% for m in members %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}</select></label>
-      <label>Amount<input name="amount" inputmode="decimal" placeholder="4500.00" required class="w-8"></label>
-      <button class="btn">Add limit</button>
-    </form>
+  <div class="card">
+    <p class="flush">Your plans, what they cover, and their deductibles and out-of-pocket maximums are on the <a href="/coverage">Coverage</a> page, where you also edit them.</p>
+    {% if plans %}<ul class="kv section">{% for p in plans %}<li><span><a href="/coverage?year={{ p.plan_year }}#plan-{{ p.id }}">{{ p.insurer }}{% if p.plan_name %}, {{ p.plan_name }}{% endif %}</a> <span class="muted small">{{ p.plan_year }}{% if p.coverage_order %} · {{ p.coverage_order|humanize }}{% endif %}</span></span><span class="small {{ 'good-ink' if p.terms_confirmed else 'warn-ink' }}">{{ 'Terms confirmed' if p.terms_confirmed else 'Terms not confirmed' }}</span></li>{% endfor %}</ul>{% endif %}
+    <p class="section flush"><a class="btn" href="/coverage">Open Coverage</a></p>
   </div>
-  {% endfor %}
-  <details class="card section">
-    <summary><strong>Add a plan</strong></summary>
-    <form method="post" action="/settings/plans" class="inline section">{{ csrf_input() }}
-      <label>Plan year<input name="plan_year" type="number" required class="w-6"></label>
-      <label>Insurer<input name="insurer" required></label>
-      <label>Plan name<input name="plan_name" placeholder="Medical" required></label>
-      <button class="btn primary">Add plan</button>
-    </form>
-  </details>
 </section>
 
 <section id="members" class="section">

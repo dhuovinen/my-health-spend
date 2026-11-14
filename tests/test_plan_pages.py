@@ -40,3 +40,22 @@ def test_service_type_on_the_visit_page(web):  # noqa: F811
     assert r.status_code == 303
     page = web.client.get("/visits/v-2026-02-10-pcp").text
     assert "Your share matches your plan" in page
+
+
+def test_coverage_page_shows_and_edits_the_plans(web):  # noqa: F811
+    """Coverage: each plan's card, terms, progress and claims; editing comes back here (the Settings plan routes)."""
+    loaded(web)
+    page = web.client.get("/coverage?year=2026").text
+    for text in ("Coverage", "Example Health", "What you pay", "2026 so far", "Claims under this plan",
+                 "Edit this plan", "Confirm these terms"):
+        assert text in page, text
+    r = web.client.post("/settings/plans/plan-2026", data={"insurer": "Example Health", "plan_name": "HDHP",
+                                                           "plan_year": "2026", "coinsurance_pct": "20",
+                                                           "copays": "specialist: 60", "terms_confirmed": "on"},
+                        follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].startswith("/coverage?year=2026")
+    page = web.client.get(r.headers["location"]).text
+    assert "You confirmed these terms" in page and "$60.00" in page and "Specialist copay" in page
+    bad = web.client.post("/settings/plans/plan-2026", data={"plan_year": "2026", "copays": "nonsense"})
+    assert bad.status_code == 400 and "should look like" in bad.text and "Coverage" in bad.text
+    assert 'href="/coverage' in web.client.get("/").text  # Home's plan limits link here

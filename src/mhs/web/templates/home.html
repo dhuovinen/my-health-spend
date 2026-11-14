@@ -143,8 +143,9 @@
       {% if l.note %}<div class="muted small">{{ l.note }}</div>{% endif %}
     </div>
     {% else %}
-    <p class="muted">No limits set for {{ report.year }}. Add your deductible and out-of-pocket maximum in <a href="/settings#plans">Settings</a>.</p>
+    <p class="muted">No limits set for {{ report.year }}. Add your deductible and out-of-pocket maximum on <a href="/coverage?year={{ report.year }}">Coverage</a>.</p>
     {% endfor %}
+    <p class="small"><a class="more" href="/coverage?year={{ report.year }}">Your coverage: plans, terms and claims →</a></p>
   </div>
 {% set yb = report.buckets %}
 {% if yb %}
