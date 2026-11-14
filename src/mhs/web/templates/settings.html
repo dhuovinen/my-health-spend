@@ -34,26 +34,34 @@
   {% for p in plans %}
   <div class="card section">
     <h3>{{ p.insurer }} · {{ p.plan_name }} {{ p.plan_year }}{% if p.coverage_order %} <span class="badge s-matched">{{ p.coverage_order|humanize }}</span>{% endif %}</h3>
-    <form method="post" action="/settings/plans/{{ p.id }}" class="form-grid">{{ csrf_input() }}
-      <label>Insurer<input name="insurer" value="{{ p.insurer }}" required></label>
-      <label>Plan name<input name="plan_name" value="{{ p.plan_name }}"></label>
-      <label>Plan year<input name="plan_year" type="number" value="{{ p.plan_year }}" class="w-6"></label>
-      <label>Coverage order<select name="coverage_order">{{ options(['primary', 'secondary', 'tertiary'], p.coverage_order, '—') }}</select></label>
-      <label>Coverage start<input name="coverage_start" type="date" value="{{ p.coverage_start or '' }}"></label>
-      <label>Coverage end<input name="coverage_end" type="date" value="{{ p.coverage_end or '' }}"></label>
-      <label>Coinsurance %<input name="coinsurance_pct" type="number" step="0.1" min="0" max="100" class="w-6"
-        value="{{ (p.coinsurance_rate * 100)|round(1) if p.coinsurance_rate is defined and p.coinsurance_rate is not none else '' }}"></label>
-      <label>Copays (one per line, "specialist: 60")<textarea name="copays" rows="3">{% for k, v in (p.copays or {}).items() %}{{ k }}: {{ '%.2f'|format(v / 100) }}
-{% endfor %}</textarea></label>
-      <div><div class="muted small">Members covered</div>
-        {% for m in members %}<label class="check-label"><input type="checkbox" name="member_ids" value="{{ m.id }}" {{ 'checked' if m.id in (p.member_ids or []) }}> {{ m.name }}</label>{% endfor %}
+    <form method="post" action="/settings/plans/{{ p.id }}" class="plan-form">{{ csrf_input() }}
+      <div class="form-grid cols-4">
+        <label>Insurer<input name="insurer" value="{{ p.insurer }}" required></label>
+        <label>Plan name<input name="plan_name" value="{{ p.plan_name }}"></label>
+        <label>Plan year<input name="plan_year" type="number" value="{{ p.plan_year }}"></label>
+        <label>Coverage order<select name="coverage_order">{{ options(['primary', 'secondary', 'tertiary'], p.coverage_order, '—') }}</select></label>
+        <label>Coverage start<input name="coverage_start" type="date" value="{{ p.coverage_start or '' }}"></label>
+        <label>Coverage end<input name="coverage_end" type="date" value="{{ p.coverage_end or '' }}"></label>
+        <label>Coinsurance %<input name="coinsurance_pct" type="number" step="0.1" min="0" max="100"
+          value="{{ (p.coinsurance_rate * 100)|round(1) if p.coinsurance_rate is defined and p.coinsurance_rate is not none else '' }}"></label>
+        <label>Cash counts toward deductible<select name="cash_counts_toward_deductible">{{ options(['yes', 'no'], p.cash_counts_toward_deductible, "I don't know") }}</select></label>
       </div>
-      <label class="check-label"><input type="checkbox" name="hsa_eligible_plan" {{ 'checked' if p.hsa_eligible_plan }}> HSA-eligible plan</label>
-      <label>Cash price counts toward the deductible<select name="cash_counts_toward_deductible">{{ options(['yes', 'no'], p.cash_counts_toward_deductible, "I don't know") }}</select></label>
-      <label class="check-label full terms-confirm"><input type="checkbox" name="terms_confirmed" {{ 'checked' if p.terms_confirmed }}> These terms match my plan documents</label>
-      <div class="form-actions full"><button class="btn primary">Save plan</button></div>
+      <div class="form-grid cols-4 section">
+        <label class="span-2">Copays<textarea name="copays" rows="3" placeholder="specialist: 60">{% for k, v in (p.copays or {}).items() %}{{ k }}: {{ '%.2f'|format(v / 100) }}
+{% endfor %}</textarea><span class="hint">One per line. Names MHS checks: preventive, primary_care, specialist, urgent_care, emergency.</span></label>
+        <fieldset class="checks"><legend>Members covered</legend>
+          {% for m in members %}<label class="check-label"><input type="checkbox" name="member_ids" value="{{ m.id }}" {{ 'checked' if m.id in (p.member_ids or []) }}> {{ m.name }}</label>{% else %}<span class="hint">Add household members below first.</span>{% endfor %}
+        </fieldset>
+        <fieldset class="checks"><legend>Plan type</legend>
+          <label class="check-label"><input type="checkbox" name="hsa_eligible_plan" {{ 'checked' if p.hsa_eligible_plan }}> HSA-eligible (high-deductible) plan</label>
+        </fieldset>
+      </div>
+      <div class="terms-confirm section">
+        <label class="check-label"><input type="checkbox" name="terms_confirmed" {{ 'checked' if p.terms_confirmed }}> These terms match my plan documents</label>
+        <p class="hint">MHS checks each EOB's deductible, copay and coinsurance against these terms. Until you tick this, a difference is only "worth a closer look", because wrong terms would make every claim look wrong.{% if p.coinsurance_rate is not defined or p.coinsurance_rate is none %} <strong>Add the coinsurance rate</strong> to check coinsurance.{% endif %}{% if not p.limits %} <strong>Add the in-network deductible</strong> below to check deductibles.{% endif %}</p>
+      </div>
+      <div class="form-actions"><button class="btn primary">Save plan</button></div>
     </form>
-    <p class="muted small">Copay names MHS uses: preventive, primary_care, specialist, urgent_care, emergency. MHS checks each EOB's deductible, copay and coinsurance against these terms. Until you tick "These terms match my plan documents", a difference is shown as worth a closer look, not as a finding, because wrong terms would make every claim look wrong.{% if p.coinsurance_rate is not defined or p.coinsurance_rate is none %} <strong>Add the coinsurance rate</strong> to check coinsurance.{% endif %}{% if not p.limits %} <strong>Add the in-network deductible</strong> to check deductibles.{% endif %}</p>
 
     <h3 class="section">Deductibles and out-of-pocket maximums</h3>
     {% if p.limits %}

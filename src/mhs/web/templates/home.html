@@ -31,9 +31,9 @@
       <span class="step-mark" aria-hidden="true">{{ '✓' if s.done else loop.index }}</span>
       <div class="step-body">
         <div class="step-title">{{ s.title }}{% if s.done %}<span class="visually-hidden"> (done)</span>{% endif %}</div>
-        {% if not s.done %}<div class="small muted">{{ s.why }}</div>{% endif %}
+        {% if s is sameas next_step %}<div class="step-why">{{ s.why }}</div>{% elif not s.done %}<div class="small muted">{{ s.why }}</div>{% endif %}
       </div>
-      {% if not s.done %}<a class="btn small{{ ' primary' if s is sameas next_step }}" href="{{ s.href }}">{{ 'Do this next' if s is sameas next_step else 'Open' }}</a>{% endif %}
+      {% if not s.done %}<a class="btn small{{ ' primary' if s is sameas next_step }}" href="{{ s.href }}">{{ s.action }}{% if s is sameas next_step %} →{% endif %}</a>{% endif %}
     </li>
     {% endfor %}
   </ol>

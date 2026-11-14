@@ -10,9 +10,10 @@ from mhs.core.reconcile import Dataset, is_secondary
 class Step:
     key: str
     title: str
-    why: str
+    why: str  # what to do, in plain words
     href: str
     done: bool
+    action: str = "Open"  # the button's words
 
 
 def steps(ds: Dataset, year: int, add_url: str, first_visit: str | None) -> list[Step]:
@@ -20,20 +21,30 @@ def steps(ds: Dataset, year: int, add_url: str, first_visit: str | None) -> list
     limits = any(l.get("type") == "deductible" for p in plans for l in p.get("limits") or [])
     terms = any(p.get("terms_confirmed") for p in plans)
     accounts = [a for a in ds.accounts if a.get("type") in ("hsa", "fsa", "lpfsa", "hra")] or ds.accounts
+    uploads = add_url == "/uploads"
     return [
-        Step("members", "Add the people in your household", "Each visit belongs to someone, and each person has "
-             "their own deductible.", "/settings#members", bool(ds.members)),
+        Step("members", "Add the people in your household",
+             "In Settings, under Household members, add each person whose visits you'll track. Each person has "
+             "their own deductible.", "/settings#members", bool(ds.members), "Add household members"),
         Step("plan", f"Add your {year} insurance plan with its deductible and out-of-pocket maximum",
-             "MHS tracks how close you are to them and checks each claim against them.", "/settings#plans",
-             bool(plans) and limits),
+             "In Settings, under Insurance plans, add the plan, then its in-network deductible and out-of-pocket "
+             "maximum from your plan documents.", "/settings#plans", bool(plans) and limits, "Add your plan"),
         Step("terms", "Enter the plan's coinsurance and copays, then confirm them",
-             "So MHS can tell whether each EOB charged you what your plan says.", "/settings#plans", terms),
-        Step("account", "Add your HSA, FSA or the card you pay with", "So MHS can tell which payments came from the "
-             "HSA and which you can still reimburse.", "/settings#accounts", bool(accounts)),
-        Step("document", "Add your first bill or EOB", "A photo or PDF, an insurer export, or your insurer's "
-             "connection.", add_url, any(d.get("type") != "account_transaction" for d in ds.documents)),
-        Step("result", "See your first reconciled visit", "Where the bill, the EOB and what you paid agree, or "
-             "don't.", f"/visits/{first_visit}" if first_visit else "/visits", first_visit is not None),
+             "In Settings, under Insurance plans: type the coinsurance % and the copays from your plan documents, "
+             "tick \u201cThese terms match my plan documents\u201d and press Save plan. MHS then checks whether each "
+             "EOB charged you what your plan says.", "/settings#plans", terms, "Confirm your plan's terms"),
+        Step("account", "Add your HSA, FSA or the card you pay with",
+             "In Settings, under Payment accounts, add the accounts you pay providers from, so MHS can tell which "
+             "payments came from the HSA.", "/settings#accounts", bool(accounts), "Add a payment account"),
+        Step("document", "Add your first bill or EOB",
+             "Upload a provider's bill or your insurer's EOB as a PDF or a photo, or your HSA's export; you check "
+             "what MHS read before anything is saved." if uploads else
+             "Import an ingest file built from your claims, HSA export and statements.", add_url,
+             any(d.get("type") != "account_transaction" for d in ds.documents),
+             "Upload a document" if uploads else "Import a file"),
+        Step("result", "See your first reconciled visit", "Open a visit to see where the bill, the EOB and what "
+             "you paid agree, or don't.", f"/visits/{first_visit}" if first_visit else "/visits",
+             first_visit is not None, "Open your first visit"),
     ]
 
 

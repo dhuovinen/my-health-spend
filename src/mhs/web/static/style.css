@@ -509,7 +509,9 @@ label { color: var(--muted); font-weight: 500; }
 .settings-item:last-child { border-bottom: 0; }
 .settings-item > summary { padding: .6rem 0; display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; }
 .settings-item > form { padding: 0 0 .9rem; border-bottom: 0; }
-.terms-confirm { background: var(--accent-soft); border-radius: var(--radius-sm); padding: .55rem .7rem; font-weight: 600; }
+.terms-confirm { background: var(--accent-soft); border-radius: var(--radius-sm); padding: .7rem .9rem; }
+.terms-confirm .check-label { font-weight: 600; }
+.terms-confirm .hint { margin: .25rem 0 0 1.85rem; }
 .toc a { padding: .2rem .6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
 .toc a:hover { text-decoration: none; border-color: var(--accent); }
 
@@ -528,3 +530,29 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-vi
 .detail-grid .limit .row > span:first-child { font-weight: 600; }
 .title-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; width: 100%; }
 .title-row h1 { margin: 0; }
+
+/* fixed-column form grids, aligned at the top of each field */
+.form-grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; }
+.form-grid .span-2 { grid-column: span 2; }
+.hint { display: block; font-size: .8rem; line-height: 1.45; color: var(--muted); font-weight: 400; margin-top: .25rem; }
+fieldset.checks { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: .35rem; }
+fieldset.checks legend { padding: 0; margin-bottom: .3rem; font-size: .8rem; color: var(--muted); font-weight: 500; }
+@media (max-width: 860px) { .form-grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .form-grid.cols-4 { grid-template-columns: minmax(0, 1fr); } .form-grid .span-2 { grid-column: auto; } }
+/* settings rows (members, accounts, providers): fields aligned at the top; the button lines up with the first field */
+form.inline.settings-row { align-items: flex-start; }
+form.inline.settings-row > .btn { margin-top: calc(26px + .2rem); }
+.step-why { font-size: .9rem; line-height: 1.5; color: var(--text); margin-top: .15rem; }
+.step.next { align-items: start; padding: .8rem .8rem; }
+.step.next > .btn { align-self: center; }
+/* home hero: the year, the view and the button share one bottom line and one height */
+.hero .actions { align-items: flex-end; gap: .75rem; }
+.hero .actions form { margin: 0; }
+@media (min-width: 861px) { .hero .actions select, .hero .actions .btn { height: 2.5rem; min-height: 2.5rem; } }
+.hero .actions .btn { padding: 0 1rem; }
+.hero h1 { margin-bottom: .35rem; }
+
+/* a checkbox sits beside the first line of its text, and long text wraps under itself */
+.check-label { align-items: flex-start; }
+.check-label > input[type=checkbox], .check-label > input[type=radio] { flex: none; margin: 6px 0 0; }
+@media (max-width: 860px) { .check-label > input[type=checkbox], .check-label > input[type=radio] { margin-top: 2px; } }
