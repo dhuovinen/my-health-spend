@@ -644,7 +644,8 @@ def build_report(ds: Dataset, year: int, today: date) -> Report:
             age=max((today - date.fromisoformat(v["date"])).days, 0), waiting_days=ds.waiting_days,
             secondary_claims=secondary,
         )
-        vr.secondary_expected = bool(claims) and _covered_by_secondary(v, ds.plans) \
+        not_needed = ((v.get("documents") or {}).get("secondary_eob") or {}).get("state") == "not_applicable"
+        vr.secondary_expected = bool(claims) and _covered_by_secondary(v, ds.plans) and not not_needed \
             and sum(c["patient_responsibility"] for c in claims) > 0
         for cv in versions_by_visit.get(v["id"], []):
             vr.versions += [e for e in cv.versions if e is not cv.current]
@@ -1214,7 +1215,7 @@ def _documents(vr: VisitResult) -> list[DocumentState]:
                       "or a bill" if bill_or_receipt else ""),
         DocumentState("payment", "present" if vr.paid else "expected" if owed else "not_applicable", blocking=False),
     ]
-    if vr.secondary_claims or vr.secondary_expected:  # ALC-05
+    if vr.secondary_claims or vr.secondary_expected or "secondary_eob" in (vr.visit.get("documents") or {}):  # ALC-05
         out.insert(1, DocumentState("secondary_eob", "present" if vr.secondary_claims else "expected"))
     if bill_or_receipt:  # one of the two is enough: show the bill as the expected one only once
         for d in out:

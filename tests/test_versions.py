@@ -99,6 +99,14 @@ def test_tc_alc_05_2_waiting_for_the_second_insurer():
     assert any(d.kind == "secondary_eob" and d.state == "expected" for d in v.documents)
 
 
+def test_second_insurer_eob_marked_not_needed_stops_the_wait():
+    v = {**visit("v1", "2026-09-20"), "documents": {"secondary_eob": {"state": "not_applicable", "since": "2026-10-01"}}}
+    r = build_report(base(visits=[v], documents=[{**primary(), "date": "2026-09-30"}], plans=PLANS), 2026, TODAY)
+    vr = r.visit("v1")
+    assert not vr.secondary_expected and vr.status == "balance_outstanding"
+    assert any(d.kind == "secondary_eob" and d.state == "not_applicable" for d in vr.documents)
+
+
 def test_tc_alc_05_3_coverage_order_decides():
     plans = [{**PLANS[0], "coverage_order": "secondary"}, {**PLANS[1], "coverage_order": "primary"}]
     v = run(visits=[visit("v1", "2026-01-15")], documents=[primary(), secondary()], plans=plans).visit("v1")

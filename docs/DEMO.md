@@ -1,6 +1,6 @@
 # Demo: Release 1 on a laptop
 
-A ten-minute walkthrough of My Health Spend on the local Docker Compose stack, with made-up documents in [`samples/demo/`](../samples/demo/). Every name, number and address in them is synthetic; never demo with the real `data/` folder.
+For the whole app, including the Release 2 features and staging, see [USER_TEST_GUIDE.md](USER_TEST_GUIDE.md). A ten-minute walkthrough of My Health Spend on the local Docker Compose stack, with made-up documents in [`samples/demo/`](../samples/demo/). Every name, number and address in them is synthetic; never demo with the real `data/` folder.
 
 ## The story
 

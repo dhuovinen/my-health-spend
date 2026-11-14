@@ -1,0 +1,574 @@
+{
+  "schema_version": "0.1",
+  "source": {
+    "prepared_by": "tools/make_walkthrough_sample.py",
+    "notes": "Synthetic. Import after `mhs-admin demo-setup`; see docs/USER_TEST_GUIDE.md."
+  },
+  "members": [
+    {
+      "id": "mbr-alex-sample",
+      "name": "Alex Sample",
+      "relationship": "spouse",
+      "aliases": [
+        "Alex Sample",
+        "Sample, Alex"
+      ]
+    }
+  ],
+  "plans": [
+    {
+      "id": "plan-2026-granite-ppo",
+      "plan_year": 2026,
+      "insurer": "Granite Mutual",
+      "plan_name": "Granite PPO 1000",
+      "coverage_order": "primary",
+      "coverage_start": "2026-01-01",
+      "coverage_end": "2026-12-31",
+      "hsa_eligible_plan": false,
+      "coinsurance_rate": 0.2,
+      "member_ids": [
+        "mbr-alex-sample"
+      ],
+      "copays": {
+        "primary_care": 25,
+        "specialist": 60,
+        "urgent_care": 75
+      },
+      "limits": [
+        {
+          "type": "deductible",
+          "network": "in_network",
+          "level": "individual",
+          "amount": 1000
+        },
+        {
+          "type": "out_of_pocket_max",
+          "network": "in_network",
+          "level": "individual",
+          "amount": 4000
+        }
+      ]
+    },
+    {
+      "id": "plan-2026-alex-secondary",
+      "plan_year": 2026,
+      "insurer": "Example Health",
+      "plan_name": "Spouse coverage (secondary)",
+      "coverage_order": "secondary",
+      "coverage_start": "2026-09-01",
+      "coverage_end": "2026-12-31",
+      "member_ids": [
+        "mbr-alex-sample"
+      ],
+      "limits": []
+    }
+  ],
+  "accounts": [
+    {
+      "id": "acct-card",
+      "name": "Visa card",
+      "type": "credit_card"
+    }
+  ],
+  "providers": [
+    {
+      "id": "prov-wt-lakeside-fm",
+      "name": "Lakeside Family Medicine",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-wt-bennett",
+      "name": "Bennett Radiology",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-wt-northgate",
+      "name": "Northgate Dermatology",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-wt-cedar",
+      "name": "Cedar Valley Labs",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-wt-hillcrest",
+      "name": "Hillcrest Imaging Center",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-wt-riverside",
+      "name": "Riverside Physical Therapy",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-wt-summit",
+      "name": "Summit Eye Associates",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-wt-maple",
+      "name": "Maple Street Orthopedics",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-wt-harbor",
+      "name": "Harbor Cardiology",
+      "network_status": "in_network"
+    },
+    {
+      "id": "prov-wt-oakview",
+      "name": "Oakview Imaging",
+      "network_status": "unknown"
+    }
+  ],
+  "visits": [
+    {
+      "id": "v-wt-01",
+      "date": "2026-02-10",
+      "provider_id": "prov-wt-lakeside-fm",
+      "member_id": "mbr-alex-sample",
+      "plan_id": "plan-2026-granite-ppo",
+      "category": "provider_visit",
+      "description": "Primary care visit",
+      "service_type": "primary_care"
+    },
+    {
+      "id": "v-wt-02",
+      "date": "2026-03-05",
+      "provider_id": "prov-wt-bennett",
+      "member_id": "mbr-alex-sample",
+      "plan_id": "plan-2026-granite-ppo",
+      "category": "provider_visit",
+      "description": "MRI of the lumbar spine"
+    },
+    {
+      "id": "v-wt-03",
+      "date": "2026-04-14",
+      "provider_id": "prov-wt-northgate",
+      "member_id": "mbr-alex-sample",
+      "plan_id": "plan-2026-granite-ppo",
+      "category": "provider_visit",
+      "description": "Specialist visit, skin check",
+      "service_type": "specialist"
+    },
+    {
+      "id": "v-wt-04",
+      "date": "2026-05-20",
+      "provider_id": "prov-wt-cedar",
+      "member_id": "mbr-alex-sample",
+      "plan_id": "plan-2026-granite-ppo",
+      "category": "provider_visit",
+      "description": "Blood tests"
+    },
+    {
+      "id": "v-wt-05",
+      "date": "2026-06-02",
+      "provider_id": "prov-wt-lakeside-fm",
+      "member_id": "mbr-alex-sample",
+      "plan_id": "plan-2026-granite-ppo",
+      "category": "provider_visit",
+      "description": "Annual physical",
+      "service_type": "preventive"
+    },
+    {
+      "id": "v-wt-06",
+      "date": "2026-06-18",
+      "provider_id": "prov-wt-hillcrest",
+      "member_id": "mbr-alex-sample",
+      "plan_id": "plan-2026-granite-ppo",
+      "category": "provider_visit",
+      "description": "Ultrasound and follow-up"
+    },
+    {
+      "id": "v-wt-07",
+      "date": "2026-07-08",
+      "provider_id": "prov-wt-riverside",
+      "member_id": "mbr-alex-sample",
+      "plan_id": "plan-2026-granite-ppo",
+      "category": "provider_visit",
+      "description": "Physical therapy, 6 sessions"
+    },
+    {
+      "id": "v-wt-08",
+      "date": "2026-08-12",
+      "provider_id": "prov-wt-summit",
+      "member_id": "mbr-alex-sample",
+      "plan_id": "plan-2026-granite-ppo",
+      "category": "provider_visit",
+      "description": "Eye exam and testing"
+    },
+    {
+      "id": "v-wt-09",
+      "date": "2026-09-15",
+      "provider_id": "prov-wt-maple",
+      "member_id": "mbr-alex-sample",
+      "plan_id": "plan-2026-granite-ppo",
+      "category": "provider_visit",
+      "description": "Knee follow-up"
+    },
+    {
+      "id": "v-wt-10",
+      "date": "2026-11-04",
+      "provider_id": "prov-wt-harbor",
+      "member_id": "mbr-alex-sample",
+      "plan_id": "plan-2026-granite-ppo",
+      "category": "provider_visit",
+      "description": "Cardiology consult"
+    },
+    {
+      "id": "plan-wt-11",
+      "date": "2026-12-16",
+      "provider_id": "prov-wt-oakview",
+      "member_id": "mbr-jordan-sample",
+      "plan_id": "plan-2026-example-hdhp-1700",
+      "category": "provider_visit",
+      "description": "MRI of the left knee",
+      "planned": true,
+      "expected_allowed": 1200,
+      "cash_price": 650,
+      "service_type": "other"
+    },
+    {
+      "id": "plan-wt-12",
+      "date": "2026-11-03",
+      "provider_id": "prov-wt-summit",
+      "member_id": "mbr-alex-sample",
+      "plan_id": "plan-2026-granite-ppo",
+      "category": "provider_visit",
+      "description": "Annual eye exam",
+      "planned": true,
+      "expected_allowed": 180,
+      "service_type": "specialist"
+    }
+  ],
+  "documents": [
+    {
+      "id": "eob-wt-01",
+      "type": "eob",
+      "date": "2026-02-24",
+      "plan_id": "plan-2026-granite-ppo",
+      "provider_id": "prov-wt-lakeside-fm",
+      "visit_id": "v-wt-01",
+      "claim_number": "GM-10001",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 210,
+      "allowed": 180,
+      "adjustment": 30,
+      "insurer_paid": 155,
+      "deductible": 0,
+      "copay": 25,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 25
+    },
+    {
+      "id": "pay-wt-01",
+      "type": "payment",
+      "date": "2026-03-02",
+      "provider_id": "prov-wt-lakeside-fm",
+      "account_id": "acct-hsa",
+      "amount": 25,
+      "kind": "payment"
+    },
+    {
+      "id": "eob-wt-02",
+      "type": "eob",
+      "date": "2026-03-20",
+      "plan_id": "plan-2026-granite-ppo",
+      "provider_id": "prov-wt-bennett",
+      "visit_id": "v-wt-02",
+      "claim_number": "GM-10002",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 2400,
+      "allowed": 1600,
+      "adjustment": 800,
+      "insurer_paid": 480,
+      "deductible": 1000,
+      "copay": 0,
+      "coinsurance": 120,
+      "not_covered": 0,
+      "patient_responsibility": 1120
+    },
+    {
+      "id": "pay-wt-02",
+      "type": "payment",
+      "date": "2026-03-28",
+      "provider_id": "prov-wt-bennett",
+      "account_id": "acct-hsa",
+      "amount": 1120,
+      "kind": "payment"
+    },
+    {
+      "id": "eob-wt-03",
+      "type": "eob",
+      "date": "2026-04-28",
+      "plan_id": "plan-2026-granite-ppo",
+      "provider_id": "prov-wt-northgate",
+      "visit_id": "v-wt-03",
+      "claim_number": "GM-10003",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 260,
+      "allowed": 220,
+      "adjustment": 40,
+      "insurer_paid": 145,
+      "deductible": 0,
+      "copay": 75,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 75
+    },
+    {
+      "id": "eob-wt-04",
+      "type": "eob",
+      "date": "2026-06-03",
+      "plan_id": "plan-2026-granite-ppo",
+      "provider_id": "prov-wt-cedar",
+      "visit_id": "v-wt-04",
+      "claim_number": "GM-10004",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 420,
+      "allowed": 300,
+      "adjustment": 120,
+      "insurer_paid": 0,
+      "deductible": 300,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 300
+    },
+    {
+      "id": "eob-wt-05",
+      "type": "eob",
+      "date": "2026-06-16",
+      "plan_id": "plan-2026-granite-ppo",
+      "provider_id": "prov-wt-lakeside-fm",
+      "visit_id": "v-wt-05",
+      "claim_number": "GM-10005",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 320,
+      "allowed": 250,
+      "adjustment": 70,
+      "insurer_paid": 225,
+      "deductible": 0,
+      "copay": 25,
+      "coinsurance": 0,
+      "not_covered": 0,
+      "patient_responsibility": 25
+    },
+    {
+      "id": "eob-wt-06",
+      "type": "eob",
+      "date": "2026-07-01",
+      "plan_id": "plan-2026-granite-ppo",
+      "provider_id": "prov-wt-hillcrest",
+      "visit_id": "v-wt-06",
+      "claim_number": "GM-10006",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 700,
+      "allowed": 550,
+      "adjustment": 150,
+      "insurer_paid": 300,
+      "deductible": 0,
+      "copay": 0,
+      "coinsurance": 0,
+      "not_covered": 250,
+      "patient_responsibility": 250,
+      "lines": [
+        {
+          "service_date": "2026-06-18",
+          "code": "76700",
+          "description": "Ultrasound, abdomen",
+          "billed": 450,
+          "allowed": 300,
+          "insurer_paid": 300,
+          "patient_responsibility": 0,
+          "adjustment": 150,
+          "remark_codes": [
+            "CO-45"
+          ]
+        },
+        {
+          "service_date": "2026-06-18",
+          "code": "99214",
+          "description": "Office visit",
+          "billed": 250,
+          "allowed": 250,
+          "insurer_paid": 0,
+          "patient_responsibility": 250,
+          "not_covered": 250,
+          "remark_codes": [
+            "PR-50",
+            "N130"
+          ]
+        }
+      ],
+      "remark_codes": [
+        "CO-45"
+      ]
+    },
+    {
+      "id": "eob-wt-07",
+      "type": "eob",
+      "date": "2026-07-20",
+      "plan_id": "plan-2026-granite-ppo",
+      "provider_id": "prov-wt-riverside",
+      "visit_id": "v-wt-07",
+      "claim_number": "GM-10007",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 900,
+      "allowed": 600,
+      "adjustment": 300,
+      "insurer_paid": 480,
+      "deductible": 0,
+      "copay": 0,
+      "coinsurance": 120,
+      "not_covered": 0,
+      "patient_responsibility": 120,
+      "member_edited": true
+    },
+    {
+      "id": "eob-wt-07-v2",
+      "type": "eob",
+      "date": "2026-08-15",
+      "plan_id": "plan-2026-granite-ppo",
+      "provider_id": "prov-wt-riverside",
+      "visit_id": "v-wt-07",
+      "claim_number": "GM-10007",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 900,
+      "allowed": 450,
+      "adjustment": 450,
+      "insurer_paid": 360,
+      "deductible": 0,
+      "copay": 0,
+      "coinsurance": 90,
+      "not_covered": 0,
+      "patient_responsibility": 90,
+      "version_of": "eob-wt-07",
+      "version_reason": "corrected"
+    },
+    {
+      "id": "pay-wt-07",
+      "type": "payment",
+      "date": "2026-07-25",
+      "provider_id": "prov-wt-riverside",
+      "account_id": "acct-hsa",
+      "amount": 120,
+      "kind": "payment"
+    },
+    {
+      "id": "eob-wt-08",
+      "type": "eob",
+      "date": "2026-08-26",
+      "plan_id": "plan-2026-granite-ppo",
+      "provider_id": "prov-wt-summit",
+      "visit_id": "v-wt-08",
+      "claim_number": "GM-10008",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 720,
+      "allowed": 600,
+      "adjustment": 120,
+      "insurer_paid": 480,
+      "deductible": 0,
+      "copay": 0,
+      "coinsurance": 120,
+      "not_covered": 0,
+      "patient_responsibility": 120
+    },
+    {
+      "id": "pay-wt-08",
+      "type": "payment",
+      "date": "2026-08-20",
+      "provider_id": "prov-wt-summit",
+      "account_id": "acct-hsa",
+      "amount": 200,
+      "kind": "payment"
+    },
+    {
+      "id": "ref-wt-08",
+      "type": "payment",
+      "date": "2026-09-30",
+      "provider_id": "prov-wt-summit",
+      "account_id": "acct-card",
+      "amount": 80,
+      "kind": "refund",
+      "refund_of": [
+        "pay-wt-08"
+      ]
+    },
+    {
+      "id": "eob-wt-09",
+      "type": "eob",
+      "date": "2026-09-29",
+      "plan_id": "plan-2026-granite-ppo",
+      "provider_id": "prov-wt-maple",
+      "visit_id": "v-wt-09",
+      "claim_number": "GM-10009",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 400,
+      "allowed": 250,
+      "adjustment": 150,
+      "insurer_paid": 200,
+      "deductible": 0,
+      "copay": 0,
+      "coinsurance": 50,
+      "not_covered": 0,
+      "patient_responsibility": 50
+    },
+    {
+      "id": "eob-wt-09-s",
+      "type": "eob",
+      "date": "2026-10-13",
+      "plan_id": "plan-2026-alex-secondary",
+      "provider_id": "prov-wt-maple",
+      "visit_id": "v-wt-09",
+      "claim_number": "EH-55009",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 400,
+      "allowed": 50,
+      "insurer_paid": 40,
+      "patient_responsibility": 10
+    },
+    {
+      "id": "pay-wt-09",
+      "type": "payment",
+      "date": "2026-10-20",
+      "provider_id": "prov-wt-maple",
+      "account_id": "acct-hsa",
+      "amount": 10,
+      "kind": "payment"
+    },
+    {
+      "id": "eob-wt-10",
+      "type": "eob",
+      "date": "2026-11-10",
+      "plan_id": "plan-2026-granite-ppo",
+      "provider_id": "prov-wt-harbor",
+      "visit_id": "v-wt-10",
+      "claim_number": "GM-10010",
+      "claim_status": "processed",
+      "network_status": "in_network",
+      "billed": 520,
+      "allowed": 350,
+      "adjustment": 170,
+      "insurer_paid": 280,
+      "deductible": 0,
+      "copay": 0,
+      "coinsurance": 70,
+      "not_covered": 0,
+      "patient_responsibility": 70
+    }
+  ]
+}

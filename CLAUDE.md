@@ -52,7 +52,7 @@ Upload documents on the Uploads page (bills, statements, EOBs as PDF or photo; H
 docker compose exec app mhs-admin ai-extraction --household <household-id> on
 ```
 
- The user scenarios and how to try each by hand are in `docs/TESTING.md` ("User scenarios"). Vault backup and restore (passphrase prompted, or `MHS_BACKUP_PASSPHRASE`) are in `docs/SETUP.md`. Wipe the local stack, data included: `docker compose --profile test down -v`.
+ The user scenarios and how to try each by hand are in `docs/TESTING.md` ("User scenarios"). A full walk through the app as a member, on staging or locally, with importable data (`samples/walkthrough/`, made by `uv run tools/make_walkthrough_sample.py`, on top of `demo-setup`), is `docs/USER_TEST_GUIDE.md`; `tests/test_walkthrough_sample.py` keeps its expected results true. Vault backup and restore (passphrase prompted, or `MHS_BACKUP_PASSPHRASE`) are in `docs/SETUP.md`. Wipe the local stack, data included: `docker compose --profile test down -v`.
 
 A three-person synthetic household (Household page, view switch, a six-line visit) for trying the pages: point `MHS_DATA_DIR` at a scratch folder and import `samples/household-ingest.json` (regenerate with `uv run tools/make_household_sample.py`). The layout tests at 375 and 1280 px drive headless Chromium (`uv run playwright install chromium` once; they skip without it):
 
