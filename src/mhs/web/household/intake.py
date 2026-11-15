@@ -29,12 +29,12 @@ from mhs.data.household_store import HouseholdStore
 from mhs.data.importer import UploadedSource
 from mhs.data.keys import Keyring
 from mhs.data.money import to_dollars
-from mhs.data.repository import load_dataset
+from mhs.data.repository import load_dataset, review_prefs
 from mhs.ingest import learn
 from mhs.data.objects import ObjectStore
 from mhs.data.queue import JobQueue
 from mhs.ingest import claims, hsa
-from mhs.ingest.extract import EXTRACTED, REVIEW_THRESHOLD, TYPES
+from mhs.ingest.extract import EXTRACTED, TYPES
 from mhs.ingest.ocr import OcrEngine, StubOcr, page_images
 from mhs.ingest.redact import blank_pages, identifier_words
 from mhs.ingest.resolve import Members, Providers, plan_for, slug
@@ -333,6 +333,8 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
     def review_context(session: Session, rec: dict, ext: dict) -> dict:
         hid = session.household_id
         store = HouseholdStore(it.db, hid)
+        prefs = review_prefs(store)
+        below, show = prefs["check_below"], prefs["show_confidence"]
         fields = {}
         extracted = ext.get("fields", {})
         order = [n for n in FIELD_ORDER if n in extracted] + [n for n in extracted if n not in FIELD_ORDER]
@@ -344,9 +346,11 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
             value = reidentify(hid, f.get("value"))
             if name in EOB_MONEY + STATEMENT_MONEY and isinstance(value, int):
                 value = f"{value / 100:.2f}"
+            confidence = f.get("confidence", 0)
+            low = confidence < below
             fields[name] = {"label": LABELS.get(name, name), "value": "" if value is None else value,
-                            "confidence": f.get("confidence", 0), "note": f.get("note", ""),
-                            "low": f.get("confidence", 0) < REVIEW_THRESHOLD}
+                            "confidence": confidence, "note": f.get("note", ""), "low": low,
+                            "show": show == "always" or (show == "flagged" and low)}
         providers, members = store.all("provider"), store.all("member")
         provider_id = Providers(providers).find(str(fields.get("provider", {}).get("value", "")))
         member_id = Members(members).find(str(patient))
@@ -364,7 +368,8 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
         lines = [{**l, **{k: f"{l[k] / 100:.2f}" for k in l if isinstance(l.get(k), int)}} for l in ext.get("lines", [])]
         return {
             "rec": view(hid, rec, ext), "ext": ext, "fields": fields, "patient": str(patient).title(), "lines": lines, "types": TYPES,
-            "extracted": ext.get("doc_type") in EXTRACTED, "threshold": REVIEW_THRESHOLD,
+            "extracted": ext.get("doc_type") in EXTRACTED, "threshold": below,
+            "show_type": show == "always" or (show == "flagged" and ext.get("type_confidence", 0) < below),
             "providers": sorted(providers, key=lambda p: p["name"].lower()), "provider_id": provider_id or "",
             "members": members, "member_id": member_id or "", "plans": store.all("plan"),
             "plan_id": plan_for(store.all("plan"), int(when[:4])) if re.match(r"\d{4}", when) else "",

@@ -137,6 +137,29 @@ def member(household, app_db, worker_db):
     return Member(household, app_db, worker_db)
 
 
+def test_review_marks_and_confidence_follow_the_household_setting(member):
+    """The household chooses when a field is marked Check and when the reader's confidence is printed."""
+    uid = member.upload_id(member.upload("derm-statement.pdf", make_pdf(STATEMENT)))
+    assert member.work() == 1
+    default, _ = member.review(uid)
+    marked = default.count('class="field low"')
+    assert 0 < marked < default.count('class="field')
+
+    r = member.client.post("/settings/review", data={"check_below": "1.0", "show_confidence": "never"},
+                           follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/settings?saved=review#review"
+    strict, _ = member.review(uid)
+    assert strict.count('class="field low"') > marked  # every field it wasn't certain of
+    assert "% sure</span>" not in strict and "% sure)" not in strict
+
+    member.client.post("/settings/review", data={"check_below": "0.8", "show_confidence": "always"})
+    every, _ = member.review(uid)
+    assert every.count("% sure</span>") > default.count("% sure</span>")
+    assert "% sure)" in every  # the document type too
+    bad = member.client.post("/settings/review", data={"check_below": "0.5", "show_confidence": "always"})
+    assert bad.status_code == 400
+
+
 def test_statement_upload_review_and_confirm(member):
     """ING-01 (TC-1), ING-02, ING-03, ING-05 (TC-1, TC-2), ING-10 (TC-1): a PDF statement becomes a confirmed bill."""
     pdf = make_pdf(STATEMENT)
@@ -148,7 +171,8 @@ def test_statement_upload_review_and_confirm(member):
 
     text, values = member.review(uid)
     assert "Example Dermatology" in text and "320.00" in text and "2026-10-01" in text
-    assert "check" in text  # the provider came from the letterhead: below the threshold, highlighted
+    assert 'class="field low"' in text  # the provider came from the letterhead: below the threshold, highlighted
+    assert "% sure</span>" in text and "95% sure" not in text  # by default only marked fields show a percentage
     assert values["member_id"] == "mbr-pat-example"  # the patient, re-identified, matches the member
     # TC-ING-05-2: nothing reaches reconciliation before confirmation.
     assert member.store.all("visit") == [] and "No visits yet" in member.client.get("/").text
@@ -404,7 +428,7 @@ def test_ai_extraction_for_a_household_that_turned_it_on(member, accounts, pgdb)
     text, values = member.review(uid)
     assert "fields found by AI (claude-opus-5-5)" in text
     assert values["billed"] == "320.00" and values["deductible"] == "25.00"
-    assert "not found in the document text" in text
+    assert "not found in the document text" in text.lower()
     sent = json.dumps([r["body"] for r in ai.requests])
     assert "tok_" in sent and all(v.lower() not in sent.lower() for v in IDENTIFIERS)  # TC-PLT-04-1, in process
     values["deductible"] = ""  # the member corrects what the AI concluded

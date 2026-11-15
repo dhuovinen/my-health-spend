@@ -16,7 +16,7 @@
   {% endif %}
 </div>
 
-<nav class="toc small"><a href="#plans">Insurance plans</a><a href="#members">Household members</a><a href="#accounts">Payment accounts</a><a href="#providers">Providers</a><a href="#relationships">Provider matches</a><a href="#reconciliation">Reconciliation</a></nav>
+<nav class="toc small"><a href="#plans">Insurance plans</a><a href="#members">Household members</a><a href="#accounts">Payment accounts</a><a href="#providers">Providers</a><a href="#relationships">Provider matches</a><a href="#reconciliation">Reconciliation</a>{% if not path_import %}<a href="#review">Reviewing uploads</a>{% endif %}</nav>
 
 <section id="reconciliation" class="section">
   <h2>Reconciliation</h2>
@@ -28,6 +28,26 @@
     <p class="muted small">Until then a visit is "Awaiting EOB" or "Awaiting documents"; after it, "Missing documents". Differences under $1.00 are cleared within tolerance, and a provider is flagged once they add up to more than $5.00 in a plan year.</p>
   </div>
 </section>
+
+{% if not path_import %}
+<section id="review" class="section">
+  <h2>Reviewing uploads</h2>
+  <div class="card">
+    <form method="post" action="/settings/review" class="inline">{{ csrf_input() }}
+      <label>Mark a field "Check" when the reader is less than
+        <select name="check_below">{% for c in check_below %}<option value="{{ c }}" {{ 'selected' if c == review.check_below }}>{{ (c * 100)|int }}% sure</option>{% endfor %}</select>
+      </label>
+      <label>Show how sure the reader was
+        <select name="show_confidence">
+          {% for v, t in [('flagged', 'Only on fields marked Check'), ('always', 'On every field'), ('never', 'Never')] %}<option value="{{ v }}" {{ 'selected' if v == review.show_confidence }}>{{ t }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn primary">Save</button>
+    </form>
+    <p class="muted small">"100% sure" marks every field the reader wasn't certain of, so you look at more of them. Whatever you choose, check the marked fields against the document before you confirm.</p>
+  </div>
+</section>
+{% endif %}
 
 <section id="plans" class="section">
   <h2>Insurance plans</h2>

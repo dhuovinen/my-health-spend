@@ -63,7 +63,8 @@ Jordan saw Riverbend Orthopedics on 14 August for a knee. The statement asked fo
 | --- | --- | --- | --- |
 | 1.1 | **Home** | "Getting started": a progress bar and six steps, the finished ones ticked green, the next one highlighted with **Do this next**; under it, "No visits yet" | ☐ |
 | 1.2 | **Add** (top right) → choose `1-riverbend-statement.pdf` → **Upload** | The row says *Reading*, then shows **Review** within a few seconds (refresh if needed) | ☐ |
-| 1.3 | **Review** | "Read from the pdf text layer"; type Provider statement; amount due $480.00; two lines (99214, 73562); the provider name marked **check** | ☐ |
+| 1.3 | **Review** | "Read from the pdf text layer"; type Provider statement; amount due $480.00; two lines (99214, 73562); the page in two parts, *Who and what* (Provider, then the provider name read from the document, Patient) and *What the document says*; the provider name marked **Check**, with "From the letterhead · 50% sure" under it; fields read with confidence show no percentage | ☐ |
+| 1.3a | **Change when fields are marked** (top of the page) → Settings, *Reviewing uploads*: "less than 100% sure" and "On every field" → **Save** → back to the review | More fields marked **Check**, and every field shows how sure the reader was; set it back to 80% and "Only on fields marked Check" | ☐ |
 | 1.4 | **Confirm and add to my visits** | The visit opens: Riverbend Orthopedics, Aug 14, 2026, **Balance outstanding**, missing the EOB | ☐ |
 | 1.5 | Upload `2-riverbend-eob.pdf` → **Review** | Recognised as an EOB; the Aug 14 visit already chosen ("Matched automatically"); billed $480.00, discount $180.00, allowed $300.00, you owe $300.00 | ☐ |
 | 1.6 | **Confirm** | The visit is **Discrepancy found**: "Bill matches EOB · **Missed adjustment**", $180.00 | ☐ |

@@ -31,7 +31,8 @@ from mhs.core.reconcile import (ATTENTION, CHECK_NAMES, DOCUMENT_LABELS, FINDING
 from mhs.data import importer
 from mhs.data.importer import BOOKKEEPING, DocumentFiles, FileSource, UploadedSource
 from mhs.data.money import cents, to_dollars
-from mhs.data.repository import PREFERENCE, RECONCILIATION, load_dataset, waiting_days
+from mhs.data.repository import (CHECK_BELOW, PREFERENCE, RECONCILIATION, REVIEW, SHOW_CONFIDENCE, load_dataset,
+                                 review_prefs, waiting_days)
 from mhs.data.settings_file import settings_document
 from mhs.data.store import Store
 from mhs.web import letters
@@ -1119,7 +1120,8 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                       relationships=store.all("provider_relationship"),
                       provider_names={p["id"]: p["name"] for p in store.all("provider")},
                       member_names={m["id"]: m["name"] for m in store.all("member")},
-                      waiting_days=waiting_days(store),
+                      waiting_days=waiting_days(store), review=review_prefs(store),
+                      check_below=CHECK_BELOW,
                       opts={"account_types": ACCOUNT_TYPES, "provider_kinds": PROVIDER_KINDS,
                             "network_statuses": NETWORK_STATUSES, "relationships": RELATIONSHIPS,
                             "limit_types": LIMIT_TYPES, "limit_networks": LIMIT_NETWORKS})
@@ -1258,6 +1260,20 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
             raise FormError("The waiting time is a number of days from 1 to 365")
         store.upsert(PREFERENCE, {"id": RECONCILIATION, "waiting_days": days}, edited=True)
         return back("reconciliation")
+
+    @app.post("/settings/review")
+    async def save_review(request: Request):
+        """When the upload review page marks a field to check, and when it prints the reader's confidence."""
+        store, form = await posted(request)
+        try:
+            check = float(form.get("check_below") or 0)
+        except ValueError:
+            check = 0
+        show = form.get("show_confidence")
+        if check not in CHECK_BELOW or show not in SHOW_CONFIDENCE:
+            raise FormError("Choose when to mark a field and when to show its confidence")
+        store.upsert(PREFERENCE, {"id": REVIEW, "check_below": check, "show_confidence": show}, edited=True)
+        return back("review")
 
     @app.post("/settings/members")
     async def save_member(request: Request):

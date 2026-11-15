@@ -583,3 +583,19 @@ form.inline.settings-row > .btn { margin-top: calc(26px + .2rem); }
 .insurance-card .badge.s-na { color: #dfe6f1; border-color: rgba(255, 255, 255, .45); }
 .plan-claims > summary::before, .plan-edit > summary::before, .settings-item > summary::before { content: "▸"; color: var(--muted); width: 1em; }
 .plan-claims[open] > summary::before, .plan-edit[open] > summary::before, .settings-item[open] > summary::before { content: "▾"; }
+/* page headings: a button beside a labelled menu sits on the menu's bottom line, at the menu's height */
+.page-head .actions { align-items: flex-end; gap: .6rem; }
+.page-head .actions form { margin: 0; }
+@media (min-width: 861px) { .page-head .actions .btn { min-height: 2.5rem; padding-top: 0; padding-bottom: 0; font-size: .9rem; } }
+
+/* upload review: label and "Check" on one line, one quiet note under the input, the type menu and its button level */
+.review .review-head { font-size: 1rem; margin: 0 0 .6rem; }
+.review .review-head.section { margin-top: 1.6rem; }
+.review .review-grid { gap: 1rem 1.4rem; align-items: start; }
+.review label.field { gap: .3rem; }
+.review .field-label { display: flex; align-items: center; gap: .5rem; min-height: 1.4rem; }
+.review .field-label .badge { font-size: .7rem; padding: .05rem .5rem; }
+.review .field-note { font-size: .75rem; color: var(--muted); }
+.review label.low .field-note { color: var(--warn); }
+form.inline.type-row { align-items: flex-end; gap: .6rem; }
+@media (min-width: 861px) { form.inline.type-row .btn { min-height: 2.5rem; padding-top: 0; padding-bottom: 0; } }

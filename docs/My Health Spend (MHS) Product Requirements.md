@@ -175,6 +175,7 @@ Priority two reuses what reconciliation already collects (plan terms, accumulato
 | PRE-05 | Generate a checklist of questions to ask the provider (in network? cost estimate? itemized bill?) | P2 |
 | PRE-06 | Store a provider's good faith estimate and compare the final bill against it | P2 |
 | PRE-07 | Recommend the payment account for the planned visit using the TAX rules | P2 |
+| PRE-08 | Compare next year's plans: a step-by-step wizard where the member picks which of this year's care to carry forward (all of it, chosen visits, or adjusted counts), loads the plans offered where they live (the HealthCare.gov Marketplace API, or a plan entered by hand from an employer's options), and sees each plan's expected yearly cost (premiums plus what the same care would cost under its deductible, copays, coinsurance and out-of-pocket maximum), with the math and a best and worst case. An estimate, never advice (CMP-04) | P2 |
 
 ## Disputes and follow-up
 
