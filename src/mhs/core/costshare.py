@@ -162,8 +162,12 @@ def _counts(claim: dict) -> bool:
     return claim.get("claim_status") != "denied" and claim.get("network_status") != "out_of_network"
 
 
-def check_claims(claims: list[dict], visits: dict[str, dict], plans: dict[str, dict]) -> dict[str, ShareCheck]:
-    """Replay each plan year's claims in processing order and compare each with the plan's terms."""
+def check_claims(claims: list[dict], visits: dict[str, dict], plans: dict[str, dict], fill=None
+                 ) -> dict[str, ShareCheck]:
+    """Replay each plan year's claims in processing order and compare each with the plan's terms.
+
+    fill(terms, claim, service type) -> (terms, what was filled): fills terms the member left empty from the plan's
+    EOBs (REC-15, ADR-056), worked out without the claim being checked."""
     out: dict[str, ShareCheck] = {}
     by_plan: dict[str, list[dict]] = {}
     for c in claims:
@@ -178,7 +182,10 @@ def check_claims(claims: list[dict], visits: dict[str, dict], plans: dict[str, d
                 out[c["id"]] = ShareCheck(c["id"], "na", "No plan on file for this claim")
                 continue
             if _counts(c):
-                out[c["id"]] = _check_one(c, visit, terms_of(plan, member or None), acc, member)
+                terms, filled = terms_of(plan, member or None), []
+                if fill is not None:
+                    terms, filled = fill(terms, c, visit.get("service_type"))
+                out[c["id"]] = _check_one(c, visit, terms, acc, member, filled)
                 share = sum(c.get(k) or 0 for k in SHARE_KEYS)
                 acc.add(member, c.get("deductible") or 0, share)
             else:
@@ -187,7 +194,8 @@ def check_claims(claims: list[dict], visits: dict[str, dict], plans: dict[str, d
     return out
 
 
-def _check_one(c: dict, visit: dict, t: Terms, acc: Accumulators, member: str) -> ShareCheck:
+def _check_one(c: dict, visit: dict, t: Terms, acc: Accumulators, member: str, filled: list[str] = ()
+               ) -> ShareCheck:
     if c.get("allowed") is None or not any(c.get(k) is not None for k in SHARE_KEYS):
         return ShareCheck(c["id"], "na", "The EOB doesn't break your share into deductible, copay and coinsurance")
     exp = expected_share(t, c["allowed"], visit.get("service_type"), acc, member)
@@ -197,6 +205,8 @@ def _check_one(c: dict, visit: dict, t: Terms, acc: Accumulators, member: str) -
     diff = sum(actual.values()) - exp.total
     label = f"Claim {c['claim_number']}: " if c.get("claim_number") else ""
     math = "; ".join(exp.steps)
+    if filled:
+        math += f"; using what your EOBs show for {', '.join(filled)}"
     parts = [f"{k} {fmt(actual[k])} (plan says {fmt(getattr(exp, k))})" for k in SHARE_KEYS
              if actual[k] != getattr(exp, k)]
     if diff <= 0 or abs(diff) < TOLERANCE:
@@ -215,7 +225,10 @@ def _check_one(c: dict, visit: dict, t: Terms, acc: Accumulators, member: str) -
         detail = (f"{label}preventive care should cost you $0.00, but the EOB charges you {fmt(sum(actual.values()))}. "
                   "Ask the insurer to reprocess it as preventive; if the visit also treated a problem, that part can "
                   "be charged")
-    if not t.confirmed:
+    if filled:
+        detail += (". This is a flag because it uses terms read from your other EOBs, not terms you entered: add them "
+                   "from your plan documents on Coverage")
+    elif not t.confirmed:
         detail += (". This is a flag until you confirm your plan's terms in Settings, since wrong terms make every "
                    "claim look wrong")
     return ShareCheck(c["id"], "fail" if t.confirmed else "flag", detail, diff)

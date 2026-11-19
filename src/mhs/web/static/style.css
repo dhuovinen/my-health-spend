@@ -290,7 +290,7 @@ form.stack .btn { align-self: flex-start; }
   summary { min-height: 44px; padding: .55rem 0; }
   input[type=checkbox], input[type=radio] { width: 22px; height: 22px; }
   /* links standing on their own (not inside a sentence) are tap targets too */
-  a.back, a.more, .page-head a, .toc a, td > a, .kv a, .person-card h2 a, .case-row > a, .note-head a {
+  a.back, a.more, .page-head a, .toc a, td > a, .kv a, .person-card h2 a, .case-row > a, .note-head a, .eob-term li.solo > a {
     display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
   input[type=file] { min-height: 44px; max-width: 100%; }
   main .queue li > a { display: grid; grid-template-columns: minmax(0, 1fr); }
@@ -580,6 +580,10 @@ form.inline.settings-row > .btn { margin-top: calc(26px + .2rem); }
 .limit-grid .limit .row .num { text-align: left; color: var(--muted); font-size: .9rem; }
 .plan-claims > summary, .plan-edit > summary { display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; padding: .6rem 0; border-top: 1px solid var(--border); }
 @media (max-width: 860px) { .plan-summary { grid-template-columns: minmax(0, 1fr); } }
+.eob-term-list { list-style: none; padding: 0; margin: .5rem 0 0; }
+.eob-term { padding: .5rem 0; border-bottom: 1px solid var(--border); }
+.eob-term-head { display: flex; justify-content: space-between; gap: 1rem; font-weight: 600; }
+.eob-term details ul { padding-left: 1.1rem; margin: .35rem 0 0; }
 .insurance-card .badge.s-na { color: #dfe6f1; border-color: rgba(255, 255, 255, .45); }
 .plan-claims > summary::before, .plan-edit > summary::before, .settings-item > summary::before { content: "▸"; color: var(--muted); width: 1em; }
 .plan-claims[open] > summary::before, .plan-edit[open] > summary::before, .settings-item[open] > summary::before { content: "▾"; }

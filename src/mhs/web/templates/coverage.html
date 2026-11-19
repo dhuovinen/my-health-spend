@@ -50,6 +50,29 @@
     </div>
   </div>
 
+  {% set eob_rows = inferred.get(p.id) or [] %}
+  {% if eob_rows %}
+  <div class="section eob-terms" id="eob-terms-{{ p.id }}">
+    <h3>What your EOBs show</h3>
+    <p class="small muted flush">Read from this plan's {{ p.plan_year }} EOBs, in the order the insurer processed them. A term is known once at least 3 EOBs agree; MHS never changes your plan entry by itself.</p>
+    <ul class="eob-term-list">
+      {% for r in eob_rows %}{% set f = r.f %}
+      <li class="eob-term">
+        <div class="eob-term-head"><span>{{ f.label }}</span><span class="num">{{ f.text }}</span></div>
+        <div class="small">{% if f.state == 'known' %}<span class="chip good">Known</span> {{ f.claims|length }} of {{ f.shown }} EOBs agree{% elif f.state == 'at_least' %}<span class="chip idle">Not reached yet</span>{% else %}<span class="chip warn">EOBs disagree</span>{% if f.claims %} {{ f.claims|length }} of {{ f.shown }} agree{% endif %}{% endif %}
+          {% if r.fillable %}<a class="btn small" href="/coverage?year={{ p.plan_year }}&edit={{ p.id }}&use={{ f.key|urlencode }}#edit-{{ p.id }}">Use this</a>{% endif %}</div>
+        {% if f.claims or r.outliers %}
+        <details class="small"><summary>The EOBs</summary><ul>
+          {% for cid in f.claims %}{% set vc = claim_rows.get(cid) %}{% if vc %}<li class="solo"><a href="/visits/{{ vc[0].id }}">{{ vc[0].provider.name }}, {{ vc[0].visit.date|nice_date }}</a></li>{% endif %}{% endfor %}
+          {% for cid, why in r.outliers.items() %}{% set vc = claim_rows.get(cid) %}{% if vc %}<li class="warn-ink">{{ 'Ran out here?' if f.value is none else "Doesn't fit:" }} <a href="/visits/{{ vc[0].id }}">{{ vc[0].provider.name }}, {{ vc[0].visit.date|nice_date }}</a> ({{ why }})</li>{% endif %}{% endfor %}
+        </ul></details>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
   <h3 class="section">{{ p.plan_year }} so far</h3>
   {% set ls = limits[p.id] %}
   {% if ls %}
@@ -86,7 +109,7 @@
 
   <details class="section plan-edit" id="edit-{{ p.id }}" {{ 'open' if edit == p.id }}>
     <summary><strong>Edit this plan</strong> <span class="muted small">terms, deductibles and out-of-pocket maximums</span></summary>
-    <div class="section">{{ plan_editor(p, members, member_names, opts) }}</div>
+    <div class="section">{{ plan_editor(p, members, member_names, opts, prefill.get(p.id) or {}) }}</div>
   </details>
 </section>
 {% else %}

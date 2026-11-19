@@ -11,7 +11,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 
-from mhs.core import costshare, disputes, repeats
+from mhs.core import costshare, disputes, plan_inference, repeats
 from mhs.core.lines import (BUCKETS, TOLERANCE_CAP, LineMatch, add_buckets, adjustment_of, buckets,
                             claim_differences, duplicate_items, fmt, judge, pair_lines, self_pay_buckets,
                             self_pay_difference)
@@ -66,7 +66,13 @@ CHECK_NAMES = {
     "denial": "Denial explained",
     "cob": "Second insurer adds up",
     "refund": "Refund went back to the right account",
+    "terms-coinsurance": "Coinsurance matches your EOBs",
+    "terms-deductible": "Deductible matches your EOBs",
+    "terms-family_deductible": "Family deductible matches your EOBs",
+    "terms-oop": "Out-of-pocket maximum matches your EOBs",
+    "terms-family_oop": "Family out-of-pocket maximum matches your EOBs",
 }
+TERMS_PREFIX = "terms-"  # REC-15: an entered plan term against what the EOBs show (ADR-056)
 FINDING_KINDS = {
     "repeat_allowed": "Repeat service",
     "repeat_billed": "Repeat service",
@@ -84,6 +90,7 @@ FINDING_KINDS = {
     "appealable_denial": "Denial looks appealable",
     "cob_excess": "Charged more than the first insurer left",
     "refund_to_hsa": "Refund belongs in the HSA",
+    "terms_mismatch": "Plan terms differ from your EOBs",
 }
 # A failing check in this set makes the visit "Discrepancy found"; claim_filed and C6 have their own statuses.
 DISCREPANCY_CODES = {"C1", "self_pay", "C2", "duplicate", "C3", "C4", "settlement", "estimate", "plan", "denial",
@@ -119,6 +126,9 @@ class Check:
 
     @property
     def name(self) -> str:
+        if self.code.startswith(TERMS_PREFIX + "copay:"):  # one per service type
+            kind = self.code.split(":", 1)[1]
+            return f"{costshare.SERVICE_TYPES.get(kind, kind)} copay matches your EOBs"
         return CHECK_NAMES[self.code]
 
     @property
@@ -387,6 +397,7 @@ class Report:
     years: list[int]
     waiting_days: int = WAITING_DAYS
     recovered_lifetime: int = 0  # DSP-07: dollars recovered by resolved cases, every year
+    plan_terms: dict[str, plan_inference.InferredTerms] = field(default_factory=dict)  # REC-15, per plan id
 
     def visit(self, visit_id: str) -> VisitResult | None:
         return next((v for g in self.groups for v in g.visits if v.id == visit_id), None)
@@ -678,13 +689,28 @@ def build_report(ds: Dataset, year: int, today: date) -> Report:
     for n in ds.notes:
         if n.get("case_id"):
             notes_by_visit[n.get("visit_id")].append(n)
-    share = costshare.check_claims([c for cs in claims_by_visit.values() for c in cs],
-                                   {v["id"]: v for v in ds.visits}, plans)
+    primary_claims = [c for cs in claims_by_visit.values() for c in cs]
+    visit_map = {v["id"]: v for v in ds.visits}
+    plan_terms = plan_inference.infer_all(primary_claims, visit_map, plans)
+
+    def fill(terms, claim, service_type):
+        """REC-15: an empty term filled from the plan's other EOBs, never from the claim being checked."""
+        inferred = plan_terms.get(claim.get("plan_id") or "")
+        if inferred is None or not any(f.usable for f in inferred.fields.values()):
+            return terms, []
+        _, used = plan_inference.fill(terms, inferred, service_type)
+        if not used:
+            return terms, []
+        return plan_inference.fill(terms, plan_inference.infer(primary_claims, visit_map, claim["plan_id"],
+                                                               without=claim["id"]), service_type)
+
+    share = costshare.check_claims(primary_claims, visit_map, plans, fill)
     for vr in results:
         _check_visit(vr, groups[vr.group_id], is_hsa, today, share, ds.claim_codes)
         _cases(vr, notes_by_visit[vr.id], plans.get(vr.visit.get("plan_id", "")), today)
 
     _repeat_checks(results, plans)
+    _terms_checks(results, plans, plan_terms)
     for g in groups.values():
         _summarize_group(g, is_hsa, ys)
 
@@ -699,6 +725,7 @@ def build_report(ds: Dataset, year: int, today: date) -> Report:
         years=available_years(ds) or [year],
         waiting_days=ds.waiting_days,
         recovered_lifetime=disputes.recovered(ds.visits),
+        plan_terms=plan_terms,
     )
 
 
@@ -1277,6 +1304,27 @@ def _repeat_checks(results: list[VisitResult], plans: dict[str, dict]) -> None:
         if closed and check.result == "flag":
             check.result, check.closed = "closed", closed
         vr.checks.append(check)
+
+
+def _terms_checks(results: list[VisitResult], plans: dict[str, dict],
+                  plan_terms: dict[str, plan_inference.InferredTerms]) -> None:
+    """REC-15 (ADR-056): an entered term that differs from what the plan's EOBs show is a flag on the visit whose EOB
+    made the term known. Two sources disagree and MHS can't tell which is wrong, so it never changes a status."""
+    by_claim = {c["id"]: vr for vr in results for c in vr.claims}
+    for plan_id, inferred in plan_terms.items():
+        plan = plans.get(plan_id)
+        if plan is None or is_secondary(plan):
+            continue
+        for m in plan_inference.mismatches(plan, inferred):
+            vr = by_claim.get(m.inferred.anchor)
+            if vr is None:
+                continue  # the EOB that made it known is on a visit in another year's report
+            check = Check(TERMS_PREFIX + m.key, "flag", m.detail, m.amount, "terms_mismatch")
+            closed = next((e for e in vr.visit.get("closed_findings") or []
+                           if (e["code"], e["amount"]) == (check.code, check.amount)), None)
+            if closed:
+                check.result, check.closed = "closed", closed
+            vr.checks.append(check)
 
 
 def _age_balance(vr: VisitResult, today: date) -> None:

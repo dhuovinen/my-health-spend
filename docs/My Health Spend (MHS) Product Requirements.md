@@ -1,6 +1,6 @@
 # My Health Spend (MHS): Product Requirements
 
-Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026)); Nov 5, 2026 added REC-14; Nov 6, 2026 added UX-11; Nov 7, 2026 added PRV-12 and PLT-09, and made the authenticator code owner-controlled (PRV-11)
+Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026)); Nov 5, 2026 added REC-14; Nov 6, 2026 added UX-11; Nov 7, 2026 added PRV-12 and PLT-09, and made the authenticator code owner-controlled (PRV-11); Nov 19, 2026 added REC-15
 
 ## Scope and sizing
 
@@ -127,6 +127,7 @@ The decision behind these identities (Oct 15, 2026): adjudication buckets (ALC-0
 | REC-12 | Compare self-pay or cash price against the negotiated rate when both are known, and surface the cheaper option (your $105 vs. $125 case) | P2 |
 | REC-13 | Check identity 3 (settlement) per visit and per provider: every dollar of member responsibility must be paid, refunded, written off or still owed. Flag any unexplained remainder, such as a visit that drops off a statement with no matching payment | P1 |
 | REC-14 | Compare repeat services across visits. For the same person, provider group and plan within a plan year, compare each code (with its modifiers, per unit) with its most recent earlier occurrence, and flag: (a) a changed allowed amount; (b) a changed billed amount; (c) a changed member share when the allowed amount is unchanged and the deductible being met between the two visits (REC-07) doesn't explain it; (d) a changed set of codes on a visit in a series (three or more visits with the same codes). Each flag says "worth a closer look", shows both visits and the dollar difference, and names common reasons (a new contract, an added service, a different dose). It doesn't change the visit's status or the dollars at stake, because neither amount is known to be wrong. A change is flagged once, on the first visit it appears, and needs line detail on confirmed documents (ADR-045) | P2 |
+| REC-15 | Work out the plan's in-network terms from the household's own EOBs for a plan year, in the insurer's processing order: the coinsurance rate, the copay per service type, whether copays wait for the deductible, and the individual and family deductible and out-of-pocket maximum. A deductible or out-of-pocket maximum is known only once the EOBs show it reached, and is "at least" the running total before then. Each term says whether it is known (at least 3 claims agree within $1.00, and they are at least 80% of the claims that show it), a lower bound, conflicting or unknown, with the claims behind it. Claims that don't fit a known term are listed as outliers. Coverage shows the terms beside the ones the member entered, and the member may use one to fill an empty field; nothing is written to the plan without the member. An entered term that differs from a known one by more than $1.00 is a flag, not a discrepancy. Only primary-plan, in-network, non-denied, current EOB versions count. Nothing leaves the household (ADR-056) | P2 |
 
 ## Charge allocation across parties
 

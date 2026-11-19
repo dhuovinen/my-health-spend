@@ -1,6 +1,7 @@
 {% macro opt(values, selected, blank=None) %}{% if blank is not none %}<option value="">{{ blank }}</option>{% endif %}{% for o in values %}<option value="{{ o }}" {{ 'selected' if o == selected }}>{{ o|humanize }}</option>{% endfor %}{% endmacro %}
 {# The plan's terms and limits, edited on the Coverage page. Posts to /settings/plans/..., which come back to Coverage. #}
-{% macro plan_editor(p, members, member_names, opts) %}
+{% macro plan_editor(p, members, member_names, opts, prefill={}) %}
+    {% if prefill %}<div class="alert warn small">Filled in from your EOBs, not saved yet. Check it against your plan documents, then save.</div>{% endif %}
     <form method="post" action="/settings/plans/{{ p.id }}" class="plan-form">{{ csrf_input() }}
       <div class="form-grid cols-4">
         <label>Insurer<input name="insurer" value="{{ p.insurer }}" required></label>
@@ -10,12 +11,13 @@
         <label>Coverage start<input name="coverage_start" type="date" value="{{ p.coverage_start or '' }}"></label>
         <label>Coverage end<input name="coverage_end" type="date" value="{{ p.coverage_end or '' }}"></label>
         <label>Coinsurance %<input name="coinsurance_pct" type="number" step="0.1" min="0" max="100"
-          value="{{ (p.coinsurance_rate * 100)|round(1) if p.coinsurance_rate is defined and p.coinsurance_rate is not none else '' }}"></label>
+          value="{{ prefill.coinsurance_pct if prefill.coinsurance_pct else ((p.coinsurance_rate * 100)|round(1) if p.coinsurance_rate is defined and p.coinsurance_rate is not none else '') }}"></label>
         <label>Cash counts toward deductible<select name="cash_counts_toward_deductible">{{ opt(['yes', 'no'], p.cash_counts_toward_deductible, "I don't know") }}</select></label>
       </div>
       <div class="form-grid cols-4 section">
         <label class="span-2">Copays<textarea name="copays" rows="3" placeholder="specialist: 60">{% for k, v in (p.copays or {}).items() %}{{ k }}: {{ '%.2f'|format(v / 100) }}
-{% endfor %}</textarea><span class="hint">One per line. Names MHS checks: preventive, primary_care, specialist, urgent_care, emergency.</span></label>
+{% endfor %}{% if prefill.copay_line %}{{ prefill.copay_line }}
+{% endif %}</textarea><span class="hint">One per line. Names MHS checks: preventive, primary_care, specialist, urgent_care, emergency.</span></label>
         <fieldset class="checks"><legend>Members covered</legend>
           {% for m in members %}<label class="check-label"><input type="checkbox" name="member_ids" value="{{ m.id }}" {{ 'checked' if m.id in (p.member_ids or []) }}> {{ m.name }}</label>{% else %}<span class="hint">Add household members below first.</span>{% endfor %}
         </fieldset>
@@ -43,11 +45,12 @@
     </table></div>
     {% else %}<p class="muted small">No limits yet.</p>{% endif %}
     <form method="post" action="/settings/plans/{{ p.id }}/limits" class="inline section">{{ csrf_input() }}
-      <label>Type<select name="type">{{ opt(opts.limit_types, 'deductible') }}</select></label>
+      {% set pl = prefill.limit or {} %}
+      <label>Type<select name="type">{{ opt(opts.limit_types, pl.type or 'deductible') }}</select></label>
       <label>Network<select name="network">{{ opt(opts.limit_networks, 'in_network') }}</select></label>
-      <label>Level<select name="level">{{ opt(['individual', 'family'], 'individual') }}</select></label>
+      <label>Level<select name="level">{{ opt(['individual', 'family'], pl.level or 'individual') }}</select></label>
       <label>Member (individual only)<select name="member_id"><option value="">Each member</option>{% for m in members %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}</select></label>
-      <label>Amount<input name="amount" inputmode="decimal" placeholder="4500.00" required class="w-8"></label>
+      <label>Amount<input name="amount" inputmode="decimal" placeholder="4500.00" required class="w-8" value="{{ pl.amount or '' }}"></label>
       <button class="btn">Add limit</button>
     </form>
 {% endmacro %}

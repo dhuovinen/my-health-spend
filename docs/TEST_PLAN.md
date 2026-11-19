@@ -1,6 +1,6 @@
 # My Health Spend (MHS): Test Plan
 
-Oct 15, 2026 · Revised Oct 15, 2026: all conflicts and ambiguities decided; P1 = Release 1 (49 requirements). Nov 5, 2026: REC-14 added. Nov 6, 2026: UX-11 added
+Oct 15, 2026 · Revised Oct 15, 2026: all conflicts and ambiguities decided; P1 = Release 1 (49 requirements). Nov 5, 2026: REC-14 added. Nov 6, 2026: UX-11 added. Nov 19, 2026: REC-15 added
 
 **Covers:** all 102 requirements in the [Product Requirements](<My Health Spend (MHS) Product Requirements.md>) (the PRD). They are checked against [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) (agreed and built 2026-10-09) and the [Problem Statement & Plan](<My Health Spend (MHS) Problem Statement & Plan.md>).
 
@@ -455,6 +455,15 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-REC-14-8 | REC-14 | Statement with no line detail; a document not yet confirmed | Not compared; no flag | U | New |
 | TC-REC-14-9 | REC-14 | Allowed $400.00 twice, then $250.00 three times; the member closes the flag as "It was wrong" | One flag, on the first $250.00 visit; it stays closed and counts on Finding accuracy (ADR-044) | U | New |
 | TC-REC-14-10 | REC-14 | Open a flagged visit at 375px and 1280px | Both visits shown side by side in words, with the common reasons and the next step; page stays CSP-clean | I | New |
+| TC-REC-15-1 | REC-15 | Plan years generated from known terms: embedded deductible with 20% coinsurance; a copay plan; an HSA-eligible deductible-first plan; a year that reaches the out-of-pocket maximum | Every term the generated EOBs reach comes back as known with the generating value (within $1.00); the claims behind each are listed | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-2 | REC-15 | Twelve claims at 20% coinsurance and one at 30% | Coinsurance known at 20%; the 30% claim listed as an outlier with its numbers; the inferred value unchanged | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-3 | REC-15 | A plan year where the running deductible is $1,200.00 and every claim still charges deductible | Deductible "at least $1,200.00"; never used to check a claim or fill a field | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-4 | REC-15 | Only two claims show a copay for specialist visits; separately, four specialist claims at $40.00, $40.00, $60.00 and $75.00 | Unknown with two claims; conflicting with four (50% agree); neither used | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-5 | REC-15 | A secondary plan's EOB, a denied claim, an out-of-network claim and a superseded EOB version (ADR-052) added to a year | None of them changes any inferred term or its evidence count | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-6 | REC-15 | Entered coinsurance 20%; EOBs show 30% as known; terms confirmed, then not confirmed | A terms_mismatch finding that names both values and the claims, a flag either way; visit statuses and dollars at stake unchanged; closable as real or wrong and counted on Finding accuracy (ADR-044) | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-7 | REC-15 | Plan with no coinsurance rate entered; EOBs show 20% as known; one claim charges 30% | REC-06 checks the claims with 20% re-inferred without each checked claim; the 30% claim is a flag that says "using what your EOBs show"; an entered rate always wins over an inferred one | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-8 | REC-15 | Open Coverage at 375px and 1280px for a plan with inferred terms; press "Use this" on an empty field | The "What your EOBs show" column shows each term's state, claim count and a link to the claims; the field is filled in the form but nothing is saved until the member saves; terms_confirmed is not ticked; page stays CSP-clean | I | Automated: `test_plan_pages.py` |
+| TC-REC-15-9 | REC-15 | Two households with EOBs from the same plan | Each household's inferred terms come only from its own claims; no inferred term is stored as a record | I | Automated: `test_plan_pages.py` |
 
 ### 3.4 Charge allocation (ALC)
 

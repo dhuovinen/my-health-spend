@@ -62,6 +62,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 053 | Planned visits and the pre-visit estimate (PRE-01, 02, 04 to 07) as a visit field and a pure estimator; not a tenth status | 2026-11-12 | Accepted |
 | 054 | Insurer connection (ING-09) by SMART on FHIR from the application tier: one pull per consent, no stored tokens, results reviewed like an import | 2026-11-12 | Accepted |
 | 055 | Onboarding checklist (UX-09), per-member consent records (CMP-02), a published privacy notice and breach plan (CMP-01, CMP-03); the launch gate still needs an attorney | 2026-11-12 | Accepted |
+| 056 | Plan terms inferred from the household's own EOBs (REC-15): shown beside the entered terms with their evidence, never written to the plan; a disagreement is a flag | 2026-11-19 | Accepted |
 
 ## Records
 
@@ -502,3 +503,41 @@ UX-09 and the parts of the launch gate the software can carry (CMP-01 to CMP-03)
 - **The privacy notice is a page in the app** (`/privacy-notice`), written to match what the code does, with each statement pointing to its ADR, and the breach response plan is `docs/BREACH_RESPONSE.md`. Both are drafts until the healthcare privacy attorney reviews them, and say so.
 
 **Consequences.** The launch gate is still closed: attorney review, a tabletop exercise (TC-CMP-01-2) and anomaly alerts (TC-CMP-01-3) remain. Self-service sign-up is still out of scope, so onboarding starts once `mhs-admin` has created the member.
+
+### ADR-056 · Plan terms inferred from the household's own EOBs (Accepted)
+REC-15. REC-06 (ADR-050) checks each claim against the terms the member typed into Coverage, and stays a `flag` until they tick `terms_confirmed`, because wrong terms make every claim look wrong. The estimate (ADR-053) and the planned plan comparison (PRE-08) need the same terms. But every adjudicated EOB already shows how the insurer applied the plan: the allowed amount, then the deductible, copay and coinsurance it charged. Read as a year in processing order, those EOBs show the plan's terms. Proposed 2026-11-19 from a review of where the app could learn facts from its data instead of relying on what is typed in; accepted by the owner the same day.
+
+**Decision.**
+- **A pure inference over one plan year (`core/plan_inference.py`).** Its input is the claims `costshare.check_claims` already replays: in network, not denied, the current EOB version (`claim_versions()`, ADR-052), primary plan only (a secondary plan's EOBs show coordination, not its own terms; ALC-05), in `claim_order`, with the visit's member and `service_type`. Its output is an `InferredTerms` with one entry per field (individual and family deductible, individual and family out-of-pocket maximum, coinsurance rate, copay per service type, and whether copays wait for the deductible) and the claims behind each entry.
+- **Each field is read from what the EOBs show:**
+  - *Coinsurance rate:* coinsurance ÷ (allowed − deductible − copay) on each claim with coinsurance, as a fraction such as 0.2.
+  - *Copay:* the copay amount most often charged for each service type. If a copay appears only after the deductible stops being charged, the plan is read as deductible-first (ADR-050's `hdhp` rule).
+  - *Deductible and out-of-pocket maximum:* the running totals per member and per family, as in the REC-06 replay. A limit is known exactly only when the EOBs show it reached: a claim charges less deductible than the allowed amount would allow, and later claims for that person (or the family) charge none. The deductible is then the running total at that claim. The out-of-pocket maximum is found the same way, from the point where the member's share stops. Before that, the most the app can say is "at least" the running total.
+- **Each field has one of four states:** `known` (at least `MIN_AGREE` = 3 claims agree within the $1.00 tolerance, ADR-015, and they are at least `AGREE_SHARE` = 80% of the claims that show the field), `at_least` (a lower bound from the running totals), `conflicting` (claims show the field but don't agree enough) or `unknown`. The thresholds are constants in the module, so tests can change them.
+- **Claims that disagree are outliers.** A claim that disagrees with a `known` value is listed as an outlier of that field, with its numbers. An insurer mistake therefore shows up against the rest of the year instead of changing the inferred value. When an inferred value is used to check a claim (see below), it is inferred again without that claim, so a claim is never checked against a value it helped set.
+- **Shown, never written for the member (the member decides).** The Coverage page gets a "What your EOBs show" column beside each entered term, with its state, the number of claims and a link to them. A "Use this" button fills an empty field, and the member still saves it and still ticks `terms_confirmed` themselves. Imports and the worker never change a plan record because of an inference (ADR-011).
+- **A disagreement is a flag, not a fail.** When an entered term and a `known` inferred term differ by more than the tolerance, the plan gets a finding `plan` / `terms_mismatch`: "Your EOBs since <date> charge 30% coinsurance, but your plan says 20%. Either the plan entry or the insurer is wrong: check your plan documents." It is a `flag` (like REC-14, ADR-045) whether or not the terms are confirmed. Two sources disagree and the app can't tell which is wrong, so it changes no status and no dollars at stake. It can be marked "real problem" or "wrong" when closed (ADR-044) under its own finding kind, so its false-positive rate is measured from the first month.
+- **Inferred values fill gaps; they never override.** In REC-06 and the estimate, a term the member left empty may be filled by a `known` inferred value. The check then stays a `flag`, and its sentence says "using what your EOBs show". An entered term always wins. `at_least`, `conflicting` and `unknown` values are never used to compute anything.
+- **Only inside the household.** Inference reads one household's records, runs in the back-end tier on records that hold tokens only, sends nothing to the AI or anywhere else, and stores nothing. It is recomputed with the report, so a new or corrected EOB changes it at once. Nothing is pooled across households.
+
+**Testing.**
+- *Round trip:* generate plan years from known terms with `costshare.expected_share` (embedded and non-embedded deductibles, a copay plan, an HSA-eligible deductible-first plan, a year that reaches the out-of-pocket maximum), infer the terms, and get them back as `known`.
+- *One insurer mistake:* the mistaken claim is the outlier and the inferred terms don't change.
+- *Not enough evidence:* a year before the deductible is met gives `at_least`; two claims give `unknown`.
+- *Exclusions:* a secondary EOB and a superseded EOB version change nothing.
+- *Pages and findings:* a web test for the Coverage column, and a finding test for `terms_mismatch` as a `flag`.
+- *Synthetic data only:* the walkthrough and harness samples gain a plan whose entered coinsurance doesn't match its EOBs.
+
+**Consequences.**
+- *What it gives:* the plan becomes something the app checks against its own evidence. A mistyped term is caught without the member re-reading the plan documents. REC-06, the estimate and PRE-08 can say something before Settings is complete.
+- *What it can't do:* a plan year with few claims tells little (most households reach `known` coinsurance and copays within months, but a deductible only once it is met). Plans that use a different coinsurance rate per service (ADR-050 doesn't check those yet) show as `conflicting`, not wrong. Out-of-network terms aren't inferred.
+- *Requirement and tests:* REC-15 is in the Product Requirements, and TC-REC-15-1 to TC-REC-15-9 are in TEST_PLAN.md.
+
+**As built (2026-11-19).**
+- *The code:* `core/plan_inference.py` is the inference. `build_report` puts it on `Report.plan_terms`, and `_terms_checks` in `reconcile.py` adds the flags. Gap filling goes through a `fill` argument to `costshare.check_claims`, so `costshare` doesn't import the inference.
+- *Where the flag lives:* a finding has to sit on a visit to be closed (ADR-044), so a `terms_mismatch` flag sits on the visit whose EOB made the term known. That visit is the third agreeing claim for a rate or copay, or the claim where a limit ran out. Its check code is `terms-<term>` (`terms-coinsurance`, `terms-copay:specialist`). A flag whose visit is in another year's report shows only on Coverage. Whether copays wait for the deductible is shown, never flagged: a plan that isn't HSA-eligible may work either way.
+- *Where a limit ran out:* every claim that charges the deductible (or the out-of-pocket share) is a possible end point:
+  - one where it ran out partway through the claim (the deductible was less than the allowed amount);
+  - or one after which the person's next claim shows it had run out.
+  Each end point is supported by itself and the person's later claims that show it had run out, and contradicted by later claims that still charge it and by earlier end points. An end point charged again more often than not is dropped (a fully covered service isn't a met out-of-pocket maximum). The best-supported end point wins, and a tie is "no single answer", never known. The walkthrough sample's extra $300.00 deductible charge is such a tie: a $1,300.00 deductible with an early stop would look the same. So the inference stays silent, and REC-06 flags the claim against the entered $1,000.00.
+- *Too few claims:* with fewer than `MIN_AGREE` claims showing a term, it is `unknown` (TC-REC-15-4), not conflicting.

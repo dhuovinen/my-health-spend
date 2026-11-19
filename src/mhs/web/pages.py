@@ -22,7 +22,7 @@ from jinja2 import pass_context
 from markupsafe import Markup, escape
 
 from mhs import RELEASE
-from mhs.core import charges, costshare, disputes, edits, onboarding
+from mhs.core import charges, costshare, disputes, edits, onboarding, plan_inference
 from mhs.core.accuracy import NOT_CLOSABLE, TARGET, accuracy, open_findings, percent
 from mhs.core.household import NOBODY, household_totals, visits_for
 from mhs.core.lines import BUCKETS, LineMatch
@@ -1142,8 +1142,43 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
     def back_to_plan(plan: dict) -> RedirectResponse:
         return RedirectResponse(f"/coverage?year={plan['plan_year']}&saved=1#plan-{plan['id']}", status_code=303)
 
+    def eob_terms(plan: dict, inferred: plan_inference.InferredTerms | None) -> list[dict]:
+        """REC-15 (ADR-056): each term the plan's EOBs say something about, beside what the member entered, and
+        whether "Use this" may fill it (only an empty field, only from a known term)."""
+        if inferred is None:
+            return []
+        t = costshare.terms_of(plan)
+        out = []
+        for f in inferred.rows:
+            if f.key == "coinsurance":
+                entered = t.rate
+            elif f.key.startswith("copay:"):
+                entered = t.copays.get(f.key.split(":", 1)[1])
+            elif f.key == "copays_after_deductible":
+                entered = True  # shown only: whether copays wait is not a field to fill
+            else:
+                entered = getattr(t, f.key)
+            outliers = {cid: why for cid, why in f.outliers}
+            out.append({"f": f, "fillable": entered is None and f.usable, "claims": f.claims,
+                        "outliers": outliers})
+        return out
+
+    def prefill_for(plan: dict, inferred: plan_inference.InferredTerms | None, use: str) -> dict:
+        """The editor's fields filled from a known EOB term the member chose; nothing is saved until they save."""
+        row = next((r for r in eob_terms(plan, inferred) if r["f"].key == use and r["fillable"]), None)
+        if row is None:
+            return {}
+        f = row["f"]
+        if f.key == "coinsurance":
+            return {"coinsurance_pct": f"{f.value * 100:g}"}
+        if f.key.startswith("copay:"):
+            return {"copay_line": f"{f.key.split(':', 1)[1]}: {f.value / 100:.2f}"}
+        limit_type = "deductible" if "deductible" in f.key else "out_of_pocket_max"
+        return {"limit": {"type": limit_type, "level": "family" if f.key.startswith("family_") else "individual",
+                          "amount": f"{f.value / 100:.2f}"}}
+
     def coverage_page(request: Request, store: Store, year: int | None = None, edit: str = "", saved: str = "",
-                      error: str = "", status_code: int = 200) -> HTMLResponse:
+                      error: str = "", status_code: int = 200, use: str = "") -> HTMLResponse:
         """The household's insurance plans in one place: what each covers, the year's progress toward its limits,
         the claims behind that progress, and the plan's terms to edit (REC-06, ADR-050)."""
         all_plans = store.all("plan")
@@ -1159,7 +1194,13 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                     claims[c["plan_id"]].append((v, c))
         for rows in claims.values():
             rows.sort(key=lambda vc: (vc[1]["date"], vc[1]["id"]), reverse=True)
+        claim_rows = {c["id"]: (v, c) for rows in claims.values() for v, c in rows}
+        inferred = {p["id"]: eob_terms(p, report.plan_terms.get(p["id"])) for p in plans
+                    if p.get("coverage_order") not in ("secondary", "tertiary")}
+        prefill = {edit: prefill_for(next(p for p in plans if p["id"] == edit), report.plan_terms.get(edit), use)} \
+            if use and any(p["id"] == edit for p in plans) else {}
         return render(request, "coverage.html", status_code=status_code, report=report, plans=plans, years=years,
+                      inferred=inferred, claim_rows=claim_rows, prefill=prefill,
                       limits={p["id"]: [l for l in report.limits if l.plan["id"] == p["id"]] for p in plans},
                       claims=claims, edit=edit, saved=saved, error=error, members=store.all("member"),
                       member_names={m["id"]: m["name"] for m in store.all("member")},
@@ -1167,8 +1208,8 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                       opts={"limit_types": LIMIT_TYPES, "limit_networks": LIMIT_NETWORKS})
 
     @app.get("/coverage", response_class=HTMLResponse)
-    def coverage(request: Request, year: int | None = None, edit: str = "", saved: str = ""):
-        return coverage_page(request, host.store(request), year, edit, saved)
+    def coverage(request: Request, year: int | None = None, edit: str = "", saved: str = "", use: str = ""):
+        return coverage_page(request, host.store(request), year, edit, saved, use=use)
 
     def plan_or_404(store: Store, plan_id: str) -> dict:
         plan = store.get("plan", plan_id)

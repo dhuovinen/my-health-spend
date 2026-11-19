@@ -113,6 +113,7 @@
         {% elif c.result == 'flag' %}
         <div class="actions small">
         {% if c.earlier_visit %}<a class="btn small" href="/visits/{{ c.earlier_visit }}">See the earlier visit</a>{% endif %}
+        {% if c.kind == 'terms_mismatch' %}<a class="btn small" href="/coverage?year={{ v.visit.date[:4] }}#eob-terms-{{ v.visit.plan_id }}">Compare on Coverage</a>{% endif %}
         <details class="small close-finding">
           <summary>Close this</summary>
           <form method="post" action="/visits/{{ v.id }}/findings" class="inline small">{{ csrf_input() }}

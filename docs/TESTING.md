@@ -49,7 +49,7 @@ TC-PRV-07-3 (lost phone and password, recovered with a recovery code; data intac
 
 ## Repeat services and charges over time
 
-REC-14's cases are automated in `tests/test_repeats.py`, which also covers the matching rule and the Visits rows, filters and sort (ADR-046). UX-11's are in `tests/test_charges.py`, both on both apps; hover, focus and tap on a dot, and the 375px checks, are in `tests/test_ux_layout.py`. By hand, TC-UX-11-3's tap on a real phone waits for staging.
+REC-15's cases (plan terms from the EOBs, ADR-056) are automated in `tests/test_plan_inference.py` (the inference, the gap filling and the `terms_mismatch` flag) and `tests/test_plan_pages.py` (Coverage's "What your EOBs show", "Use this" and two households, on both apps). REC-14's cases are automated in `tests/test_repeats.py`, which also covers the matching rule and the Visits rows, filters and sort (ADR-046). UX-11's are in `tests/test_charges.py`, both on both apps; hover, focus and tap on a dot, and the 375px checks, are in `tests/test_ux_layout.py`. By hand, TC-UX-11-3's tap on a real phone waits for staging.
 
 ## Release 2 enhancements (ADR-050 to ADR-055)
 
