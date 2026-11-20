@@ -70,6 +70,12 @@ class ClientKey:
     audience: str = "https://appleid.apple.com"
 
 
+def setting(name: str) -> str:
+    """A sign-in setting, from MHS_<name> or its _FILE, without the line break a value pasted into Secret Manager
+    often ends with (Cloud Run hands secrets over as they were stored)."""
+    return (secret(name) or "").strip()
+
+
 APPLE = ("apple", "Apple", "https://appleid.apple.com/auth/authorize", "https://appleid.apple.com/auth/token",
          r"https://appleid\.apple\.com")
 
@@ -80,9 +86,8 @@ def apple_provider() -> SignInProvider | None:
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import ec
 
-    client_id = os.environ.get("MHS_APPLE_CLIENT_ID", "")
-    team_id, key_id = os.environ.get("MHS_APPLE_TEAM_ID", ""), os.environ.get("MHS_APPLE_KEY_ID", "")
-    pem = (secret("APPLE_PRIVATE_KEY") or "").replace("\\n", "\n")
+    client_id, team_id, key_id = (setting(f"APPLE_{name}") for name in ("CLIENT_ID", "TEAM_ID", "KEY_ID"))
+    pem = setting("APPLE_PRIVATE_KEY").replace("\\n", "\n")
     if not (client_id and team_id and key_id and pem):
         return None
     try:
@@ -114,8 +119,7 @@ def sign_in_providers() -> tuple[SignInProvider, ...]:
     )
     found = []
     for name, label, authorize, token, issuer in known:
-        client_id = os.environ.get(f"MHS_{name.upper()}_CLIENT_ID", "")
-        client_secret = secret(f"{name.upper()}_CLIENT_SECRET") or ""
+        client_id, client_secret = setting(f"{name.upper()}_CLIENT_ID"), setting(f"{name.upper()}_CLIENT_SECRET")
         if client_id and client_secret:
             found.append(SignInProvider(name, label, client_id, client_secret, authorize, token, issuer))
     apple = apple_provider()

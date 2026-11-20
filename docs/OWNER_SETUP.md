@@ -73,17 +73,30 @@ What it gives you: members sign in with a Google, Microsoft or Apple account ins
   MHS_GOOGLE_CLIENT_SECRET=…
   ```
   Open the app at `http://localhost:3063` (not 127.0.0.1), sign in with your password, and link the account on your Account page.
-- [ ] **On staging:** `deploy.sh` doesn't pass these settings yet, so add them to the running app yourself. Put each secret in Secret Manager, give the app's service account access, then update the service:
+- [ ] **On staging:** put each value in Secret Manager under the name below (client IDs too, so a deploy never needs them typed again), grant the app access, and deploy the app. `deploy.sh` turns on each provider whose secrets are all there and says which.
+
+  | Provider | Secrets |
+  | --- | --- |
+  | Google | `mhs-google-client-id`, `mhs-google-client-secret` |
+  | Microsoft | `mhs-microsoft-client-id`, `mhs-microsoft-client-secret` |
+  | Apple | `mhs-apple-client-id` (the Services ID), `mhs-apple-team-id`, `mhs-apple-key-id`, `mhs-apple-private-key` (the `.p8` file) |
+
+  Each one like this; it reads what you paste, then press Ctrl-D (a line break at the end is ignored):
   ```bash
-  gcloud secrets create mhs-google-client-secret --data-file=- --project=$PROJECT_ID
+  gcloud secrets create mhs-google-client-id --data-file=- --replication-policy=user-managed --locations=us-east4 --project=$PROJECT_ID
+  ```
+  Apple's key from its file:
+  ```bash
+  gcloud secrets create mhs-apple-private-key --data-file=AuthKey_<key id>.p8 --replication-policy=user-managed --locations=us-east4 --project=$PROJECT_ID
+  ```
+  Then grant them to the app and deploy it (with your domain, Stage 4):
+  ```bash
+  PROJECT_ID=$PROJECT_ID tools/gcp/setup.sh secrets
   ```
   ```bash
-  gcloud secrets add-iam-policy-binding mhs-google-client-secret --member=serviceAccount:mhs-app@$PROJECT_ID.iam.gserviceaccount.com --role=roles/secretmanager.secretAccessor --project=$PROJECT_ID
+  PUBLIC_URL=https://app.myhealthspend.com PROJECT_ID=$PROJECT_ID tools/gcp/deploy.sh app
   ```
-  ```bash
-  gcloud run services update mhs-app --region=us-east4 --project=$PROJECT_ID --update-env-vars=MHS_GOOGLE_CLIENT_ID=<client id>,MHS_GOOGLE_CLIENT_SECRET_FILE=/secrets/google/secret --update-secrets=/secrets/google/secret=mhs-google-client-secret:latest
-  ```
-  For Apple the settings are `MHS_APPLE_CLIENT_ID` (the Services ID), `MHS_APPLE_TEAM_ID`, `MHS_APPLE_KEY_ID` and the `.p8` file as the secret `mhs-apple-private-key`, mounted as `MHS_APPLE_PRIVATE_KEY_FILE=/secrets/apple/key` (`gcloud secrets create mhs-apple-private-key --data-file=AuthKey_<key id>.p8`). The first command reads the secret from what you type or paste; press Ctrl-D when done. A later `deploy.sh app` replaces the app's settings, so run the update again after each deploy until the script includes it.
+  To change a value later, add a version (`gcloud secrets versions add <name> --data-file=-`) and deploy the app again.
 - [ ] On the admin screen, check that the provider shows as on.
 
 ### 3b. AI reading with Claude (about 30 minutes, plus the agreement)
@@ -171,10 +184,10 @@ Write the values here, or in a private note if you'd rather not commit them. Sec
 | Region | `us-east4` unless you choose otherwise | `REGION=` | |
 | Staging app address | Printed by `deploy.sh` | OAuth and insurer redirect URIs | |
 | Google client ID | APIs & Services > Credentials | `MHS_GOOGLE_CLIENT_ID` | |
-| Google client secret (secret) | Same | `.env`, or Secret Manager `mhs-google-client-secret` | stored in: |
+| Google client secret (secret) | Same | `.env`, or Secret Manager `mhs-google-client-secret` (the ID in `mhs-google-client-id`) | stored in: |
 | Microsoft client ID | Entra > App registrations | `MHS_MICROSOFT_CLIENT_ID` | |
-| Microsoft client secret (secret) | Certificates & secrets | `.env`, or Secret Manager | stored in: |
-| Apple Services ID, Team ID, Key ID | developer.apple.com > Identifiers, Membership, Keys | `MHS_APPLE_CLIENT_ID`, `MHS_APPLE_TEAM_ID`, `MHS_APPLE_KEY_ID` | |
+| Microsoft client secret (secret) | Certificates & secrets | `.env`, or Secret Manager `mhs-microsoft-client-secret` (the ID in `mhs-microsoft-client-id`) | stored in: |
+| Apple Services ID, Team ID, Key ID | developer.apple.com > Identifiers, Membership, Keys | Secret Manager `mhs-apple-client-id`, `mhs-apple-team-id`, `mhs-apple-key-id` | |
 | Apple private key `.p8` (secret) | developer.apple.com > Keys (downloaded once) | Secret Manager `mhs-apple-private-key` | stored in: |
 | Anthropic API key (secret) | console.anthropic.com > API keys | `.env` locally; Secret Manager `mhs-anthropic-api-key` | stored in: |
 | Insurer FHIR base, authorize and token URLs | The insurer's developer documentation | `MHS_FHIR_PAYERS` | |

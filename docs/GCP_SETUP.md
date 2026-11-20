@@ -55,6 +55,8 @@ B10. **Anthropic key (only if AI extraction will be on, and only under the data-
 gcloud secrets create mhs-anthropic-api-key --data-file=- --project=mhs-staging-12345
 ```
 
+B11. **Sign-in providers (optional):** add each provider's secrets (OWNER_SETUP.md 3a lists the names: `mhs-google-client-id`, `mhs-google-client-secret` and so on), then rerun `setup.sh secrets` to grant them to `mhs-app`. `deploy.sh` turns on each provider whose secrets all exist, as environment variables from Secret Manager, so every later deploy keeps them.
+
 ## Part C: deploy (`tools/gcp/deploy.sh`)
 
 ```bash
@@ -66,7 +68,7 @@ PROJECT_ID=mhs-staging-12345 tools/gcp/deploy.sh
 | `image` | Builds `git archive HEAD` (committed files only, so `data/` can never get in) for `linux/amd64`, target `runtime`, and pushes it as `<region>-docker.pkg.dev/<project>/mhs/mhs:<commit>`. Skipped if that tag exists. |
 | `migrate` | Cloud Run job `mhs-migrate` (`mhs-stack migrate`, admin user `postgres`), then runs it |
 | `vault` | Service `mhs-vault`: ingress internal, port 8100, `vault` KMS key |
-| `app` | Service `mhs-app`: public, port 3063, `MHS_COOKIE_SECURE=1`, `MHS_PUBLIC_URL` = its run.app address (or `PUBLIC_URL`), GCS, KMS `app` key, Document AI, Presidio |
+| `app` | Service `mhs-app`: public, port 3063, `MHS_COOKIE_SECURE=1`, `MHS_PUBLIC_URL` = its run.app address (or `PUBLIC_URL`), GCS, KMS `app` key, Document AI, Presidio, and the sign-in providers whose secrets exist (B11) |
 | `worker` | Worker pool `mhs-worker` (layout rules), tag `mhs-no-egress`; `WORKER_INSTANCES=0` pauses it. Worker pools can't mount secrets as files yet, so its database password (and the AI worker's key) arrive as environment variables |
 | `admin` | Job `mhs-admin` running as `mhs-app` |
 | `worker-ai` | Only with `--with-ai` and `MHS_AI_PROXY` set (see open items) |
@@ -146,7 +148,7 @@ The domain's DNS is at Hostinger (nameservers `*.dns-parking.com`), with no CAA 
    PUBLIC_URL=https://app.myhealthspend.com PROJECT_ID=mhs-staging-12345 tools/gcp/check.sh
    ```
    Then sign in at `https://app.myhealthspend.com/signin` and post a form (any setting): a refused post means the proxy-header workaround (open item 1) didn't go out with the deploy.
-8. **Point the sign-in providers at it.** Add `https://app.myhealthspend.com/signin/with/<provider>/callback` to the Google and Microsoft clients and to Apple's Services ID (Apple also wants `app.myhealthspend.com` under "Domains and Subdomains"), and `/connect/<payer>/callback` to each insurer registration. SETUP.md "Social sign-in" has the details. Remove the `run.app` URIs once the domain works.
+8. **Point the sign-in providers at it.** Add `https://app.myhealthspend.com/signin/with/<provider>/callback` to the Google and Microsoft clients and to Apple's Services ID (Apple also wants `app.myhealthspend.com` under "Domains and Subdomains"), and `/connect/<payer>/callback` to each insurer registration. SETUP.md "Social sign-in" has the details, and OWNER_SETUP.md 3a the secrets `deploy.sh` reads. Remove the `run.app` URIs once the domain works.
 9. **Link to it from the landing page.** On the Hostinger site, "Sign in" goes to `https://app.myhealthspend.com/signin`. A short address such as `myhealthspend.com/login` can be a 301 redirect to the same place (hPanel's Redirects page for the website); that's a convenience only, the app itself is never framed or proxied.
 
 **For production: a load balancer instead.** A global external Application Load Balancer with a serverless network endpoint group for `mhs-app` and a Google-managed certificate for `app.myhealthspend.com`. At Hostinger the `app` record becomes an `A` record to the load balancer's static IP. It costs about $18 a month or more, avoids the domain-mapping latency, and lets Cloud Armor add rate limits and a web firewall in front of sign-in. Turn the app's ingress to "internal and load balancing" afterwards, so the `run.app` address no longer reaches it. Not scripted yet (open items).
@@ -173,5 +175,4 @@ Shuts down the whole project (undo within 30 days with `gcloud projects undelete
 8. **Corpus through Document AI:** `tools/extraction_accuracy.py` has no OCR option; scanned corpus documents need one to measure Document AI.
 9. **Cloud SQL's `postgres` user isn't a true superuser.** The migrations use nothing that needs one (no extensions, no `BYPASSRLS`), but the first real `migrate` run is the proof.
 10. **KMS key rotation** isn't set; old versions keep unwrapping, so turning it on later is safe.
-11. **Sign-in providers aren't passed to Cloud Run.** `deploy.sh` sets no `MHS_GOOGLE_`, `MHS_MICROSOFT_` or `MHS_APPLE_` settings, so the sign-in page shows email and password only. Until it does, add them by hand after a deploy, with the secrets in Secret Manager (`gcloud run services update mhs-app --update-env-vars=... --update-secrets=...`), and again after each `deploy.sh` run, which sets the whole environment (`--set-env-vars`, `--set-secrets`) and so drops them.
-12. **The load balancer** for production (Part F) isn't scripted.
+11. **The load balancer** for production (Part F) isn't scripted.

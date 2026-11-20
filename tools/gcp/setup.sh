@@ -151,6 +151,15 @@ secrets() {
   bind_secret mhs-vault-token mhs-vault
   bind_secret mhs-db-worker-password mhs-worker
   bind_secret mhs-db-worker-password mhs-worker-ai
+  # Sign-in provider secrets, added by the owner (OWNER_SETUP.md 3a): the app reads whichever exist.
+  local provider pair
+  for provider in "${SIGNIN_PROVIDERS[@]}"; do
+    for pair in $(signin_pairs "$provider"); do
+      if exists gcloud secrets describe "${pair#*=}" "${P[@]}"; then
+        bind_secret "${pair#*=}" mhs-app
+      fi
+    done
+  done
   if exists gcloud secrets describe "$AI_KEY_SECRET" "${P[@]}"; then
     bind_secret "$AI_KEY_SECRET" mhs-worker-ai
   else

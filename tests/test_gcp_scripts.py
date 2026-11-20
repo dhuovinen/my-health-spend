@@ -148,6 +148,12 @@ def test_setup_generates_secret_values_without_showing_them(fake_bin):
     assert "--data-file=-" in adds[0]
 
 
+def test_setup_grants_the_app_whichever_sign_in_secrets_exist(fake_bin):
+    out = run_script(fake_bin, "setup.sh", "--dry-run", "secrets").stdout.splitlines()
+    checked = {line.split()[4] for line in out if line.startswith("? gcloud secrets describe ")}
+    assert set(SIGN_IN_SECRETS) <= checked  # under --dry-run none exists, so none is granted
+
+
 def test_setup_makes_the_registry_and_the_ocr_processor(fake_bin):
     cmds = dry_run(fake_bin, "setup.sh")
     assert flag(one(cmds, "gcloud", "artifacts", "repositories", "create"), "repository-format") == "docker"
@@ -252,6 +258,43 @@ def test_deploy_services_and_jobs(fake_bin):
     admin = d["mhs-admin"]
     assert flag(admin, "service-account") == sa("mhs-app").split(":")[1]
     assert "MHS_PUBLIC_URL" in pairs(flag(admin, "set-env-vars"))
+
+
+SIGN_IN_SECRETS = {
+    "mhs-google-client-id": "MHS_GOOGLE_CLIENT_ID", "mhs-google-client-secret": "MHS_GOOGLE_CLIENT_SECRET",
+    "mhs-microsoft-client-id": "MHS_MICROSOFT_CLIENT_ID", "mhs-microsoft-client-secret": "MHS_MICROSOFT_CLIENT_SECRET",
+    "mhs-apple-client-id": "MHS_APPLE_CLIENT_ID", "mhs-apple-team-id": "MHS_APPLE_TEAM_ID",
+    "mhs-apple-key-id": "MHS_APPLE_KEY_ID", "mhs-apple-private-key": "MHS_APPLE_PRIVATE_KEY",
+}
+
+
+def test_deploy_passes_each_sign_in_provider_whose_secrets_all_exist(fake_bin):
+    """Google complete, Apple missing one: only Google's secrets reach the app, and nothing else gets them."""
+    existing = [n for n in SIGN_IN_SECRETS if n != "mhs-apple-private-key"] + ["mhs-db-app-password"]
+    result = run_script(fake_bin, "deploy.sh", "--dry-run", "app", "admin", DRY_SIGNIN_SECRETS="\n".join(existing))
+    assert "Sign-in with google: on" in result.stdout and "Sign-in with microsoft: on" in result.stdout
+    assert "Sign-in with apple: off, missing mhs-apple-private-key" in result.stdout
+    d = deploys(fake_bin, "app", "admin", DRY_SIGNIN_SECRETS="\n".join(existing))
+    mounts = pairs(flag(d["mhs-app"], "set-secrets"))
+    signin = {k: v for k, v in mounts.items() if not k.startswith("/")}
+    assert signin == {SIGN_IN_SECRETS[n]: f"{n}:latest" for n in existing[:4]}
+    assert not [k for k in pairs(flag(d["mhs-admin"], "set-secrets")) if not k.startswith("/")]
+    assert not [k for k in pairs(flag(deploys(fake_bin, "app")["mhs-app"], "set-secrets")) if not k.startswith("/")]
+
+
+def test_the_sign_in_secrets_are_the_settings_the_app_reads(monkeypatch):
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    from mhs.stack import sign_in_providers
+
+    pem = ec.generate_private_key(ec.SECP256R1()).private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode()
+    for setting in SIGN_IN_SECRETS.values():  # as pasted into Secret Manager: with a line break at the end
+        monkeypatch.setenv(setting, (pem if setting == "MHS_APPLE_PRIVATE_KEY" else "value") + "\n")
+    providers = sign_in_providers()
+    assert [p.name for p in providers] == ["google", "microsoft", "apple"]
+    assert {p.client_id for p in providers} == {"value"} and providers[0].client_secret == "value"
 
 
 def test_deploy_runs_migrate_before_the_services(fake_bin):

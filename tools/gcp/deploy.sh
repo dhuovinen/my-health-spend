@@ -6,7 +6,8 @@
 #   PROJECT_ID=<id> tools/gcp/deploy.sh [--dry-run] [--with-ai] [part ...]
 #
 # Parts, in order: image migrate vault app worker admin (default: all), plus worker-ai with --with-ai.
-# TAG (default: the commit at HEAD) picks the image; PUBLIC_URL overrides the app's run.app address.
+# TAG (default: the commit at HEAD) picks the image; PUBLIC_URL overrides the app's run.app address. Sign-in
+# providers are on when their secrets are in Secret Manager (lib.sh signin_pairs).
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 
@@ -32,6 +33,29 @@ lookups() {
   [[ -n "$DOCAI_PROCESSOR" ]] || die "no Document AI processor $DOCAI_NAME: run tools/gcp/setup.sh docai"
   APP_URL="${PUBLIC_URL:-$(service_url mhs-app)}"
   VAULT_URL="$(service_url mhs-vault)"
+  signin_lookup
+}
+
+# The sign-in providers whose secrets are all in Secret Manager, as more --set-secrets entries for the app. They
+# reach it as environment variables, so every deploy keeps them (OWNER_SETUP.md 3a).
+signin_lookup() {
+  local have provider pair missing
+  have=" $(lookup SIGNIN_SECRETS gcloud secrets list "${P[@]}" --format='value(name.basename())' | tr '\n' ' ') "
+  SIGNIN_SECRETS=""
+  for provider in "${SIGNIN_PROVIDERS[@]}"; do
+    missing=()
+    for pair in $(signin_pairs "$provider"); do
+      [[ "$have" == *" ${pair#*=} "* ]] || missing+=("${pair#*=}")
+    done
+    if [[ ${#missing[@]} -eq 0 ]]; then
+      for pair in $(signin_pairs "$provider"); do
+        SIGNIN_SECRETS+=",$pair:latest"
+      done
+      note "Sign-in with $provider: on"
+    elif [[ ${#missing[@]} -lt $(wc -w <<<"$(signin_pairs "$provider")") ]]; then
+      note "Sign-in with $provider: off, missing ${missing[*]}"
+    fi
+  done
 }
 
 db_env() {  # role
@@ -111,7 +135,7 @@ app() {
     --port="$APP_PORT" --ingress=all --allow-unauthenticated "${VPC[@]}" \
     --cpu=1 --memory=2Gi --cpu-boost --min-instances=0 --max-instances=2 --concurrency=20 --timeout=300 \
     --set-env-vars="$(app_env),MHS_VAULT_URL=$VAULT_URL,MHS_VAULT_TOKEN_FILE=$VAULT_TOKEN_FILE" \
-    --set-secrets="$DB_PASSWORD_FILE=mhs-db-app-password:latest,$VAULT_TOKEN_FILE=mhs-vault-token:latest"
+    --set-secrets="$DB_PASSWORD_FILE=mhs-db-app-password:latest,$VAULT_TOKEN_FILE=mhs-vault-token:latest$SIGNIN_SECRETS"
 }
 
 worker() {
