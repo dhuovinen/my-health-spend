@@ -187,8 +187,18 @@ def create_app(
     app.state.vault = vault
     app.mount("/static", StaticFiles(directory=WEB / "static"), name="static")
 
+    main_host = urlsplit(config.public_url).netloc.lower()
+
     @app.middleware("http")
     async def guard(request: Request, call_next):
+        # One main address (ADR-058): cookies belong to one host, so any other host is sent to the same path there.
+        # 307 is temporary (browsers don't keep it) and keeps a post a post; /health still answers on run.app.
+        host = request.headers.get("host", "").lower()
+        if config.redirect_other_hosts and host and host != main_host and request.url.path != "/health":
+            query = f"?{request.url.query}" if request.url.query else ""
+            response = RedirectResponse(f"{config.public_url}{request.url.path}{query}", status_code=307)
+            security.apply(response.headers, request.url.path)
+            return response
         # Cross-site form posts are refused outright (CSRF); the session cookie is also SameSite=Strict.
         if request.method not in ("GET", "HEAD", "OPTIONS"):
             origin = request.headers.get("origin") or request.headers.get("referer")
@@ -257,6 +267,11 @@ def create_app(
     @app.get("/health")
     def health():
         return {"ok": True}
+
+    @app.get("/auth")
+    def old_sign_in_link():
+        """The sign-in address of the site myhealthspend.com served before the app (ADR-058)."""
+        return RedirectResponse("/signin", status_code=301)
 
     @app.get("/signin", response_class=HTMLResponse)
     def signin_form(request: Request):

@@ -297,6 +297,20 @@ def test_the_sign_in_secrets_are_the_settings_the_app_reads(monkeypatch):
     assert {p.client_id for p in providers} == {"value"} and providers[0].client_secret == "value"
 
 
+def test_deploy_keeps_the_main_address_and_forwards_other_hosts(fake_bin):
+    def public_url(**env):
+        d = deploys(fake_bin, "app", "admin", **env)
+        app, admin = (pairs(flag(d[n], "set-env-vars")) for n in ("mhs-app", "mhs-admin"))
+        assert app["MHS_PUBLIC_URL"] == admin["MHS_PUBLIC_URL"]
+        assert app["MHS_REDIRECT_OTHER_HOSTS"] == "1" and "MHS_REDIRECT_OTHER_HOSTS" not in admin
+        return app["MHS_PUBLIC_URL"]
+
+    assert public_url() == "https://mhs-app-<PROJECT_NUMBER>.us-east4.run.app"  # first deploy: nothing to keep
+    assert public_url(DRY_CURRENT_PUBLIC_URL="https://myhealthspend.com") == "https://myhealthspend.com"
+    assert public_url(DRY_CURRENT_PUBLIC_URL="https://myhealthspend.com",
+                      PUBLIC_URL="https://app.myhealthspend.com") == "https://app.myhealthspend.com"
+
+
 def test_deploy_runs_migrate_before_the_services(fake_bin):
     cmds = dry_run(fake_bin, "deploy.sh")
     migrate = cmds.index(one(cmds, "gcloud", "run", "jobs", "execute", "mhs-migrate"))

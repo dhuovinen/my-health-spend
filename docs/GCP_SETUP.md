@@ -115,7 +115,7 @@ Rough monthly figures for the smallest sizes in `us-east4`, October 2026; they a
 
 ## Part F: your own domain (`app.myhealthspend.com`)
 
-The marketing site stays at `myhealthspend.com` on Hostinger, and the app gets its own subdomain, pointed at Cloud Run. Its address goes into every sign-in and insurer redirect URI, so do this before registering production OAuth clients. Browsers treat `myhealthspend.com` and `app.myhealthspend.com` as the same site, so a member who follows the landing page's "Sign in" link arrives with the app's `SameSite=Strict` session cookie intact. Don't frame the app in the Hostinger site, mask its address, or proxy it through Hostinger: Google, Microsoft and Apple refuse to show their sign-in pages in a frame, the app's policy forbids framing, and a proxy would put health data through a host outside ADR-028.
+First the app gets its own subdomain, pointed at Cloud Run, while `myhealthspend.com` keeps serving the old Hostinger site; then (ADR-058) `myhealthspend.com` itself moves to the app and becomes the main address. Its address goes into every sign-in and insurer redirect URI, so do this before registering production OAuth clients. Browsers treat `myhealthspend.com` and `app.myhealthspend.com` as the same site, so a member who follows the landing page's "Sign in" link arrives with the app's `SameSite=Strict` session cookie intact. Don't frame the app in the Hostinger site, mask its address, or proxy it through Hostinger: Google, Microsoft and Apple refuse to show their sign-in pages in a frame, the app's policy forbids framing, and a proxy would put health data through a host outside ADR-028.
 
 The domain's DNS is at Hostinger (nameservers `*.dns-parking.com`), with no CAA records, so Google can issue the certificate without any change there. The steps below use Cloud Run **domain mapping**: free, and the quickest way to a branded address, but Google still calls it a preview and says it can add latency in `us-east4`. That's fine for staging. Production should use the load balancer (see the end of this part).
 
@@ -142,14 +142,14 @@ The domain's DNS is at Hostinger (nameservers `*.dns-parking.com`), with no CAA 
    ```bash
    PUBLIC_URL=https://app.myhealthspend.com PROJECT_ID=mhs-staging-12345 tools/gcp/deploy.sh app admin
    ```
-   Pass the same `PUBLIC_URL` to every later `deploy.sh` run, or it goes back to the `run.app` address.
+   Later `deploy.sh` runs keep the address the app has unless you give a new `PUBLIC_URL` (ADR-058).
 7. **Check it:**
    ```bash
    PUBLIC_URL=https://app.myhealthspend.com PROJECT_ID=mhs-staging-12345 tools/gcp/check.sh
    ```
    Then sign in at `https://app.myhealthspend.com/signin` and post a form (any setting): a refused post means the proxy-header workaround (open item 1) didn't go out with the deploy.
 8. **Point the sign-in providers at it.** Add `https://app.myhealthspend.com/signin/with/<provider>/callback` to the Google and Microsoft clients and to Apple's Services ID (Apple also wants `app.myhealthspend.com` under "Domains and Subdomains"), and `/connect/<payer>/callback` to each insurer registration. SETUP.md "Social sign-in" has the details, and OWNER_SETUP.md 3a the secrets `deploy.sh` reads. Remove the `run.app` URIs once the domain works.
-9. **Link to it from the landing page.** On the Hostinger site, "Sign in" goes to `https://app.myhealthspend.com/signin`. A short address such as `myhealthspend.com/login` can be a 301 redirect to the same place (hPanel's Redirects page for the website); that's a convenience only, the app itself is never framed or proxied.
+9. **Link to it from the landing page** while Hostinger still serves `myhealthspend.com`: "Sign in" goes to `https://app.myhealthspend.com/signin`. Not needed once `myhealthspend.com` serves the app (below).
 
 **As set up for staging (2026-11-19).** Project `mhs-staging-512010`. The domain was verified in Search Console and the mapping created on 2026-11-19; Google then reported the `app` record as correct and the certificate as pending. The DNS records at Hostinger afterwards ([screenshot](images/hostinger-dns-2026-11-19.png)):
 
@@ -166,6 +166,31 @@ The domain's DNS is at Hostinger (nameservers `*.dns-parking.com`), with no CAA 
 Two notes from doing it:
 - In hPanel's "Add record" form, the `TXT` record's Name is `@` and its value is the whole `google-site-verification=…` string, without quotation marks. `dig` shows TXT values in quotes; they aren't part of the value.
 - The first `gcloud beta` command asks to install the "gcloud Beta Commands" component; answer yes.
+
+**Then `myhealthspend.com` itself (ADR-058).** The bare domain and `www` point at the app too, the Hostinger website is retired (DNS stays at Hostinger), and `https://myhealthspend.com` becomes the main address. The app forwards every other address (`app.`, `www.`, `run.app`) to it, because cookies belong to one address: a sign-in that starts on one and returns to another fails. Do it after sign-in works on `app.myhealthspend.com`, with both callbacks already registered with each provider (OWNER_SETUP.md 3a).
+
+1. **Deploy the forwarding code first** (any commit from 2026-11-20 on; the address doesn't change yet):
+   ```bash
+   PROJECT_ID=mhs-staging-12345 tools/gcp/deploy.sh
+   ```
+2. **Map both names to the app** (the domain is already verified):
+   ```bash
+   gcloud beta run domain-mappings create --service=mhs-app --domain=myhealthspend.com --region=us-east4 --project=mhs-staging-12345
+   ```
+   ```bash
+   gcloud beta run domain-mappings create --service=mhs-app --domain=www.myhealthspend.com --region=us-east4 --project=mhs-staging-12345
+   ```
+   Each prints the records it needs. For the bare domain they are four `A` and four `AAAA` records (Google's are usually `216.239.32.21`, `216.239.34.21`, `216.239.36.21`, `216.239.38.21` and `2001:4860:4802:32::15`, `…:34::15`, `…:36::15`, `…:38::15`; use what the command prints). For `www`, a `CNAME` to `ghs.googlehosted.com`.
+3. **Stop Hostinger serving the site.** The `ALIAS @` and `CNAME www` records point at Hostinger's CDN for the website. In hPanel, turn off the website's CDN (or remove the website) first, so Hostinger doesn't put the records back. From here until step 5, `myhealthspend.com` shows an error; `app.myhealthspend.com` is unaffected.
+4. **Change the records at Hostinger** (DNS / Nameservers): delete `ALIAS @` and `CNAME www`; add the four `A` and four `AAAA` records with name `@`, and `CNAME www` → `ghs.googlehosted.com`. Keep the `TXT` verification record and `CNAME app`. TTL 300 while you set up.
+5. **Wait for both certificates** (usually under an hour): `describe` each mapping until `Ready` is `True`, or until `curl -sS -o /dev/null -w "%{http_code}\n" https://myhealthspend.com/health` prints `200`.
+6. **Make it the main address:**
+   ```bash
+   PUBLIC_URL=https://myhealthspend.com PROJECT_ID=mhs-staging-12345 tools/gcp/deploy.sh app admin
+   ```
+   Then `https://app.myhealthspend.com/...` and `https://www.myhealthspend.com/...` forward to the same page on `https://myhealthspend.com`, and the old site's `/auth` goes to the sign-in page.
+7. **Check:** `PUBLIC_URL=https://myhealthspend.com PROJECT_ID=mhs-staging-12345 tools/gcp/check.sh`, then sign in with a password, with Google and with Microsoft at `https://myhealthspend.com/signin`.
+8. **Google branding links** can now use `https://myhealthspend.com` (OWNER_SETUP.md 3a).
 
 **For production: a load balancer instead.** A global external Application Load Balancer with a serverless network endpoint group for `mhs-app` and a Google-managed certificate for `app.myhealthspend.com`. At Hostinger the `app` record becomes an `A` record to the load balancer's static IP. It costs about $18 a month or more, avoids the domain-mapping latency, and lets Cloud Armor add rate limits and a web firewall in front of sign-in. Turn the app's ingress to "internal and load balancing" afterwards, so the `run.app` address no longer reaches it. Not scripted yet (open items).
 

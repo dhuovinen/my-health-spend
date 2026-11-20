@@ -141,6 +141,7 @@ class AppConfig:
     ocr_engine: str = "stub"  # MHS_OCR_ENGINE: stub | tesseract (ingest/ocr.py)
     scrubber: str = "rules"  # MHS_SCRUBBER: rules | presidio (ingest/scrub.py)
     public_url: str = f"http://127.0.0.1:{APP_PORT}"  # MHS_PUBLIC_URL: where members open the app (enrolment links)
+    redirect_other_hosts: bool = False  # MHS_REDIRECT_OTHER_HOSTS=1: forward other hosts to public_url (ADR-058)
     sign_in_providers: tuple[SignInProvider, ...] = ()  # MHS_GOOGLE_..., MHS_MICROSOFT_..., MHS_APPLE_...
     fhir_payers: tuple = ()  # MHS_FHIR_PAYERS: insurers members can connect to (ING-09, ADR-054)
 
@@ -161,6 +162,7 @@ def load_app_config() -> AppConfig:
         ocr_engine=os.environ.get("MHS_OCR_ENGINE", "stub"),
         scrubber=os.environ.get("MHS_SCRUBBER", "rules"),
         public_url=os.environ.get("MHS_PUBLIC_URL", f"http://127.0.0.1:{port}").rstrip("/"),
+        redirect_other_hosts=os.environ.get("MHS_REDIRECT_OTHER_HOSTS", "") == "1",
         sign_in_providers=sign_in_providers(),
         fhir_payers=fhir_payers(),
     )

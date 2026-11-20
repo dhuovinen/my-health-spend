@@ -64,6 +64,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 055 | Onboarding checklist (UX-09), per-member consent records (CMP-02), a published privacy notice and breach plan (CMP-01, CMP-03); the launch gate still needs an attorney | 2026-11-12 | Accepted |
 | 056 | Plan terms inferred from the household's own EOBs (REC-15): shown beside the entered terms with their evidence, never written to the plan; a disagreement is a flag | 2026-11-19 | Accepted |
 | 057 | Sign in with Apple as the third social sign-in provider (PRV-12): no scopes, so the callback stays a GET; a short-lived signed client secret; no PKCE | 2026-11-19 | Accepted |
+| 058 | myhealthspend.com served by the app on Cloud Run, retiring the Hostinger website; one main address, every other host forwarded to it | 2026-11-20 | Accepted |
 
 ## Records
 
@@ -558,3 +559,14 @@ PRV-12, ADR-048. The owner asked on 2026-11-19 to add Apple as the third sign-in
 - Apple's guidelines ask for the "Sign in with Apple" or "Continue with Apple" wording; the button says "Continue with Apple", like the others.
 
 **Consequences.** Apple learns when a member signs in, as Google and Microsoft do, and nothing about their records. Not yet tried against Apple itself: the first real test is on staging, and if Apple refuses `response_mode=query` without a scope, the fallback is the POST callback described above, as a new decision. Test case: TC-PRV-12-7.
+
+### ADR-058 · One main address: myhealthspend.com served by the app (Accepted)
+The app went live on staging at `app.myhealthspend.com` on 2026-11-19 (GCP_SETUP.md Part F), with `myhealthspend.com` still serving the old Lovable site from Hostinger, including a `/auth` page that is Lovable's own sign-in. The app already has the landing page for signed-out visitors (ADR-047). On 2026-11-20 the owner chose to serve `myhealthspend.com` from the app as well, after Google and Microsoft sign-in worked.
+
+**Decision.**
+- **`myhealthspend.com` and `www.myhealthspend.com` point at the app** (Cloud Run domain mappings; `A`/`AAAA` records for the bare domain and a `CNAME` for `www` at Hostinger). The Hostinger website is retired; the domain's DNS stays at Hostinger. `app.myhealthspend.com` keeps working.
+- **One main address, `MHS_PUBLIC_URL`.** Cookies belong to one host, so a sign-in that starts on one address and returns to another fails, and a member signed in on one is signed out on the other. With `MHS_REDIRECT_OTHER_HOSTS=1` (set by `deploy.sh` for the app service), a request for any other host is forwarded to the same path on the main address with a 307: temporary, so browsers don't remember it and the main address can still change, and it keeps a form post a post. `/health` isn't forwarded, so the `run.app` address still answers checks. The main address becomes `https://myhealthspend.com` once its certificate is issued; until then it stays `https://app.myhealthspend.com`.
+- **`/auth` goes to `/signin`**, so links to the old site's sign-in still arrive.
+- **`deploy.sh` keeps the deployed main address** when `PUBLIC_URL` isn't given, rather than falling back to the `run.app` address, which with forwarding on would send every visitor there.
+
+**Consequences.** Every OAuth client lists both `https://myhealthspend.com/...` and `https://app.myhealthspend.com/...` callbacks, so the main address can move between them with a redeploy only. Google's branding links (home page, privacy policy) can use `myhealthspend.com` once it serves the app. Production gets its own decision on whether staging keeps these names.

@@ -221,6 +221,7 @@ This runs the whole suite in the `tests` container: unit and integration tests o
 | `MHS_OBJECTS_DIR` | app | Folder for encrypted originals |
 | `MHS_HOST`, `MHS_APP_PORT` | app | Bind address (0.0.0.0 inside the container) and port (3063) |
 | `MHS_PUBLIC_URL` | app, mhs-admin | Where members open the app, for the enrolment links `mhs-admin` prints (`http://127.0.0.1:3063`) |
+| `MHS_REDIRECT_OTHER_HOSTS` | app | `1` forwards a request for any other host to the same path on `MHS_PUBLIC_URL` (307; not `/health`), so there is one address for cookies and sign-in (ADR-058). Off by default; `deploy.sh` turns it on |
 | `MHS_COOKIE_SECURE` | app | `1` once served over TLS (staging, production) |
 | `MHS_SESSION_IDLE_MINUTES`, `MHS_SESSION_MAX_HOURS` | app | Session timeouts (15, 12) |
 | `MHS_WORKER_POLL_SECONDS` | worker | Queue poll interval (1) |
