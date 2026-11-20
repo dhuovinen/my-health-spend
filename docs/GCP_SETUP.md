@@ -163,9 +163,23 @@ The domain's DNS is at Hostinger (nameservers `*.dns-parking.com`), with no CAA 
 
 ![DNS records at Hostinger, 2026-11-19](images/hostinger-dns-2026-11-19.png)
 
-Two notes from doing it:
+**Then for `myhealthspend.com` itself (2026-11-20, ADR-058).** Both mappings created (`myhealthspend.com`, `www.myhealthspend.com`). Hostinger hosted the old site as a Node.js website with its CDN already off, so the records it served by then were an `A` and an `AAAA` to its own server and `www` → `myhealthspend.com`, not the `ALIAS`/CDN records above. The change, made through the Hostinger API (DNS server `hostinger-dns-mcp`), replaced only those three; Hostinger keeps a snapshot of the old zone:
+
+| Type | Name | Content | TTL |
+| --- | --- | --- | --- |
+| A | `@` | `216.239.32.21`, `216.239.34.21`, `216.239.36.21`, `216.239.38.21` | 300 |
+| AAAA | `@` | `2001:4860:4802:32::15`, `…:34::15`, `…:36::15`, `…:38::15` | 300 |
+| CNAME | `www` | `ghs.googlehosted.com` | 300 |
+| CNAME | `app` | `ghs.googlehosted.com` (unchanged) | 300 |
+| TXT | `@` | `google-site-verification=c8DO_…9ACc` (unchanged) | 14400 |
+| A | `ftp` | `82.25.87.209` (unchanged, Hostinger's) | 1800 |
+
+The old website still exists at Hostinger but nothing reaches it; remove it, or cancel its hosting, when you no longer want it.
+
+Notes from doing it:
 - In hPanel's "Add record" form, the `TXT` record's Name is `@` and its value is the whole `google-site-verification=…` string, without quotation marks. `dig` shows TXT values in quotes; they aren't part of the value.
 - The first `gcloud beta` command asks to install the "gcloud Beta Commands" component; answer yes.
+- The Hostinger connection for Claude Code comes in parts: `hostinger-hosting-mcp` has the website tools but no DNS; DNS is `hostinger-dns-mcp`, added with the same API token (hPanel, Account, API).
 
 **Then `myhealthspend.com` itself (ADR-058).** The bare domain and `www` point at the app too, the Hostinger website is retired (DNS stays at Hostinger), and `https://myhealthspend.com` becomes the main address. The app forwards every other address (`app.`, `www.`, `run.app`) to it, because cookies belong to one address: a sign-in that starts on one and returns to another fails. Do it after sign-in works on `app.myhealthspend.com`, with both callbacks already registered with each provider (OWNER_SETUP.md 3a).
 
