@@ -48,9 +48,9 @@ Read GCP_SETUP.md's **open items** before starting. Two of them affect the steps
 
 Each feature is off until it's configured. Set it up locally first, then on staging.
 
-### 3a. Sign in with Google or Microsoft (about 30 minutes each)
+### 3a. Sign in with Google, Microsoft or Apple (about 30 minutes each)
 
-What it gives you: members sign in with a Google or Microsoft account instead of a password. The authenticator code still applies while it's required.
+What it gives you: members sign in with a Google, Microsoft or Apple account instead of a password. The authenticator code still applies while it's required.
 
 - [ ] **Google:** console.cloud.google.com > APIs & Services.
   1. Configure the OAuth consent screen: External, app name "My Health Spend", your support email, scopes `openid` and `email` only.
@@ -61,6 +61,11 @@ What it gives you: members sign in with a Google or Microsoft account instead of
   1. Supported accounts: accounts in any organizational directory and personal Microsoft accounts.
   2. Redirect URI: Web, `http://localhost:3063/signin/with/microsoft/callback` (Microsoft accepts plain `http` only for `localhost`) and the staging address.
   3. Certificates & secrets > New client secret. Copy the Application (client) ID and the secret's value.
+- [ ] **Apple** (ADR-057; needs the paid Apple Developer Program, and a real HTTPS domain, so staging only: do Stage 4 first): developer.apple.com > Certificates, Identifiers & Profiles.
+  1. Identifiers > App IDs: register one (for example `com.myhealthspend.app`) with "Sign in with Apple" ticked.
+  2. Identifiers > Services IDs: register one (for example `com.myhealthspend.web`). This is the client ID. Tick "Sign in with Apple", Configure: primary App ID from step 1, "Domains and Subdomains" `app.myhealthspend.com`, "Return URLs" `https://app.myhealthspend.com/signin/with/apple/callback`. Apple accepts neither `localhost` nor plain `http`.
+  3. Keys: create a key with "Sign in with Apple" ticked, linked to the App ID. Download the `.p8` file (only once) and note its Key ID. Your Team ID is under Membership details.
+  4. No scopes to choose: the app asks Apple for none, so members aren't asked to share or hide their email.
 - [ ] **Locally:** add these lines to `.env` beside `compose.yaml`, then restart with `docker compose up -d app`:
   ```bash
   MHS_PUBLIC_URL=http://localhost:3063
@@ -78,7 +83,7 @@ What it gives you: members sign in with a Google or Microsoft account instead of
   ```bash
   gcloud run services update mhs-app --region=us-east4 --project=$PROJECT_ID --update-env-vars=MHS_GOOGLE_CLIENT_ID=<client id>,MHS_GOOGLE_CLIENT_SECRET_FILE=/secrets/google/secret --update-secrets=/secrets/google/secret=mhs-google-client-secret:latest
   ```
-  The first command reads the secret from what you type or paste; press Ctrl-D when done. A later `deploy.sh app` replaces the app's settings, so run the update again after each deploy until the script includes it.
+  For Apple the settings are `MHS_APPLE_CLIENT_ID` (the Services ID), `MHS_APPLE_TEAM_ID`, `MHS_APPLE_KEY_ID` and the `.p8` file as the secret `mhs-apple-private-key`, mounted as `MHS_APPLE_PRIVATE_KEY_FILE=/secrets/apple/key` (`gcloud secrets create mhs-apple-private-key --data-file=AuthKey_<key id>.p8`). The first command reads the secret from what you type or paste; press Ctrl-D when done. A later `deploy.sh app` replaces the app's settings, so run the update again after each deploy until the script includes it.
 - [ ] On the admin screen, check that the provider shows as on.
 
 ### 3b. AI reading with Claude (about 30 minutes, plus the agreement)
@@ -121,9 +126,10 @@ Locally the `mail` container already takes forwarded email (ADR-039). Elsewhere 
 
 What it gives you: a stable address instead of the `run.app` one. That address goes into every OAuth and insurer redirect URI, so set the domain up before you register production clients.
 
-- [ ] Buy a domain from any registrar.
-- [ ] Map a subdomain to the app with Cloud Run domain mappings or a load balancer. Google issues the certificate.
-- [ ] Deploy with `PUBLIC_URL=https://app.<your domain>`, and add the new redirect URIs to each OAuth client and insurer registration.
+- [ ] `myhealthspend.com` is registered, with its DNS at Hostinger; the landing page stays there.
+- [ ] Point `app.myhealthspend.com` at the app: GCP_SETUP.md Part F, step by step (domain proof, mapping, the `CNAME` at Hostinger, the certificate). A load balancer replaces the mapping for production.
+- [ ] Deploy with `PUBLIC_URL=https://app.myhealthspend.com`, and add the new redirect URIs to each OAuth client, Apple's Services ID and each insurer registration.
+- [ ] Point the landing page's "Sign in" at `https://app.myhealthspend.com/signin`.
 
 ## Stage 5: production and the launch gate (before any real data, and before anyone else uses it)
 
@@ -141,7 +147,7 @@ What it gives you: a stable address instead of the `run.app` one. That address g
 - [ ] A **tabletop exercise** of the breach plan (TC-CMP-01-2).
 - [ ] **Turn on "Consent before collection"** on the admin screen.
 - [ ] Decide whether the authenticator code must stay on for other households (ADR-049); the recommendation is yes.
-- [ ] **Google OAuth app verification** and Microsoft publisher verification, if social sign-in is on.
+- [ ] **Google OAuth app verification** and Microsoft publisher verification, if social sign-in is on. Apple has no review for web sign-in, but its button wording rules apply.
 - [ ] Production registrations with each insurer you connect.
 
 ## Stage 6: the acceptance month (phase 1.6)
@@ -168,9 +174,11 @@ Write the values here, or in a private note if you'd rather not commit them. Sec
 | Google client secret (secret) | Same | `.env`, or Secret Manager `mhs-google-client-secret` | stored in: |
 | Microsoft client ID | Entra > App registrations | `MHS_MICROSOFT_CLIENT_ID` | |
 | Microsoft client secret (secret) | Certificates & secrets | `.env`, or Secret Manager | stored in: |
+| Apple Services ID, Team ID, Key ID | developer.apple.com > Identifiers, Membership, Keys | `MHS_APPLE_CLIENT_ID`, `MHS_APPLE_TEAM_ID`, `MHS_APPLE_KEY_ID` | |
+| Apple private key `.p8` (secret) | developer.apple.com > Keys (downloaded once) | Secret Manager `mhs-apple-private-key` | stored in: |
 | Anthropic API key (secret) | console.anthropic.com > API keys | `.env` locally; Secret Manager `mhs-anthropic-api-key` | stored in: |
 | Insurer FHIR base, authorize and token URLs | The insurer's developer documentation | `MHS_FHIR_PAYERS` | |
 | Insurer client ID | The insurer's developer portal | `MHS_FHIR_PAYERS` | |
 | Insurer client secret (secret) | Same | `MHS_FHIR_<NAME>_SECRET` | stored in: |
-| Domain | Your registrar | `PUBLIC_URL` | |
+| Domain | `myhealthspend.com` (Hostinger); the app at `app.myhealthspend.com` | `PUBLIC_URL` | |
 | Vault backup passphrase (secret) | You choose it | Prompted at backup time; kept offline | stored in: |

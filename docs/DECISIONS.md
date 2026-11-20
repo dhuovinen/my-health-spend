@@ -63,6 +63,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 054 | Insurer connection (ING-09) by SMART on FHIR from the application tier: one pull per consent, no stored tokens, results reviewed like an import | 2026-11-12 | Accepted |
 | 055 | Onboarding checklist (UX-09), per-member consent records (CMP-02), a published privacy notice and breach plan (CMP-01, CMP-03); the launch gate still needs an attorney | 2026-11-12 | Accepted |
 | 056 | Plan terms inferred from the household's own EOBs (REC-15): shown beside the entered terms with their evidence, never written to the plan; a disagreement is a flag | 2026-11-19 | Accepted |
+| 057 | Sign in with Apple as the third social sign-in provider (PRV-12): no scopes, so the callback stays a GET; a short-lived signed client secret; no PKCE | 2026-11-19 | Accepted |
 
 ## Records
 
@@ -403,7 +404,7 @@ The landing page was built separately in Lovable (`dhuovinen/health-reconciler`:
 
 **Consequences.** A signed-out visitor to `/` no longer lands on the sign-in form; it's one click away. Sign-out and expired sessions on data routes still go to `/signin`. The FAQ describes access as early access by invitation, because members are created by `mhs-admin`; change it when sign-up exists. The Lovable repository stops being the source for this page.
 
-### ADR-048 · Social sign-in (Accepted)
+### ADR-048 · Social sign-in (Accepted; Apple added by ADR-057)
 PRV-12: the owner wants Google and Microsoft sign-in, first built in the Lovable project on Supabase and never tried with a real account. Proposed by the build session on 2026-11-07 and accepted by the owner the same day, with the authenticator change in ADR-049 and self-service sign-up expected later (B-24).
 
 **Decision.**
@@ -421,7 +422,7 @@ PRV-12: the owner wants Google and Microsoft sign-in, first built in the Lovable
 - The app tier needs outbound HTTPS to the two providers' token endpoints. On compose it already has a route out; check Google Cloud when staging exists.
 - New OAuth clients for each environment, with secrets in the `secrets` volume and Secret Manager. Lovable's are managed by Lovable and can't be carried over.
 
-**Consequences.** Google or Microsoft learns each time a member signs in to a medical billing app, though nothing about their records; the sign-in page should say so, and a member can keep using a password. Losing the provider account removes that route only. Open: whether to add Apple; whether the privacy notice (CMP) and ADR-028 need updating before real households use it. Test cases: TC-PRV-12-1 to TC-PRV-12-6.
+**Consequences.** Google or Microsoft learns each time a member signs in to a medical billing app, though nothing about their records; the sign-in page should say so, and a member can keep using a password. Losing the provider account removes that route only. Open: whether the privacy notice (CMP) and ADR-028 need updating before real households use it. Test cases: TC-PRV-12-1 to TC-PRV-12-6.
 
 ### ADR-049 · Admin screen and an owner-controlled authenticator (Accepted)
 PLT-09. The owner wants one screen to manage features and toggles, and wants the authenticator code to be optional, under the owner's control. Owner's decision on 2026-11-07; the build session proposed the details and the owner accepted them the same day ("build it"), with the two open points settled as below.
@@ -541,3 +542,19 @@ REC-15. REC-06 (ADR-050) checks each claim against the terms the member typed in
   - or one after which the person's next claim shows it had run out.
   Each end point is supported by itself and the person's later claims that show it had run out, and contradicted by later claims that still charge it and by earlier end points. An end point charged again more often than not is dropped (a fully covered service isn't a met out-of-pocket maximum). The best-supported end point wins, and a tie is "no single answer", never known. The walkthrough sample's extra $300.00 deductible charge is such a tie: a $1,300.00 deductible with an early stop would look the same. So the inference stays silent, and REC-06 flags the claim against the entered $1,000.00.
 - *Too few claims:* with fewer than `MIN_AGREE` claims showing a term, it is `unknown` (TC-REC-15-4), not conflicting.
+
+### ADR-057 · Sign in with Apple (Accepted)
+PRV-12, ADR-048. The owner asked on 2026-11-19 to add Apple as the third sign-in provider, beside Google and Microsoft, and accepted it the same day. Apple follows OpenID Connect closely enough for ADR-048's flow, with three differences the build has to allow for.
+
+**Decision.**
+- **Apple is a third `SignInProvider`, through the same routes and checks.** Same callback, same `state` and `nonce`, same claim checks (issuer `https://appleid.apple.com`, audience the Services ID). Linked by provider and subject, never email; invitation only; the code still follows (ADR-049); the owner can turn it off on the admin screen.
+- **No scopes, so the callback stays a GET.** Apple sends the result as a cross-site POST (`response_mode=form_post`) whenever the name or email scope is asked for. The flow's `state` cookie is `SameSite=Lax`, which a browser doesn't send on a cross-site POST, and the app refuses posts from another origin. Taking the POST would mean a `SameSite=None` cookie and an exception to the origin check. The app doesn't need the email (links are by subject), so it asks for no scope and `response_mode=query`. That is even less data than ADR-048's `openid email`: Apple gives the subject only, and the member isn't asked whether to hide their email. The Account page shows "Apple: linked" without an address.
+- **The client secret is a signed token, made per request.** Apple's client secret is an ES256 JWT signed with a private key from the Apple Developer account (issuer the Team ID, subject the Services ID, audience `https://appleid.apple.com`). The app makes one for each token request, valid for 5 minutes, with the `cryptography` library it already has, rather than storing a six-month token that would need replacing. The private key is a secret like the others (`MHS_APPLE_PRIVATE_KEY` or `_FILE`, Secret Manager on Google Cloud). A key that isn't a P-256 private key stops the app at start, with the variable's name only.
+- **No PKCE for Apple.** Apple doesn't document PKCE, and common client libraries leave it off for Apple. `state`, the `nonce` in the ID token and the confidential client secret still bind the code to this flow. Google and Microsoft keep PKCE.
+
+**What the build allows for.**
+- Apple accepts only HTTPS redirect URIs on a domain registered with the Services ID, never `localhost`. So Apple can't be tried on the local stack; it needs staging on its own domain (`app.myhealthspend.com`, GCP_SETUP.md "Custom domain"). Tests use the fake provider in Apple's shape.
+- It needs a paid Apple Developer Program membership.
+- Apple's guidelines ask for the "Sign in with Apple" or "Continue with Apple" wording; the button says "Continue with Apple", like the others.
+
+**Consequences.** Apple learns when a member signs in, as Google and Microsoft do, and nothing about their records. Not yet tried against Apple itself: the first real test is on staging, and if Apple refuses `response_mode=query` without a scope, the fallback is the POST callback described above, as a new decision. Test case: TC-PRV-12-7.

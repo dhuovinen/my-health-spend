@@ -670,7 +670,8 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-PRV-12-3 | PRV-12 | Callback with a wrong or missing `state`, a wrong `nonce`, a reused code, or a token for another client or issuer | Refused; no session started | S | New |
 | TC-PRV-12-4 | PRV-12 | Member links, then unlinks, a provider account on the Account page; provider account's email changes | Link needs a passed sign-in; after unlinking that account no longer signs in; a changed email still matches the same member | S | New |
 | TC-PRV-12-5 | PRV-12 | Full sign-in in a real browser under the app's policy and SameSite=Strict session cookie | Reaches the provider and returns to the code step with the session intact; no policy violations | S | New |
-| TC-PRV-12-6 | PRV-12 | Delete the member; check the access log and what is requested from the provider | Links deleted with the member; sign-ins and link changes logged; only `openid` and `email` requested | S | New |
+| TC-PRV-12-6 | PRV-12 | Delete the member; check the access log and what is requested from the provider | Links deleted with the member; sign-ins and link changes logged; only `openid` and `email` requested (Apple: nothing) | S | New |
+| TC-PRV-12-7 | PRV-12 | Link and sign in with Apple (ADR-057), against the fake provider in Apple's shape; then on staging against Apple itself | No scope, no PKCE and `response_mode=query` sent; the client secret is an ES256 token from the configured key, valid minutes only; linked with no email; code still asked for; another Apple subject gets no access; a bad key stops the app | S | New |
 
 ### 3.10 Regulatory and compliance (CMP)
 
@@ -810,7 +811,7 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | PRV-09 | P2 | 1, 2, 3 (3) | IS | — | — |
 | PRV-10 | P2 | 1, 2 (2) | SU | — | — |
 | PRV-11 | P1 | 1, 2, 3 (3) | S | — | — |
-| PRV-12 | P2 | 1, 2, 3, 4, 5, 6 (6) | S | — | — |
+| PRV-12 | P2 | 1, 2, 3, 4, 5, 6, 7 (7) | S | — | — |
 | CMP-01 | P2 | 1, 2, 3 (3) | MRS | — | — |
 | CMP-02 | P2 | 1, 2, 3 (3) | EI | — | — |
 | CMP-03 | P2 | 1, 2 (2) | R | — | — |

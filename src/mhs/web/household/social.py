@@ -1,8 +1,10 @@
-"""Social sign-in routes (PRV-12, ADR-048): Google and Microsoft in place of the password, for members who linked them.
+"""Social sign-in routes (PRV-12, ADR-048, ADR-057): Google, Microsoft or Apple in place of the password, for members
+who linked them.
 
 The session cookie is SameSite=Strict, so it isn't sent on a redirect chain that started at the provider. That's why
 the callback shows the next page itself instead of redirecting to it, why the flow's cookie is Lax, and why linking
-records the member when the flow starts rather than reading the session on the way back.
+records the member when the flow starts rather than reading the session on the way back. It's also why Apple is asked
+for no scope: a scope makes Apple come back with a cross-site POST, which the Lax cookie doesn't survive.
 """
 
 import secrets

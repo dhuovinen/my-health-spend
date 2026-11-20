@@ -10,7 +10,7 @@ import base64
 import os
 import secrets
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote
 
@@ -54,6 +54,46 @@ class SignInProvider:
     authorize_url: str
     token_url: str
     issuer: str
+    scopes: str = "openid email"  # empty: no scope parameter at all (Apple, ADR-057)
+    pkce: bool = True
+    response_mode: str = ""  # sent only when set
+    key: "ClientKey | None" = field(default=None, repr=False)  # the client secret is a token signed with this key
+
+
+@dataclass(frozen=True)
+class ClientKey:
+    """A provider whose client secret is a short-lived ES256 token rather than a fixed string (Apple, ADR-057)."""
+
+    team_id: str
+    key_id: str
+    private_key_pem: str = field(repr=False)
+    audience: str = "https://appleid.apple.com"
+
+
+APPLE = ("apple", "Apple", "https://appleid.apple.com/auth/authorize", "https://appleid.apple.com/auth/token",
+         r"https://appleid\.apple\.com")
+
+
+def apple_provider() -> SignInProvider | None:
+    """Sign in with Apple, when its Services ID, Team ID, key ID and private key are all set (ADR-057). It asks for no
+    scope, so Apple answers with a plain redirect (`response_mode=query`) that the Lax flow cookie survives."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    client_id = os.environ.get("MHS_APPLE_CLIENT_ID", "")
+    team_id, key_id = os.environ.get("MHS_APPLE_TEAM_ID", ""), os.environ.get("MHS_APPLE_KEY_ID", "")
+    pem = (secret("APPLE_PRIVATE_KEY") or "").replace("\\n", "\n")
+    if not (client_id and team_id and key_id and pem):
+        return None
+    try:
+        key = serialization.load_pem_private_key(pem.encode(), password=None)
+    except (ValueError, TypeError):
+        key = None
+    if not isinstance(key, ec.EllipticCurvePrivateKey) or key.curve.name != "secp256r1":
+        raise ValueError("MHS_APPLE_PRIVATE_KEY isn't a P-256 private key (the .p8 file from Apple)")
+    name, label, authorize, token, issuer = APPLE
+    return SignInProvider(name, label, client_id, "", authorize, token, issuer, scopes="", pkce=False,
+                          response_mode="query", key=ClientKey(team_id, key_id, pem))
 
 
 def fhir_payers() -> tuple:
@@ -78,7 +118,8 @@ def sign_in_providers() -> tuple[SignInProvider, ...]:
         client_secret = secret(f"{name.upper()}_CLIENT_SECRET") or ""
         if client_id and client_secret:
             found.append(SignInProvider(name, label, client_id, client_secret, authorize, token, issuer))
-    return tuple(found)
+    apple = apple_provider()
+    return tuple(found) + ((apple,) if apple else ())
 
 
 @dataclass(frozen=True)
@@ -96,7 +137,7 @@ class AppConfig:
     ocr_engine: str = "stub"  # MHS_OCR_ENGINE: stub | tesseract (ingest/ocr.py)
     scrubber: str = "rules"  # MHS_SCRUBBER: rules | presidio (ingest/scrub.py)
     public_url: str = f"http://127.0.0.1:{APP_PORT}"  # MHS_PUBLIC_URL: where members open the app (enrolment links)
-    sign_in_providers: tuple[SignInProvider, ...] = ()  # MHS_GOOGLE_CLIENT_ID and _SECRET, MHS_MICROSOFT_...
+    sign_in_providers: tuple[SignInProvider, ...] = ()  # MHS_GOOGLE_..., MHS_MICROSOFT_..., MHS_APPLE_...
     fhir_payers: tuple = ()  # MHS_FHIR_PAYERS: insurers members can connect to (ING-09, ADR-054)
 
 

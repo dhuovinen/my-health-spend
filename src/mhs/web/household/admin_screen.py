@@ -14,7 +14,7 @@ from mhs.stack import AppConfig
 from mhs.web.household.auth import Accounts, Session
 from mhs.web.household.features import REQUIRE_CODE, REQUIRE_CONSENT, Features, provider_setting
 
-KNOWN_PROVIDERS = {"google": "Google", "microsoft": "Microsoft"}
+KNOWN_PROVIDERS = {"google": "Google", "microsoft": "Microsoft", "apple": "Apple"}
 
 
 def add_admin_screen(app: FastAPI, *, config: AppConfig, accounts: Accounts, features: Features, db: Database,

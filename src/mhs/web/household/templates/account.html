@@ -23,7 +23,7 @@
   <p><a class="btn" href="/consent">Your consent</a> <a class="btn" href="/privacy-notice">Privacy notice</a></p>
   {% if sign_in_providers %}
   <h2 class="section">Sign-in accounts</h2>
-  <p class="muted small">Link an account to use it in place of your password. {{ sign_in_providers | map(attribute="label") | join(" or ") }} will know you signed in here, but sees nothing of your records.</p>
+  <p class="muted small">Link an account to use it in place of your password. {% set labels = sign_in_providers | map(attribute="label") | list %}{{ labels[:-1] | join(", ") ~ " or " ~ labels[-1] if labels | length > 1 else labels[0] }} will know you signed in here, but sees nothing of your records.</p>
   {% for p in sign_in_providers %}
   <div class="social-link">
     {% if p.name in identities %}

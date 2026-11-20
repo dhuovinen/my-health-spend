@@ -1,17 +1,29 @@
-"""Social sign-in (PRV-12, ADR-048): TC-PRV-12-1 to 4 and 6. TC-PRV-12-5 is in test_ux_layout.py, in a real browser."""
+"""Social sign-in (PRV-12, ADR-048): TC-PRV-12-1 to 4, 6 and 7 (Apple, ADR-057). TC-PRV-12-5 is in test_ux_layout.py, in
+a real browser."""
 
 import time
 from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 
-from mhs.stack import SignInProvider, sign_in_providers
+from mhs.stack import ClientKey, SignInProvider, sign_in_providers
 from mhs.web.household import oidc
 from tests.conftest import csrf_from
-from tests.fake_oidc import CLIENT_ID, ISSUER, FakeProvider
+from tests.fake_oidc import (
+    CLIENT_ID,
+    ISSUER,
+    KEY_ID,
+    TEAM_ID,
+    FakeProvider,
+    signed_secret_is_valid,
+)
 
 PROVIDER = SignInProvider("google", "Google", CLIENT_ID, "x", "https://a", "https://t", r"https://issuer\.example\.test")
+APPLE_SETTINGS = ("MHS_APPLE_CLIENT_ID", "MHS_APPLE_TEAM_ID", "MHS_APPLE_KEY_ID", "MHS_APPLE_PRIVATE_KEY",
+                  "MHS_APPLE_PRIVATE_KEY_FILE")
 GOOD = {"iss": ISSUER, "aud": CLIENT_ID, "sub": "s", "nonce": "n", "exp": 2_000_000_000, "email": "e@example.test"}
 
 
@@ -33,6 +45,8 @@ def test_tc_prv_12_3_bad_claims_are_refused(change):
 
 
 def test_real_issuers_match_only_their_own_provider(monkeypatch):
+    for name in APPLE_SETTINGS:
+        monkeypatch.delenv(name, raising=False)
     for name in ("GOOGLE", "MICROSOFT"):
         monkeypatch.setenv(f"MHS_{name}_CLIENT_ID", "id")
         monkeypatch.setenv(f"MHS_{name}_CLIENT_SECRET", "secret")
@@ -51,8 +65,77 @@ def test_real_issuers_match_only_their_own_provider(monkeypatch):
 def test_a_provider_without_a_client_stays_off(monkeypatch):
     for name in ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"):
         monkeypatch.delenv(f"MHS_{name}", raising=False)
+    for name in APPLE_SETTINGS:
+        monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("MHS_GOOGLE_CLIENT_ID", "id-without-secret")
+    monkeypatch.setenv("MHS_APPLE_CLIENT_ID", "id-without-key")
     assert sign_in_providers() == ()
+
+
+# --- Apple (ADR-057): no scope, no PKCE, a signed client secret ---
+
+def p8(key=None) -> str:
+    key = key or ec.generate_private_key(ec.SECP256R1())
+    return key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                             serialization.NoEncryption()).decode()
+
+
+def apple_env(monkeypatch, pem: str):
+    for name in ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"):
+        monkeypatch.delenv(f"MHS_{name}", raising=False)
+    monkeypatch.delenv("MHS_APPLE_PRIVATE_KEY_FILE", raising=False)
+    monkeypatch.setenv("MHS_APPLE_CLIENT_ID", "com.example.mhs.web")
+    monkeypatch.setenv("MHS_APPLE_TEAM_ID", TEAM_ID)
+    monkeypatch.setenv("MHS_APPLE_KEY_ID", KEY_ID)
+    monkeypatch.setenv("MHS_APPLE_PRIVATE_KEY", pem)
+
+
+def test_apple_is_configured_from_its_four_settings(monkeypatch):
+    apple_env(monkeypatch, p8().replace("\n", "\\n"))  # one line, as an environment variable often is
+    (apple,) = sign_in_providers()
+    assert (apple.name, apple.label, apple.scopes, apple.pkce) == ("apple", "Apple", "", False)
+    assert apple.response_mode == "query"
+    assert apple.key.team_id == TEAM_ID and apple.key.audience == "https://appleid.apple.com"
+    assert "PRIVATE KEY" not in repr(apple)
+    claims = {**GOOD, "aud": "com.example.mhs.web"}
+    assert oidc.check_claims({**claims, "iss": "https://appleid.apple.com"}, apple, "n", now=1)
+    for issuer in ("https://accounts.google.com", "https://appleid.apple.com.evil.test", "appleid.apple.com"):
+        with pytest.raises(oidc.OidcError):
+            oidc.check_claims({**claims, "iss": issuer}, apple, "n", now=1)
+    monkeypatch.delenv("MHS_APPLE_KEY_ID")
+    assert sign_in_providers() == ()
+
+
+@pytest.mark.parametrize("pem", ["not a key", p8(ec.generate_private_key(ec.SECP384R1()))])
+def test_a_bad_apple_key_stops_the_app_without_showing_it(monkeypatch, pem):
+    apple_env(monkeypatch, pem)
+    with pytest.raises(ValueError, match="MHS_APPLE_PRIVATE_KEY") as raised:
+        sign_in_providers()
+    assert pem not in str(raised.value)
+
+
+def test_apple_client_secret_is_a_fresh_short_lived_signed_token():
+    key = ec.generate_private_key(ec.SECP256R1())
+    apple = SignInProvider("apple", "Apple", CLIENT_ID, "", "https://a", "https://t", "x", scopes="", pkce=False,
+                           response_mode="query", key=ClientKey(TEAM_ID, KEY_ID, p8(key), audience=ISSUER))
+    secret = oidc.client_secret(apple, now=1_000)
+    assert signed_secret_is_valid(secret, key.public_key(), now=1_000)
+    assert not signed_secret_is_valid(secret, key.public_key(), now=1_000 + oidc.CLIENT_SECRET_SECONDS)  # expired
+    assert not signed_secret_is_valid(secret, ec.generate_private_key(ec.SECP256R1()).public_key(), now=1_000)
+    head, body, signature = secret.split(".")
+    assert not signed_secret_is_valid(f"{head}.{body}x.{signature}", key.public_key(), now=1_000)
+    assert oidc.client_secret(PROVIDER) == "x"  # the others keep their fixed secret
+
+
+def test_apple_is_asked_for_no_scope_and_no_pkce():
+    apple = SignInProvider("apple", "Apple", "id", "", "https://appleid.apple.com/auth/authorize", "https://t", "x",
+                           scopes="", pkce=False, response_mode="query")
+    query = parse_qs(urlsplit(oidc.authorization_url(apple, oidc.Flow.new("apple"), "https://app/cb")).query)
+    assert set(query) == {"response_type", "client_id", "redirect_uri", "state", "nonce", "response_mode"}
+    assert query["response_mode"] == ["query"]
+    google = parse_qs(urlsplit(oidc.authorization_url(PROVIDER, oidc.Flow.new("google"), "https://app/cb")).query)
+    assert google["scope"] == ["openid email"] and google["code_challenge_method"] == ["S256"]
+    assert "response_mode" not in google
 
 
 # --- the flow ---
@@ -69,11 +152,11 @@ def social(make_household, provider):
     return make_household(sign_in_providers=(provider.as_provider(),), public_url="http://testserver")
 
 
-def back_from_provider(client, path="/signin/with/google"):
+def back_from_provider(client, path="/signin/with/google", scope="openid email"):
     """Follow the browser's round trip by hand: to the provider, and back to the callback."""
     r = client.get(path, follow_redirects=False)
     assert r.status_code == 303, r.text
-    assert "openid email" == parse_qs(urlsplit(r.headers["location"]).query)["scope"][0]
+    assert scope == parse_qs(urlsplit(r.headers["location"]).query).get("scope", [""])[0]
     back = httpx.get(r.headers["location"]).headers["location"]
     return back, client.get(back, follow_redirects=False)
 
@@ -260,3 +343,33 @@ def test_a_non_ascii_state_is_refused_not_a_crash(social):
     c = social.client()
     c.get("/signin/with/google", follow_redirects=False)
     assert c.get("/signin/with/google/callback?code=x&state=%C3%A9", follow_redirects=False).status_code == 400
+
+
+@pytest.mark.postgres
+def test_tc_prv_12_7_apple_links_and_signs_in_with_no_email(make_household, provider):
+    apple = make_household(sign_in_providers=(provider.as_apple(),), public_url="http://testserver")
+    who = apple.enrol()
+    member = apple.sign_in(who)
+    assert 'href="/account/link/apple"' in member.get("/account").text
+    _, r = back_from_provider(member, "/account/link/apple", scope="")
+    assert r.status_code == 200 and "Your Apple account is linked" in r.text
+    assert "Apple: linked</span>" in member.get("/account").text  # no address: Apple wasn't asked for one
+    page = apple.client().get("/signin").text
+    assert 'href="/signin/with/apple"' in page and "Continue with Apple" in page
+    c = apple.client()
+    _, r = back_from_provider(c, "/signin/with/apple", scope="")
+    assert r.status_code == 200 and "Verification code" in r.text
+    provider.subject = "someone-else"
+    _, r = back_from_provider(apple.client(), "/signin/with/apple", scope="")
+    assert r.status_code == 401
+
+
+@pytest.mark.postgres
+def test_three_providers_read_as_a_list(make_household, provider):
+    other = FakeProvider()
+    try:
+        three = (provider.as_provider(), provider.as_provider("microsoft", "Microsoft"), other.as_apple())
+        social = make_household(sign_in_providers=three, public_url="http://testserver")
+        assert "Google, Microsoft or Apple will know you signed in here" in social.client().get("/signin").text
+    finally:
+        other.stop()

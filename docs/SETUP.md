@@ -134,11 +134,22 @@ Without `--yes` it only previews (counts, warnings, member edits it would keep);
 
 ### Social sign-in (optional, off until a client is set)
 
-Members can sign in with a Google or Microsoft account they've linked on their Account page (PRV-12, ADR-048). Accounts are still created by invitation, and the authenticator code still applies while it's required (below). Each provider stays hidden until its client is set, and an owner can turn a configured one off on the admin screen.
+Members can sign in with a Google, Microsoft or Apple account they've linked on their Account page (PRV-12, ADR-048, ADR-057). Accounts are still created by invitation, and the authenticator code still applies while it's required (below). Each provider stays hidden until its client is set, and an owner can turn a configured one off on the admin screen.
 
 1. Create a web OAuth client: Google Cloud console (APIs & Services, Credentials), Microsoft Entra admin center (App registrations; accounts in any organization and personal accounts). Ask only for `openid` and `email`.
 2. Add the redirect URI, which must match `MHS_PUBLIC_URL` exactly: `<MHS_PUBLIC_URL>/signin/with/google/callback` and `<MHS_PUBLIC_URL>/signin/with/microsoft/callback`. Microsoft accepts plain `http` only for `localhost`, so set `MHS_PUBLIC_URL=http://localhost:3063` to try it locally.
 3. Put `MHS_GOOGLE_CLIENT_ID` and `MHS_GOOGLE_CLIENT_SECRET`, or the `MHS_MICROSOFT_` pair, in a git-ignored `.env` beside `compose.yaml` and restart the app. A secret can also be a file (`MHS_GOOGLE_CLIENT_SECRET_FILE`), and in Google Cloud it belongs in Secret Manager.
+
+**Apple** works differently (ADR-057). Its client is a Services ID with a private key rather than a secret, it accepts only an HTTPS redirect URI on a domain registered with it (never `localhost`), so it can be tried on staging only, and the app asks it for no scope, so it gets no email and the Account page shows "Apple: linked" without one. Set all four, and the app makes a short-lived client secret from the key for each sign-in:
+
+| Setting | Value |
+| --- | --- |
+| `MHS_APPLE_CLIENT_ID` | The Services ID, for example `com.myhealthspend.web` |
+| `MHS_APPLE_TEAM_ID` | Your 10-character Team ID |
+| `MHS_APPLE_KEY_ID` | The 10-character ID of the "Sign in with Apple" key |
+| `MHS_APPLE_PRIVATE_KEY_FILE` (or `MHS_APPLE_PRIVATE_KEY`) | The downloaded `.p8` file; the variable form may write line breaks as `\n` |
+
+The redirect URI to register on the Services ID is `<MHS_PUBLIC_URL>/signin/with/apple/callback`, with the app's host under "Domains and Subdomains". A key that isn't a P-256 private key stops the app at start. OWNER_SETUP.md 3a has the Apple Developer steps.
 
 Use a separate client per environment. Before real households use it, check each provider's button branding rules and complete Google's app verification.
 
