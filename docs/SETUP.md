@@ -132,6 +132,55 @@ docker compose exec app mhs-admin import --household <household-id> /srv/mhs/sam
 
 Without `--yes` it only previews (counts, warnings, member edits it would keep); add `--yes` to save, and `--replace-edits` to let the file overwrite edits made in the app. For a file on your machine, copy its folder in first with `docker compose cp <folder> app:/tmp/import`. The local stack is for synthetic data only (ARCHITECTURE.md "Environments"). Settings has a "Download settings.json" link for `tools/build_ingest.py`.
 
+### Social sign-in (optional, off until a client is set)
+
+Members can sign in with a Google, Microsoft or Apple account they've linked on their Account page (PRV-12, ADR-048, ADR-057). Accounts are still created by invitation, and the authenticator code still applies while it's required (below). Each provider stays hidden until its client is set, and an owner can turn a configured one off on the admin screen.
+
+1. Create a web OAuth client: Google Cloud console (APIs & Services, Credentials), Microsoft Entra admin center (App registrations; accounts in any organization and personal accounts). Ask only for `openid` and `email`.
+2. Add the redirect URI, which must match `MHS_PUBLIC_URL` exactly: `<MHS_PUBLIC_URL>/signin/with/google/callback` and `<MHS_PUBLIC_URL>/signin/with/microsoft/callback`. Microsoft accepts plain `http` only for `localhost`, so set `MHS_PUBLIC_URL=http://localhost:3063` to try it locally.
+3. Put `MHS_GOOGLE_CLIENT_ID` and `MHS_GOOGLE_CLIENT_SECRET`, or the `MHS_MICROSOFT_` pair, in a git-ignored `.env` beside `compose.yaml` and restart the app. A secret can also be a file (`MHS_GOOGLE_CLIENT_SECRET_FILE`), and in Google Cloud it belongs in Secret Manager.
+
+**Apple** works differently (ADR-057). Its client is a Services ID with a private key rather than a secret, it accepts only an HTTPS redirect URI on a domain registered with it (never `localhost`), so it can be tried on staging only, and the app asks it for no scope, so it gets no email and the Account page shows "Apple: linked" without one. Set all four, and the app makes a short-lived client secret from the key for each sign-in:
+
+| Setting | Value |
+| --- | --- |
+| `MHS_APPLE_CLIENT_ID` | The Services ID, for example `com.myhealthspend.web` |
+| `MHS_APPLE_TEAM_ID` | Your 10-character Team ID |
+| `MHS_APPLE_KEY_ID` | The 10-character ID of the "Sign in with Apple" key |
+| `MHS_APPLE_PRIVATE_KEY_FILE` (or `MHS_APPLE_PRIVATE_KEY`) | The downloaded `.p8` file; the variable form may write line breaks as `\n` |
+
+The redirect URI to register on the Services ID is `<MHS_PUBLIC_URL>/signin/with/apple/callback`, with the app's host under "Domains and Subdomains". A key that isn't a P-256 private key stops the app at start. OWNER_SETUP.md 3a has the Apple Developer steps.
+
+Use a separate client per environment. Before real households use it, check each provider's button branding rules and complete Google's app verification.
+
+### Admin screen and the authenticator code (PLT-09, ADR-049)
+
+An owner manages settings for the whole service at `/admin` (linked from their Account page): whether members must enter the authenticator code, and which configured sign-in providers are on. It shows counts and who changed what, never a household's records. Make yourself an owner (your sessions end, so sign in again):
+
+```bash
+docker compose exec app mhs-admin owner --email you@example.com on
+```
+
+The code starts required. Turning it off on the screen takes your current code; owners always enter it whatever the setting. Turning it back on signs out everyone who came in without a code, and a member who has only ever signed in without one is shown their authenticator at the next sign-in. If the screen is unavailable:
+
+```bash
+docker compose exec app mhs-admin require-code status
+```
+
+### Insurer connection (optional, off until a payer is set; ING-09, ADR-054)
+
+Members can bring in claims from their insurer's Patient Access API (SMART on FHIR, CARIN Blue Button) from Uploads, "Connect your insurer". Each payer needs its own app registration, and a redirect URI of `<MHS_PUBLIC_URL>/connect/<name>/callback`, so real payers work from staging on. Set `MHS_FHIR_PAYERS` in the git-ignored `.env`, inline or as a path the app container can read:
+
+```bash
+MHS_FHIR_PAYERS='[{"name": "examplehealth", "label": "Example Health", "fhir_base": "https://fhir.example.com/r4", "authorize_url": "https://auth.example.com/authorize", "token_url": "https://auth.example.com/token", "client_id": "your-client-id"}]'
+```
+
+A confidential client's secret goes in `MHS_FHIR_<NAME>_SECRET` (or `_FILE`), or as `client_secret` in the entry. MHS keeps no payer token: each pull is one sign-in at the payer, and what was read is shown as an import preview before anything is saved. The household needs the year's plan in Settings first; claims for a year without one are left out with a note.
+
+### Consent and the privacy notice (CMP-02, CMP-03, ADR-055)
+
+Each member gives or withdraws consent at `/consent` (linked from their Account page): collection of their documents and claims, and separately sharing with the AI service. The privacy notice is public at `/privacy-notice`; it and `docs/BREACH_RESPONSE.md` are drafts until the privacy attorney reviews them. Requiring consent before any upload, import, forwarded email or insurer pull is an owner toggle on the admin screen ("Consent before collection"), off by default for your own household; turn it on before inviting anyone else. A member who withdrew is refused either way, and withdrawing AI sharing turns AI extraction off for the household.
+
 ### Export and delete your data (PRV-09)
 
 "Your data" in the header: download everything as a ZIP (records as an ingest file with its files, uploads, identifiers, a manifest), or delete your account. Deleting the last member's account deletes the household's records, files and identifiers at once (ADR-038). The same page shows the access log: who viewed or changed which record, and when (ADR-040).
@@ -172,6 +221,7 @@ This runs the whole suite in the `tests` container: unit and integration tests o
 | `MHS_OBJECTS_DIR` | app | Folder for encrypted originals |
 | `MHS_HOST`, `MHS_APP_PORT` | app | Bind address (0.0.0.0 inside the container) and port (3063) |
 | `MHS_PUBLIC_URL` | app, mhs-admin | Where members open the app, for the enrolment links `mhs-admin` prints (`http://127.0.0.1:3063`) |
+| `MHS_REDIRECT_OTHER_HOSTS` | app | `1` forwards a request for any other host to the same path on `MHS_PUBLIC_URL` (307; not `/health`), so there is one address for cookies and sign-in (ADR-058). Off by default; `deploy.sh` turns it on |
 | `MHS_COOKIE_SECURE` | app | `1` once served over TLS (staging, production) |
 | `MHS_SESSION_IDLE_MINUTES`, `MHS_SESSION_MAX_HOURS` | app | Session timeouts (15, 12) |
 | `MHS_WORKER_POLL_SECONDS` | worker | Queue poll interval (1) |

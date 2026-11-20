@@ -10,7 +10,7 @@ import base64
 import os
 import secrets
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote
 
@@ -44,6 +44,89 @@ def database_url(user_env: str = "DB_USER") -> str:
 
 
 @dataclass(frozen=True)
+class SignInProvider:
+    """A social sign-in provider (PRV-12, ADR-048). `issuer` is a regular expression for the ID token's iss claim."""
+
+    name: str
+    label: str
+    client_id: str
+    client_secret: str
+    authorize_url: str
+    token_url: str
+    issuer: str
+    scopes: str = "openid email"  # empty: no scope parameter at all (Apple, ADR-057)
+    pkce: bool = True
+    response_mode: str = ""  # sent only when set
+    key: "ClientKey | None" = field(default=None, repr=False)  # the client secret is a token signed with this key
+
+
+@dataclass(frozen=True)
+class ClientKey:
+    """A provider whose client secret is a short-lived ES256 token rather than a fixed string (Apple, ADR-057)."""
+
+    team_id: str
+    key_id: str
+    private_key_pem: str = field(repr=False)
+    audience: str = "https://appleid.apple.com"
+
+
+def setting(name: str) -> str:
+    """A sign-in setting, from MHS_<name> or its _FILE, without the line break a value pasted into Secret Manager
+    often ends with (Cloud Run hands secrets over as they were stored)."""
+    return (secret(name) or "").strip()
+
+
+APPLE = ("apple", "Apple", "https://appleid.apple.com/auth/authorize", "https://appleid.apple.com/auth/token",
+         r"https://appleid\.apple\.com")
+
+
+def apple_provider() -> SignInProvider | None:
+    """Sign in with Apple, when its Services ID, Team ID, key ID and private key are all set (ADR-057). It asks for no
+    scope, so Apple answers with a plain redirect (`response_mode=query`) that the Lax flow cookie survives."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    client_id, team_id, key_id = (setting(f"APPLE_{name}") for name in ("CLIENT_ID", "TEAM_ID", "KEY_ID"))
+    pem = setting("APPLE_PRIVATE_KEY").replace("\\n", "\n")
+    if not (client_id and team_id and key_id and pem):
+        return None
+    try:
+        key = serialization.load_pem_private_key(pem.encode(), password=None)
+    except (ValueError, TypeError):
+        key = None
+    if not isinstance(key, ec.EllipticCurvePrivateKey) or key.curve.name != "secp256r1":
+        raise ValueError("MHS_APPLE_PRIVATE_KEY isn't a P-256 private key (the .p8 file from Apple)")
+    name, label, authorize, token, issuer = APPLE
+    return SignInProvider(name, label, client_id, "", authorize, token, issuer, scopes="", pkce=False,
+                          response_mode="query", key=ClientKey(team_id, key_id, pem))
+
+
+def fhir_payers() -> tuple:
+    """The insurers configured for the Patient Access connection (ADR-054); none unless MHS_FHIR_PAYERS names a file."""
+    from mhs.ingest.fhir import payers_from
+
+    return payers_from(os.environ.get("MHS_FHIR_PAYERS"), secret)
+
+
+def sign_in_providers() -> tuple[SignInProvider, ...]:
+    """The providers with a client configured; a provider with none doesn't appear on the sign-in page."""
+    known = (
+        ("google", "Google", "https://accounts.google.com/o/oauth2/v2/auth", "https://oauth2.googleapis.com/token",
+         r"(https://)?accounts\.google\.com"),
+        ("microsoft", "Microsoft", "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+         "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+         r"https://login\.microsoftonline\.com/[0-9a-f-]{36}/v2\.0"),
+    )
+    found = []
+    for name, label, authorize, token, issuer in known:
+        client_id, client_secret = setting(f"{name.upper()}_CLIENT_ID"), setting(f"{name.upper()}_CLIENT_SECRET")
+        if client_id and client_secret:
+            found.append(SignInProvider(name, label, client_id, client_secret, authorize, token, issuer))
+    apple = apple_provider()
+    return tuple(found) + ((apple,) if apple else ())
+
+
+@dataclass(frozen=True)
 class AppConfig:
     database_url: str
     objects_dir: Path
@@ -58,6 +141,9 @@ class AppConfig:
     ocr_engine: str = "stub"  # MHS_OCR_ENGINE: stub | tesseract (ingest/ocr.py)
     scrubber: str = "rules"  # MHS_SCRUBBER: rules | presidio (ingest/scrub.py)
     public_url: str = f"http://127.0.0.1:{APP_PORT}"  # MHS_PUBLIC_URL: where members open the app (enrolment links)
+    redirect_other_hosts: bool = False  # MHS_REDIRECT_OTHER_HOSTS=1: forward other hosts to public_url (ADR-058)
+    sign_in_providers: tuple[SignInProvider, ...] = ()  # MHS_GOOGLE_..., MHS_MICROSOFT_..., MHS_APPLE_...
+    fhir_payers: tuple = ()  # MHS_FHIR_PAYERS: insurers members can connect to (ING-09, ADR-054)
 
 
 def load_app_config() -> AppConfig:
@@ -76,6 +162,9 @@ def load_app_config() -> AppConfig:
         ocr_engine=os.environ.get("MHS_OCR_ENGINE", "stub"),
         scrubber=os.environ.get("MHS_SCRUBBER", "rules"),
         public_url=os.environ.get("MHS_PUBLIC_URL", f"http://127.0.0.1:{port}").rstrip("/"),
+        redirect_other_hosts=os.environ.get("MHS_REDIRECT_OTHER_HOSTS", "") == "1",
+        sign_in_providers=sign_in_providers(),
+        fhir_payers=fhir_payers(),
     )
 
 

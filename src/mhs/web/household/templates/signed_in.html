@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Signed in{% endblock %}
+{% block content %}
+<section class="card auth">
+  <h1>Signed in</h1>
+  <p class="alert good">You're signed in with your {{ provider.label }} account.</p>
+  {# A link the member follows, not a redirect: the session cookie isn't sent on a chain that began at the provider. #}
+  <p><a class="btn primary" href="/">Continue</a></p>
+</section>
+{% endblock %}

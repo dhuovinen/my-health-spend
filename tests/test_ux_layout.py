@@ -30,9 +30,9 @@ playwright_api = pytest.importorskip("playwright.sync_api")
 PHONE = {"viewport": {"width": 375, "height": 812}, "is_mobile": True, "has_touch": True, "device_scale_factor": 2}
 DESKTOP = {"viewport": {"width": 1280, "height": 800}}
 PAGES = ["/", "/visits?year=2026", f"/visits/{PEDS}", "/visits/v-2026-04-02-pcp", "/household", "/providers",
-         "/providers/prov-peds?year=2026", "/tax?year=2026", "/settings", "/help", "/accuracy", "/import", "/cases",
-         f"/visits/{PEDS}/cases/case-1"]
-R1_PAGES = ["/uploads", "/account", "/data"]
+         "/providers/prov-peds?year=2026", "/charges?year=2026", "/tax?year=2026", "/settings", "/help", "/accuracy", "/import", "/cases",
+         f"/visits/{PEDS}/cases/case-1", "/plan", "/coverage"]
+R1_PAGES = ["/uploads", "/account", "/data", "/admin", "/consent", "/connect"]
 SHOTS = os.environ.get("MHS_UX_SCREENSHOTS")
 
 # Every visible control smaller than 44px in either direction, except a link inside running text.
@@ -66,13 +66,19 @@ def browser():
         b.close()
 
 
+def free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
 class Server:
     """Serve an ASGI app on a free loopback port in a thread, for the browser."""
 
-    def __init__(self, app):
-        with socket.socket() as s:
-            s.bind(("127.0.0.1", 0))
-            self.port = s.getsockname()[1]
+    def __init__(self, app, port: int | None = None):
+        if port is None:
+            port = free_port()
+        self.port = port
         self.server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=self.port, log_level="warning"))
         self.thread = threading.Thread(target=self.server.run, daemon=True)
         self.thread.start()
@@ -110,6 +116,8 @@ def release1(household, app_db, worker_db):
     r1.client = member.client
     import_household(r1)
     open_case(r1.client)
+    with app_db.tx() as c:  # an owner, so the admin screen is in the phone check (PLT-09)
+        c.execute("UPDATE app.members SET is_owner = true")
     server = Server(household.app)
     cookie = {"name": "mhs_session", "value": member.client.client.cookies.get("mhs_session"), "url": server.url}
     yield server, [cookie], member
@@ -186,6 +194,105 @@ def test_tc_ux_10_1_phone_release0(browser, release0):
     context.close()
 
 
+def check_landing(browser, server, path: str, device: dict, label: str):
+    """ADR-047: the landing page in a real browser, under the app's own policy, with nobody signed in."""
+    context, page = open_page(browser, server, [], device)
+    violations = []
+    page.on("console", lambda m: violations.append(m.text) if m.type == "error" else None)
+    assert page.goto(server.url + path).status == 200
+    assert page.locator("h1").inner_text().startswith("Medical bills.")
+    assert page.evaluate("() => document.querySelector('.hero-photo').naturalWidth") == 1920
+    assert page.evaluate("() => document.fonts.check('16px \"DM Sans\"')")
+    assert page.evaluate(SIDEWAYS) <= 0
+    assert page.evaluate(SMALL_TARGETS) == []
+    # nothing below the guide's 12px
+    small = page.evaluate("""() => [...document.querySelectorAll('body *')]
+        .filter(e => e.childNodes.length && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()))
+        .filter(e => parseFloat(getComputedStyle(e).fontSize) < 12).map(e => e.textContent.slice(0, 40))""")
+    assert small == []
+    shot(page, f"{label}-landing.png")
+    # the sample review opens, its tabs switch and it closes
+    dialog = page.locator("dialog#sample")
+    assert not dialog.is_visible()
+    page.locator("[data-open-sample]").first.click()
+    assert dialog.is_visible() and page.locator("#panel-overview").is_visible()
+    assert page.evaluate(SMALL_TARGETS) == []
+    shot(page, f"{label}-landing-sample.png")
+    page.locator("#tab-finding").click()
+    assert page.locator("#panel-finding").is_visible() and not page.locator("#panel-overview").is_visible()
+    page.keyboard.press("ArrowRight")
+    assert page.locator("#panel-next").is_visible()
+    page.locator("[data-close-sample]").click()
+    assert not dialog.is_visible()
+    assert violations == []
+    context.close()
+
+
+def test_landing_page_phone_and_desktop_release0(browser, release0):
+    server, _ = release0
+    check_landing(browser, server, "/welcome", PHONE, "r0-375")
+    check_landing(browser, server, "/welcome", DESKTOP, "r0-1280")
+
+
+@pytest.mark.postgres
+def test_landing_page_is_root_for_visitors_release1(browser, release1):
+    server, _, _ = release1
+    check_landing(browser, server, "/", PHONE, "r1-375")
+    check_landing(browser, server, "/", DESKTOP, "r1-1280")
+
+
+@pytest.mark.postgres
+def test_tc_prv_12_5_social_sign_in_in_a_real_browser(browser, make_household):
+    """The provider on another site (localhost, the app on 127.0.0.1), so the Strict session cookie and the policy
+    behave as they will in production: sign in through the provider, then link an account from the Account page."""
+    from tests.fake_oidc import FakeProvider
+
+    fake = FakeProvider(host="localhost")
+    port = free_port()
+    household = make_household(sign_in_providers=(fake.as_provider(),), public_url=f"http://127.0.0.1:{port}")
+    server = Server(household.app, port)
+    try:
+        who = household.enrol()
+        context, page = open_page(browser, server, [], DESKTOP)
+        problems = []
+        page.on("console", lambda m: problems.append(m.text) if m.type == "error" else None)
+
+        # link, signed in with the password
+        page.goto(server.url + "/signin")
+        page.fill("input[name=email]", who.email)
+        page.fill("input[name=password]", who.password)
+        page.locator("button[type=submit]").click()
+        page.fill("input[name=code]", who.code())
+        page.locator("button[type=submit]").click()
+        assert page.url == server.url + "/"
+        page.goto(server.url + "/account")
+        shot(page, "r1-1280-account-social.png")
+        page.locator('a[href="/account/link/google"]').click()
+        assert "/signin/with/google/callback" in page.url and "is linked" in page.locator("main").inner_text()
+        page.locator('a[href="/account"]').click()
+        assert "person@example.test" in page.locator("main").inner_text()  # the session survived the round trip
+        page.locator("details.account-menu > summary").click()  # Sign out is in the account menu
+        page.locator("form[action='/signout'] button").first.click()
+
+        # sign in through the provider; the code step works from the callback page
+        assert page.url == server.url + "/signin"
+        shot(page, "r1-1280-signin-social.png")
+        assert page.evaluate(SIDEWAYS) <= 0
+        link = page.locator('a[href="/signin/with/google"]')
+        link.click()
+        assert "/signin/with/google/callback" in page.url and page.locator("h1").inner_text() == "Verification code"
+        time.sleep(30 - int(time.time()) % 30 + 1)  # a code can't be reused: wait for the next one
+        page.fill("input[name=code]", who.code())
+        page.locator("button[type=submit]").click()
+        assert page.url == server.url + "/", page.locator("main").inner_text()
+        assert page.locator("nav.nav").is_visible()  # signed in: the cookie set on the callback is in use
+        assert problems == []
+        context.close()
+    finally:
+        server.stop()
+        fake.stop()
+
+
 def test_tc_ux_10_2_desktop_release0(browser, release0):
     server, cookies = release0
     context, page = open_page(browser, server, cookies, DESKTOP)
@@ -233,3 +340,23 @@ def test_tc_ux_10_2_desktop_release1(browser, release1):
     context, page = open_page(browser, server, cookies, DESKTOP)
     check_desktop_visit(page, server.url, "r1")
     context.close()
+
+
+def test_tc_ux_11_3_a_dots_details_on_hover_focus_and_tap(browser, release0):
+    """UX-11: hover at 1280px, keyboard focus, and a tap at 375px each show the bill's details, and the page keeps its
+    width on a phone."""
+    server, cookies = release0
+    for device, act in ((DESKTOP, "hover"), (DESKTOP, "focus"), (PHONE, "tap")):
+        context, page = open_page(browser, server, cookies, device)
+        page.goto(f"{server.url}/charges?year=2026&member=")
+        dot = page.locator(".charges-chart .dot").first
+        if act == "tap":
+            dot.locator(".mark").click(force=True)
+            assert page.evaluate(SIDEWAYS) <= 1
+        elif act == "hover":
+            dot.locator(".mark").hover(force=True)
+        else:
+            dot.focus()
+        detail = page.locator("#dot-detail").inner_text()
+        assert "Billed $" in detail and "your share" in detail, (act, detail)
+        context.close()

@@ -10,5 +10,12 @@
     <button class="btn primary" type="submit">Continue</button>
   </form>
   <p class="small"><a href="/recover">Forgot your password or lost your phone?</a></p>
+  {% if sign_in_providers %}
+  <div class="social-signin section">
+    <p class="muted small">Or, if you've linked an account:</p>
+    {% for p in sign_in_providers %}<a class="btn" href="/signin/with/{{ p.name }}">Continue with {{ p.label }}</a>{% endfor %}
+    <p class="muted small">{% set labels = sign_in_providers | map(attribute="label") | list %}{{ labels[:-1] | join(", ") ~ " or " ~ labels[-1] if labels | length > 1 else labels[0] }} will know you signed in here, but sees nothing of your records.{% if code_required %} You'll still enter your authenticator code.{% endif %}</p>
+  </div>
+  {% endif %}
 </section>
 {% endblock %}

@@ -101,6 +101,12 @@ services:
       MHS_OBJECTS_DIR: /srv/objects
       MHS_OCR_ENGINE: tesseract  # photos and scanned PDFs (ADR-029)
       MHS_SCRUBBER: presidio     # identifier detection on top of the rules (ADR-029)
+      # Social sign-in (ADR-048, SETUP.md): off until a provider's client is set.
+      MHS_GOOGLE_CLIENT_ID: ${MHS_GOOGLE_CLIENT_ID:-}
+      MHS_GOOGLE_CLIENT_SECRET: ${MHS_GOOGLE_CLIENT_SECRET:-}
+      MHS_MICROSOFT_CLIENT_ID: ${MHS_MICROSOFT_CLIENT_ID:-}
+      MHS_MICROSOFT_CLIENT_SECRET: ${MHS_MICROSOFT_CLIENT_SECRET:-}
+      MHS_FHIR_PAYERS: ${MHS_FHIR_PAYERS:-}
     ports:
       - "127.0.0.1:3063:3063"
     volumes:

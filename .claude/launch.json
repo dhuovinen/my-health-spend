@@ -19,6 +19,17 @@
         "--build"
       ],
       "port": 3063
+    },
+    {
+      "name": "mhs-scratch",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "MHS_DATA_DIR=scratch-data",
+        "uv",
+        "run",
+        "mhs"
+      ],
+      "port": 3062
     }
   ]
 }

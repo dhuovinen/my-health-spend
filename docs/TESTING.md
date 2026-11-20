@@ -38,6 +38,7 @@ Release 1 test cases covered in phase 1.1:
 | TC-PRV-11-1 password alone reaches no data | `test_r1_auth.py::test_tc_prv_11_1_*`, `stack/test_stack.py` |
 | TC-PRV-11-2 two-household isolation (records, files, jobs, vault entries; database row-level security) | `test_r1_isolation.py`, `test_r1_database.py::test_row_level_security_*` |
 | TC-PRV-11-3 sign-out and idle timeout | `test_r1_auth.py::test_tc_prv_11_3_*` |
+| TC-PLT-09-1 to 3 admin screen, the code off and on, no household data | `test_r1_admin.py` |
 | TC-PRV-06-2 unreadable without the key | `test_r1_encryption.py`, `stack/test_stack.py::test_originals_volume_holds_only_ciphertext` |
 | TC-PRV-06-3 back-end tier can't decrypt or read the vault | `test_r1_database.py::test_worker_role_*`, `test_r1_encryption.py::test_tc_prv_06_3_*` |
 | TC-PRV-07-1 restore onto a fresh server; TC-PRV-07-2 wrong passphrase | `test_r1_backup.py` (including the scripted `mhs-vault` commands) |
@@ -45,6 +46,20 @@ Release 1 test cases covered in phase 1.1:
 | TC-PLT-06-2 CI on every change | `.github/workflows/ci.yml` (runs once the repo is on GitHub) |
 
 TC-PRV-07-3 (lost phone and password, recovered with a recovery code; data intact): `test_r1_recovery.py`. Not yet: TC-PRV-06-1 (TLS; staging), TC-PRV-08-2 (no analytics events exist).
+
+## Repeat services and charges over time
+
+REC-15's cases (plan terms from the EOBs, ADR-056) are automated in `tests/test_plan_inference.py` (the inference, the gap filling and the `terms_mismatch` flag) and `tests/test_plan_pages.py` (Coverage's "What your EOBs show", "Use this" and two households, on both apps). REC-14's cases are automated in `tests/test_repeats.py`, which also covers the matching rule and the Visits rows, filters and sort (ADR-046). UX-11's are in `tests/test_charges.py`, both on both apps; hover, focus and tap on a dot, and the 375px checks, are in `tests/test_ux_layout.py`. By hand, TC-UX-11-3's tap on a real phone waits for staging.
+
+## Release 2 enhancements (ADR-050 to ADR-055)
+
+Automated, all without a network: REC-06 and REC-09 in `tests/test_costshare.py` (TC-REC-06-1 to 5, TC-REC-09-1 to 3), ING-06 in `tests/test_learn.py` (TC-ING-06-1 and 2, on a made-up layout the rules don't know), MAT-08, ALC-05 and ALC-08 in `tests/test_versions.py` (TC-MAT-08-1, 2, 3 and 5, TC-ALC-05-1 to 3, TC-ALC-08-1 to 3), PRE in `tests/test_estimate.py` (TC-PRE-01-1 to 3, TC-PRE-02-1 to 3, TC-PRE-04, TC-PRE-05-1 and 2, TC-PRE-07-1) and `tests/test_plan_pages.py` on both apps, ING-09 in `tests/test_fhir.py` (TC-ING-09-2 to 5, against `httpx.MockTransport`) and `tests/test_r2_consent_connect.py` (TC-ING-09-1 end to end against a fake payer, TC-CMP-02-1 and 2), UX-09 in `tests/test_onboarding.py` (TC-UX-09-1 and 2). `/plan`, `/consent` and `/connect` are in the layout tests' page lists.
+
+Not automated: TC-MAT-08-4 shows the appealed version in the visit's history but doesn't change the case's status; TC-ING-09-1 against a real payer sandbox waits for staging and a registration; TC-CMP-01, TC-CMP-03 are reviews (the plan and the notice are drafts for the attorney); PRE-04's "counts toward the deductible" stays a plan setting because the PRD question is open.
+
+## Test harness
+
+`uv run tools/run_harness.py` runs the made-up data in `samples/harness/` through the real app and reports each visit against its expected answer, with screenshots and logins, in `harness-output/` (`samples/harness/README.md`). It measures how far the app gets with no person reviewing, so mismatches are its output rather than failures, unless `--strict` is given. `tests/test_harness.py` tests its conversions and comparison without a stack.
 
 ## User scenarios (phase 1.3)
 

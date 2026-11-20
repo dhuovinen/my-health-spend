@@ -189,12 +189,12 @@ def test_mat_10_3_and_4_document_checklist(web, tmp_path):
     """TC-MAT-10-3 (I): marking a document not applicable counts as satisfied. TC-MAT-10-4 (E): the visit card and
     page show completeness per document kind."""
     import_data(web, tmp_path, scenario(documents=[payment(200)]))
-    cards = text_of(web.client.get("/visits?year=2026").text)
-    assert "2 of 2 documents ✓ Insurance decision (EOB) ✓ Payment proof" in cards
+    rows = web.client.get("/visits?year=2026").text
+    assert "2 of 2 documents" in rows and 'title="✓ Insurance decision (EOB), ✓ Payment proof"' in rows
     web.client.post("/visits/A/expected", data={"kind": "itemized_bill", "state": "expected"})
     page = text_of(web.client.get("/visits/A").text)
     assert "Awaiting documents" in page and "Itemized bill Expected you asked for it" in page
-    assert "… Itemized bill" in text_of(web.client.get("/visits?year=2026").text)
+    assert "Needs: Itemized bill" in text_of(web.client.get("/visits?year=2026").text)
     web.client.post("/visits/A/expected", data={"kind": "itemized_bill", "state": "not_applicable"})
     assert "Complete" in text_of(web.client.get("/visits/A").text)
     web.client.post("/visits/A/expected", data={"kind": "itemized_bill", "state": "default"})

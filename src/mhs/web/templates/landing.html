@@ -1,0 +1,184 @@
+{# The public landing page (ADR-047). Stands alone: it doesn't extend base.html, reads no household data and is
+   served to people who aren't signed in. Follows docs/UI_GUIDE.md: no unverified statistics, no promised savings,
+   samples labelled as fictional. #}
+{% from "_icons.html" import icon %}
+{% macro wordmark() %}<a class="wordmark" href="/welcome" aria-label="My Health Spend home"><img src="/static/landing/mark.png" alt="" width="53" height="53"><span>My Health <span class="dollar">$</span>pend</span></a>{% endmacro %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Health $pend | From medical billing chaos to clarity</title>
+  <meta name="description" content="Connect the dots between medical bills, insurance claims and your payments. Explore a clearer picture of your healthcare spending with My Health $pend.">
+  <meta property="og:title" content="My Health $pend | From chaos to clarity">
+  <meta property="og:description" content="Three separate stories. One clear picture of your health spend.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/landing.css">
+  <script src="/static/landing.js" defer></script>
+</head>
+<body>
+<header class="wide navbar">
+  {{ wordmark() }}
+  <nav class="nav-links" aria-label="Main navigation">
+    <a href="#how-it-works">How it works</a>
+    <a href="#why-it-matters">Why it matters</a>
+    <a href="#questions">FAQs</a>
+  </nav>
+  <div class="navbar-actions">
+    <a class="btn quiet" href="{{ landing_link.href }}">{{ landing_link.label }}</a>
+    <button class="btn brand" type="button" data-open-sample>Explore My Health $pend {{ icon("arrow_up_right") }}</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <img class="hero-photo" src="/static/landing/billing-chaos.jpg" alt="Fictional medical bills, insurance explanations and receipts marked with red circles and questions about confusing charges." width="1920" height="1024" fetchpriority="high">
+    <div class="wide hero-inner">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="eyebrow-dot"></span>Your health. Your money. Your clarity.</span>
+        <h1>Medical bills.<br>Insurance claims.<br><em>Let’s make sense<br>of it all.</em></h1>
+        <p class="hero-description">Your provider, your insurance and your payments don’t always tell the same story. My Health $pend helps connect the dots, so you can see where they disagree.</p>
+        <div class="hero-actions">
+          <button class="btn brand" type="button" data-open-sample>See the clearer picture {{ icon("arrow_right") }}</button>
+          <a class="btn quiet" href="#how-it-works">{{ icon("circle_play") }} How it works</a>
+        </div>
+        <p class="hero-note">{{ icon("lock") }} No account needed. Explore a sample, not your personal data.</p>
+      </div>
+      <div class="review-floats">
+        <div class="review-float"><span class="float-icon">{{ icon("file_search") }}</span><div class="float-text"><strong>Understand the bill.</strong><span>Know what you’re being charged for.</span></div><span class="float-check">{{ icon("check") }}</span></div>
+        <div class="review-float"><span class="float-icon">{{ icon("shield") }}</span><div class="float-text"><strong>Check the coverage.</strong><span>See if your insurance lines up.</span></div><span class="float-check">{{ icon("check") }}</span></div>
+        <div class="review-float"><span class="float-icon">{{ icon("wallet") }}</span><div class="float-text"><strong>Follow the money.</strong><span>Match payments. Spot what’s off.</span></div><span class="float-check">{{ icon("check") }}</span></div>
+      </div>
+      <span class="hero-caption">Fictional documents. Very real confusion.</span>
+    </div>
+  </section>
+
+  <section class="reconciliation" aria-label="Three parts of your healthcare spending">
+    <div class="wide reconciliation-inner">
+      <p class="reconcile-label">Three separate stories. <br><strong>Finally, one clear picture.</strong></p>
+      <div class="reconcile-flow">
+        <div class="flow-item">{{ icon("receipt") }}Your provider bill</div>
+        <span class="flow-plus" aria-hidden="true">+</span>
+        <div class="flow-item">{{ icon("shield") }}Your insurance</div>
+        <span class="flow-plus" aria-hidden="true">+</span>
+        <div class="flow-item">{{ icon("credit_card") }}Your payments</div>
+        <span class="flow-plus" aria-hidden="true">=</span>
+        <div class="flow-item flow-total">{{ icon("circle_check") }}Your health spend, understood.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how-it-works">
+    <div class="wide">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">Connect the dots. See the gap.</span>
+          <h2>Healthcare is complicated. <br>Your next step shouldn’t be.</h2>
+        </div>
+        <p class="section-intro">From the visit you’ve already paid for to the one you’re planning next, see where your health dollars really go.</p>
+      </div>
+      <div class="steps">
+        <article class="step">
+          <div class="step-top"><span class="step-icon">{{ icon("files") }}</span><span class="step-number">01 / Bring it together</span></div>
+          <h3>One visit. The whole story.</h3>
+          <p>Bring your provider bill, insurance explanation of benefits and payment records into the same conversation.</p>
+          <span class="step-tag">Bills + benefits + payments</span>
+        </article>
+        <article class="step">
+          <div class="step-top"><span class="step-icon">{{ icon("scan") }}</span><span class="step-number">02 / Look a little closer</span></div>
+          <h3>Find what doesn’t add up.</h3>
+          <p>Look back for duplicate charges, incorrect rates, coverage mismatches and payments that haven’t been counted.</p>
+          <span class="step-tag">Start with past visits</span>
+        </article>
+        <article class="step">
+          <div class="step-top"><span class="step-icon">{{ icon("layers") }}</span><span class="step-number">03 / Move forward smarter</span></div>
+          <h3>Know your next best move.</h3>
+          <p>Understand what needs a follow-up. Next on our roadmap: compare insurance and self-pay options before your next visit.</p>
+          <span class="step-tag">Clarity today. Better decisions tomorrow.</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="questions-band" id="why-it-matters">
+    <div class="wide questions-inner">
+      <div class="questions-intro">
+        <span class="eyebrow">Three parties. No one reconciles them.</span>
+        <h2>You shouldn’t have to be <br>a billing expert to pay fairly.</h2>
+        <p>One visit produces a bill, an insurance decision and a payment, often weeks apart and in different formats. So these questions go unanswered:</p>
+      </div>
+      <ul class="question-list">
+        <li>Was the provider in network, and was I billed that way?</li>
+        <li>Did the insurer process the claim, and does what I owe match?</li>
+        <li>Am I overpaying through a wrong rate, a duplicate charge or a misapplied copay?</li>
+        <li>Was it paid from the right account, and is anything still outstanding?</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" id="questions">
+    <div class="wide faq-section">
+      <div class="faq-heading">
+        <span class="eyebrow">Good questions. Clear answers.</span>
+        <h2>A little less unknown.</h2>
+        <p>Because understanding your healthcare spending shouldn’t come with more question marks.</p>
+      </div>
+      <div class="faq-list">
+        <details><summary>What does My Health $pend look for?{{ icon("plus") }}</summary><p>It compares your provider bill, insurance explanation of benefits (EOB) and payment records for the same visit. That can help surface duplicate charges, mismatched patient balances, network-rate questions and payments that haven’t been credited.</p></details>
+        <details><summary>Is this health insurance?{{ icon("plus") }}</summary><p>No. My Health $pend helps individuals understand their healthcare spending. It is not health insurance, a payment account or a replacement for your insurer.</p></details>
+        <details><summary>Can it help with bills I’ve already paid?{{ icon("plus") }}</summary><p>Yes, that is where it starts. Looking back across bills, insurance decisions and payments may reveal discrepancies even after a bill has been paid. Any refund depends on review and resolution with the provider or insurer.</p></details>
+        <details><summary>What about my next appointment?{{ icon("plus") }}</summary><p>The next step in our vision is helping you compare expected insurance costs with available self-pay prices before a visit. Deductibles, network status and whether a payment counts toward your plan limits all matter.</p></details>
+        <details><summary>Can I upload my medical bills today?{{ icon("plus") }}</summary><p>Only with an account. My Health $pend is in early access, and accounts are set up by invitation. The sample on this page uses fictional examples and collects nothing, so please don’t send personal health or financial information here.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="wide closing-inner">
+      <div>
+        <h2>Your health deserves your attention. <br>Your bills shouldn’t take all of it.</h2>
+        <p>Meet a clearer way to understand your health spend.</p>
+      </div>
+      <button class="btn brand" type="button" data-open-sample>Explore a sample review {{ icon("arrow_right") }}</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wide footer-inner">
+    {{ wordmark() }}
+    <p class="footer-note">© {{ year }} My Health $pend. Your health. Your money.<br>Early access. Not insurance, medical, legal or financial advice.</p>
+  </div>
+</footer>
+
+<dialog class="sample" id="sample" aria-labelledby="sample-title" aria-describedby="sample-intro">
+  <button class="close" type="button" data-close-sample aria-label="Close">{{ icon("close") }}</button>
+  <span class="sample-label">A clearer picture · fictional example</span>
+  <h2 id="sample-title">Your visit. All three sides.</h2>
+  <p class="sample-intro" id="sample-intro">See how a bill, an insurance decision and a payment can tell different stories.</p>
+  <div class="sample-tabs" role="tablist" aria-label="Sample review views">
+    <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true">Visit overview</button>
+    <button type="button" role="tab" id="tab-finding" aria-controls="panel-finding" aria-selected="false" tabindex="-1">What we found</button>
+    <button type="button" role="tab" id="tab-next" aria-controls="panel-next" aria-selected="false" tabindex="-1">Next steps</button>
+  </div>
+  <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview">
+    <div class="sample-row"><span>Visit</span><strong>March 14 · Office visit</strong></div>
+    <div class="sample-row"><span>Provider bill</span><strong class="figure">$348.00</strong></div>
+    <div class="sample-row"><span>Insurer says you owe</span><strong class="figure">$198.00</strong></div>
+    <div class="sample-row"><span>Already paid from HSA</span><strong class="figure">$198.00</strong></div>
+    <div class="sample-finding"><strong>$150.00 worth a closer look</strong><p>The provider’s balance is higher than the insurer’s patient responsibility. Your HSA payment also needs to be confirmed against the bill.</p></div>
+  </div>
+  <div role="tabpanel" id="panel-finding" aria-labelledby="tab-finding" hidden>
+    <div class="sample-finding"><strong>A balance that doesn’t line up</strong><p>The provider bill is $150.00 higher than the insurer’s explanation of benefits. This is a potential discrepancy, not a confirmed error. The $198.00 HSA payment may also be missing from the provider’s records.</p></div>
+  </div>
+  <div role="tabpanel" id="panel-next" aria-labelledby="tab-next" hidden>
+    <div class="sample-row"><span>01</span><strong>Ask for an itemized provider statement.</strong></div>
+    <div class="sample-row"><span>02</span><strong>Compare it with the final insurance EOB.</strong></div>
+    <div class="sample-row"><span>03</span><strong>Confirm the $198.00 HSA payment was credited.</strong></div>
+    <div class="sample-row"><span>04</span><strong>Request an explanation of the $150.00 difference.</strong></div>
+  </div>
+  <p class="sample-disclaimer">Illustrative example only, not a real claim or savings result. No health or financial information is collected here.</p>
+</dialog>
+</body>
+</html>

@@ -51,7 +51,7 @@ def test_tc_prv_08_3_header_on_every_response(household):
 def test_tc_prv_08_1_pages_reference_no_third_party_resources():
     """No external URLs, no inline scripts and no inline styles in the application tier's pages and assets."""
     files = (list((HOUSEHOLD / "templates").glob("*.html")) + list((HOUSEHOLD.parent / "templates").glob("*.html"))
-             + [STATIC / "style.css", STATIC / "app.js"])
+             + [STATIC / "style.css", STATIC / "app.js", STATIC / "landing.css", STATIC / "landing.js"])
     for path in files:
         text = path.read_text()
         assert not re.search(r"https?://", text), path
@@ -65,6 +65,6 @@ def test_served_pages_load_only_same_origin_assets(household):
     who = household.enrol()
     member = household.sign_in(who)
     html = "".join(member.get(p).text for p in ("/", "/visits", "/providers", "/import", "/settings", "/help", "/accuracy", "/uploads"))
-    html += household.client().get("/signin").text
+    html += household.client().get("/signin").text + household.client().get("/").text
     for url in re.findall(r'(?:src|href)="([^"]+)"', html):
         assert url.startswith(("/", "#", "?")) and not url.startswith("//"), url

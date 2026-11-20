@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Privacy notice{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>Privacy notice</h1>
+  <div class="muted">Version {{ version }}. A draft for review by a healthcare privacy lawyer before anyone outside the owner's household is invited.</div>
+</div></div>
+<article class="card section prose">
+  <h2>What My Health Spend does</h2>
+  <p>It checks your medical bills, your insurer's explanations of benefits (EOBs) and your payments against each other, to find billing mistakes and money you may be owed.</p>
+
+  <h2>What we collect</h2>
+  <ul>
+    <li>Documents you upload or forward by email: bills, EOBs, receipts, and exports from your HSA or insurer.</li>
+    <li>Claims your insurer sends when you connect it. You sign in at the insurer each time; we don't keep that access.</li>
+    <li>What you type: plans, accounts, household members, notes and your decisions.</li>
+    <li>Your email, a scrambled form of your password, and your sign-in code setup. If you link Google or Microsoft, an ID that account gives us and its email.</li>
+  </ul>
+  <p>We don't collect anything until you agree on the Consent page, when the service asks for it.</p>
+
+  <h2>How we protect it</h2>
+  <ul>
+    <li>Your household's files are encrypted with a key of their own. Only your household's members can see its records.</li>
+    <li>Names, member numbers and account numbers are replaced by tokens before documents are read. The real values stay in a separate, locked store and come back only on your own pages and in letters you ask for.</li>
+    <li>Sign-in uses a password or a linked account, plus a code from an authenticator app unless the service's owner turned the code off.</li>
+    <li>Every time a member views or changes your records, it's written to an access log you can read.</li>
+  </ul>
+
+  <h2>Who else sees it</h2>
+  <ul>
+    <li><strong>AI reading</strong> is off unless your household turns it on and you agree separately. When it's on, the text of a document goes to Anthropic's Claude with names and numbers as tokens and dates shifted, under an agreement that it isn't used for training.</li>
+    <li><strong>Your insurer</strong> learns that you connected MHS when you do. <strong>Google or Microsoft</strong> learns when you sign in with them. Neither receives your records from us.</li>
+    <li><strong>Our hosting provider</strong> stores the encrypted data.</li>
+    <li>No advertising, no analytics trackers, and we never sell or share your data for marketing.</li>
+  </ul>
+
+  <h2>Your choices</h2>
+  <ul>
+    <li>Withdraw consent on the Consent page: collection stops and AI reading turns off.</li>
+    <li>Export everything as a file, or delete it, on Your data. Deleting removes your records, files and keys; only a short security log line (no health information) stays for a year.</li>
+  </ul>
+
+  <h2>If something goes wrong</h2>
+  <p>If your information is seen by someone who shouldn't have it, we'll tell you and the Federal Trade Commission as the Health Breach Notification Rule requires, within 60 days of finding out.</p>
+
+  <h2>What MHS isn't</h2>
+  <p>MHS gives information, not legal, tax or medical advice. Findings, estimates and suggestions are possibilities for you to check.</p>
+</article>
+{% endblock %}

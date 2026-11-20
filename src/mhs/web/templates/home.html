@@ -1,20 +1,44 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, year_select, visit_card, reason, view_switch %}
+{% from "_macros.html" import badge, year_select, visit_row, visit_head, reason, view_switch %}
 {% block title %}Home{% endblock %}
 {% block content %}
 {% set add_url = '/uploads' if session else '/import' %}
 <section class="hero">
   <div>
-    <h1>My Health Spend</h1>
+    <h1 aria-label="My Health Spend">My Health <span class="dollar">$</span>pend</h1>
     <p>Every visit's provider bill, insurance decision and HSA payment, checked against each other, so billing errors and overpayments don't go unseen.</p>
   </div>
   <div class="actions">
     {{ year_select(report, "/") }}
     {{ view_switch(members, view, "/?year=%s" % report.year) }}
     <a class="btn secondary" href="/visits?year={{ report.year }}&flagged=1">Review flagged visits</a>
-    <a class="btn primary" href="{{ add_url }}">{{ 'Add documents' if session else 'Import data' }}</a>
   </div>
 </section>
+
+{% if start_left %}
+{% set next_step = start|rejectattr('done')|first %}
+<section class="card section onboarding" id="start" aria-labelledby="start-title">
+  <div class="onboarding-head">
+    <div>
+      <h2 id="start-title">Getting started</h2>
+      <p class="muted small flush">{{ start|length - start_left }} of {{ start|length }} done. Leave whenever you like: this list picks up where you left off.</p>
+    </div>
+    <div class="bar onboarding-bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ start|length }}" aria-valuenow="{{ start|length - start_left }}" aria-label="Steps done"><span data-pct="{{ ((start|length - start_left) * 100 / start|length)|round|int }}"></span></div>
+  </div>
+  <ol class="steps">
+    {% for s in start %}
+    <li class="step {{ 'done' if s.done else ('next' if s is sameas next_step else 'todo') }}">
+      <span class="step-mark" aria-hidden="true">{{ '✓' if s.done else loop.index }}</span>
+      <div class="step-body">
+        <div class="step-title">{{ s.title }}{% if s.done %}<span class="visually-hidden"> (done)</span>{% endif %}</div>
+        {% if s is sameas next_step %}<div class="step-why">{{ s.why }}</div>{% elif not s.done %}<div class="small muted">{{ s.why }}</div>{% endif %}
+      </div>
+      {% if not s.done %}<a class="btn small{{ ' primary' if s is sameas next_step }}" href="{{ s.href }}">{{ s.action }}{% if s is sameas next_step %} →{% endif %}</a>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
 
 {% if not report.visits and not report.groups %}
 <div class="card empty">
@@ -78,12 +102,19 @@
   <div class="page-head flush-head"><h2>Visits in {{ report.year }}</h2>
     <a class="small" href="/visits?year={{ report.year }}">All {{ visits|length }} visits</a></div>
   {% if cards %}
-  <div class="grid cards">{% for v in cards %}{{ visit_card(v) }}{% endfor %}</div>
+  <form class="filters" method="get" action="/visits">
+    <input type="hidden" name="year" value="{{ report.year }}">
+    <label>Status<select name="status"><option value="">All</option>{% for s in STATUS_ORDER %}<option value="{{ s }}">{{ STATUS_LABELS[s] }}</option>{% endfor %}</select></label>
+    <label>Provider<select name="provider"><option value="">All</option>{% for g in report.groups if g.visits %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}</select></label>
+    <label>Sort<select name="sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label>
+    <button class="btn">Show visits</button>
+  </form>
+  <div class="visit-rows">{{ visit_head() }}{% for v in cards %}{{ visit_row(v) }}{% endfor %}</div>
   {% else %}<div class="card muted">No visits for {{ view.name if view else 'the household' }} in {{ report.year }}.</div>{% endif %}
 </section>
 
 <h2 class="section year-detail">The year in detail</h2>
-<div class="grid two">
+<div class="grid detail-grid">
   <div class="card" id="hsa">
     <h2>HSA{% if view %} <span class="muted small">(whole family)</span>{% endif %}</h2>
     {% set hc = report.hsa_counts %}
@@ -107,18 +138,17 @@
     {% for l in limits %}
     <div class="limit">
       <div class="row"><span>{{ l.label }}</span><span class="num">{{ l.used|money }} of {{ l.limit.amount|money }}</span></div>
-      <div class="bar"><span data-pct="{{ l.pct }}"></span></div>
+      <div class="bar{{ ' over' if l.used > l.limit.amount }}"><span data-pct="{{ l.pct }}"></span></div>
+      {% if l.used > l.limit.amount %}<div class="small bad-ink">{{ (l.used - l.limit.amount)|money }} more than the limit: worth a closer look</div>{% endif %}
       {% if l.note %}<div class="muted small">{{ l.note }}</div>{% endif %}
     </div>
     {% else %}
-    <p class="muted">No limits set for {{ report.year }}. Add your deductible and out-of-pocket maximum in <a href="/settings#plans">Settings</a>.</p>
+    <p class="muted">No limits set for {{ report.year }}. Add your deductible and out-of-pocket maximum on <a href="/coverage?year={{ report.year }}">Coverage</a>.</p>
     {% endfor %}
+    <p class="small"><a class="more" href="/coverage?year={{ report.year }}">Your coverage: plans, terms and claims →</a></p>
   </div>
-</div>
-
 {% set yb = report.buckets %}
 {% if yb %}
-<div class="grid two section">
   <div class="card" id="buckets">
     <h2>Where {{ report.year }}'s billed dollars went{% if view %} <span class="muted small">(whole family)</span>{% endif %}</h2>
     <ul class="kv">
@@ -127,7 +157,7 @@
     </ul>
     <p class="muted small">From the insurers' decisions (and self-pay bills). Visits still waiting for an EOB aren't in it yet.</p>
   </div>
-</div>
 {% endif %}
+</div>
 {% endif %}
 {% endblock %}

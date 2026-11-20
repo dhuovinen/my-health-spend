@@ -6,3 +6,6 @@ __pycache__/
 .DS_Store
 .claude/settings.local.json
 .coverage
+harness-output/
+.env
+scratch-data/

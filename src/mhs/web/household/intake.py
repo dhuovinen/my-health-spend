@@ -29,11 +29,12 @@ from mhs.data.household_store import HouseholdStore
 from mhs.data.importer import UploadedSource
 from mhs.data.keys import Keyring
 from mhs.data.money import to_dollars
-from mhs.data.repository import load_dataset
+from mhs.data.repository import load_dataset, review_prefs
+from mhs.ingest import learn
 from mhs.data.objects import ObjectStore
 from mhs.data.queue import JobQueue
 from mhs.ingest import claims, hsa
-from mhs.ingest.extract import EXTRACTED, REVIEW_THRESHOLD, TYPES
+from mhs.ingest.extract import EXTRACTED, TYPES
 from mhs.ingest.ocr import OcrEngine, StubOcr, page_images
 from mhs.ingest.redact import blank_pages, identifier_words
 from mhs.ingest.resolve import Members, Providers, plan_for, slug
@@ -97,6 +98,7 @@ class Intake:
     ocr: OcrEngine = field(default_factory=StubOcr)
     scrubber: type[Scrubber] = Scrubber
     ai_extraction: Callable[[str], bool] = lambda household_id: False
+    collect_for: Callable[[str, str], bool] = lambda household_id, member_id: True  # CMP-02 (ADR-055)
 
     # The upload steps, shared by the Uploads page and forwarded email (ADR-039).
 
@@ -226,6 +228,9 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
         file = form.get("file")
         kind = form.get("kind") or "auto"
         try:
+            if not it.collect_for(session.household_id, session.member_id):
+                raise UploadRefused("MHS can't take documents from you without your consent. Give it on the "
+                                    "Consent page (from your Account page), or ask why it's needed.")
             if file is None or not getattr(file, "filename", ""):
                 raise UploadRefused("Choose a file to upload.")
             if kind not in UPLOAD_KINDS:
@@ -328,6 +333,8 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
     def review_context(session: Session, rec: dict, ext: dict) -> dict:
         hid = session.household_id
         store = HouseholdStore(it.db, hid)
+        prefs = review_prefs(store)
+        below, show = prefs["check_below"], prefs["show_confidence"]
         fields = {}
         extracted = ext.get("fields", {})
         order = [n for n in FIELD_ORDER if n in extracted] + [n for n in extracted if n not in FIELD_ORDER]
@@ -339,9 +346,11 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
             value = reidentify(hid, f.get("value"))
             if name in EOB_MONEY + STATEMENT_MONEY and isinstance(value, int):
                 value = f"{value / 100:.2f}"
+            confidence = f.get("confidence", 0)
+            low = confidence < below
             fields[name] = {"label": LABELS.get(name, name), "value": "" if value is None else value,
-                            "confidence": f.get("confidence", 0), "note": f.get("note", ""),
-                            "low": f.get("confidence", 0) < REVIEW_THRESHOLD}
+                            "confidence": confidence, "note": f.get("note", ""), "low": low,
+                            "show": show == "always" or (show == "flagged" and low)}
         providers, members = store.all("provider"), store.all("member")
         provider_id = Providers(providers).find(str(fields.get("provider", {}).get("value", "")))
         member_id = Members(members).find(str(patient))
@@ -359,7 +368,8 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
         lines = [{**l, **{k: f"{l[k] / 100:.2f}" for k in l if isinstance(l.get(k), int)}} for l in ext.get("lines", [])]
         return {
             "rec": view(hid, rec, ext), "ext": ext, "fields": fields, "patient": str(patient).title(), "lines": lines, "types": TYPES,
-            "extracted": ext.get("doc_type") in EXTRACTED, "threshold": REVIEW_THRESHOLD,
+            "extracted": ext.get("doc_type") in EXTRACTED, "threshold": below,
+            "show_type": show == "always" or (show == "flagged" and ext.get("type_confidence", 0) < below),
             "providers": sorted(providers, key=lambda p: p["name"].lower()), "provider_id": provider_id or "",
             "members": members, "member_id": member_id or "", "plans": store.all("plan"),
             "plan_id": plan_for(store.all("plan"), int(when[:4])) if re.match(r"\d{4}", when) else "",
@@ -442,11 +452,28 @@ def add_intake(app: FastAPI, templates: Jinja2Templates, it: Intake) -> None:
         importer.commit(plan, store, EncryptedFiles(it.objects, it.keyring, hid), replace_edits=True)
         for kind, record_id in created:  # the member's confirmed values win over later imports (ADR-011)
             store._mark_edited(kind, record_id)
-        ext.setdefault("corrections", []).extend(corrections(ext, form, session))
+        made = corrections(ext, form, session)
+        ext.setdefault("corrections", []).extend(made)
+        if made:
+            remember_labels(store, ext, made)
+            if ext["doc_type"] == "eob":  # MAT-08: a newer version doesn't replace an EOB the member corrected
+                eob = store.get("document", document_id)
+                if eob is not None and not eob.get("member_edited"):
+                    store.upsert("document", {**eob, "member_edited": True}, edited=True)
         ext.update(status="confirmed", confirmed_at=_now(), confirmed_by=session.member_id,
                    document_id=document_id, visit_ids=visit_ids)
         store.put(EXTRACTION, ext)
         return RedirectResponse(f"/visits/{visit_ids[0]}" if visit_ids else "/visits", status_code=303)
+
+
+def remember_labels(store: HouseholdStore, ext: dict, made: list[dict]) -> None:
+    """ING-06 (ADR-051): keep the labels behind the member's corrected values for the next document of the layout."""
+    key = ext.get("layout_key")
+    if not key:
+        return
+    hint = learn.learn(ext, made, store.get(learn.HINT, learn.hint_id(key)))
+    if hint:
+        store.put(learn.HINT, hint)
 
 
 def same_group(store: HouseholdStore, provider_id: str) -> set[str]:
@@ -570,6 +597,14 @@ def build_records(store: HouseholdStore, form, ext: dict, rec: dict, upload_id: 
             created.append(("visit", visit_id))  # marked as the member's edit, like the records it creates
         claim = (form.get("claim_number") or "").strip()
         doc_id = f"eob-{slug(claim)}" if claim else f"eob-{upload_id}"
+        version_of = None
+        if (old := store.get("document", doc_id)) and (old.get("extensions") or {}).get("upload_id") != upload_id:
+            # MAT-08 (ADR-052): a corrected, reprocessed or appealed EOB is kept beside the earlier one.
+            n, version_of = 2, doc_id
+            while (newer := store.get("document", f"{doc_id}-v{n}")) and \
+                    (newer.get("extensions") or {}).get("upload_id") != upload_id:
+                version_of, n = newer["id"], n + 1
+            doc_id = f"{doc_id}-v{n}"
         doc = {"id": doc_id, "type": "eob", "date": _date(form, "processed_date") or start, "file": filename,
                "plan_id": plan_id, "provider_id": provider_id, "visit_id": visit_id,
                "claim_status": form.get("claim_status") or "processed",
@@ -577,6 +612,10 @@ def build_records(store: HouseholdStore, form, ext: dict, rec: dict, upload_id: 
                "extensions": {"upload_id": upload_id}}
         if claim:
             doc["claim_number"] = claim
+        if version_of:
+            doc["version_of"] = version_of
+            reason = form.get("version_reason") or ""
+            doc["version_reason"] = reason if reason in ("corrected", "reprocessed", "appealed") else "corrected"
         for name in EOB_MONEY:
             value = _money(form, name, required=name in ("billed", "allowed", "insurer_paid", "patient_responsibility"))
             if value is not None:
@@ -673,7 +712,8 @@ def earlier_copy(store: HouseholdStore, ext: dict) -> dict | None:
             changed = ", ".join(f"{LABELS[k].lower()} {_money_text(d.get(k))} → {_money_text(f.get(k))}"
                                 for k in keys if f.get(k) is not None and d.get(k) != f.get(k))
             return {"kind": "version", "document_id": d["id"],
-                    "message": f"A corrected EOB for claim {label}: {changed}. Confirming replaces the one you have."}
+                    "message": f"A corrected EOB for claim {label}: {changed}. Confirming keeps both; the newer one is used "
+                               "unless you corrected the one you have, in which case you choose on the visit page."}
         return None
     if ext.get("doc_type") not in ("provider_statement", "itemized_bill") or not pid:
         return None

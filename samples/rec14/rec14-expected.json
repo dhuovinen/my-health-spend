@@ -1,0 +1,578 @@
+{
+  "v-control-1": {
+    "case": "Control",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Control Clinic",
+    "date": "2026-01-05"
+  },
+  "v-control-2": {
+    "case": "Control",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Control Clinic",
+    "date": "2026-02-05"
+  },
+  "v-control-3": {
+    "case": "Control",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Control Clinic",
+    "date": "2026-03-05"
+  },
+  "v-tc1-a": {
+    "case": "TC-REC-14-1",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case One Infusion",
+    "date": "2026-02-02"
+  },
+  "v-tc1-b": {
+    "case": "TC-REC-14-1",
+    "flags": [
+      {
+        "name": "Allowed amount changed",
+        "contains": [
+          "96413",
+          "$400.00",
+          "Feb 2, 2026",
+          "$250.00",
+          "Mar 2, 2026",
+          "$150.00",
+          "Worth a closer look",
+          "a new contract",
+          "an added service",
+          "a different dose"
+        ]
+      }
+    ],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case One Infusion",
+    "date": "2026-03-02"
+  },
+  "v-tc2-a": {
+    "case": "TC-REC-14-2",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Two Practice",
+    "date": "2026-02-03"
+  },
+  "v-tc2-b": {
+    "case": "TC-REC-14-2",
+    "flags": [
+      {
+        "name": "Billed amount changed",
+        "contains": [
+          "99214",
+          "$150.00",
+          "$150.10",
+          "$0.10"
+        ]
+      }
+    ],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Two Practice",
+    "date": "2026-03-03"
+  },
+  "v-tc3-a": {
+    "case": "TC-REC-14-3",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Three Infusion",
+    "date": "2026-02-04"
+  },
+  "v-tc3-b": {
+    "case": "TC-REC-14-3",
+    "flags": [],
+    "notes": [
+      {
+        "name": "Your share changed",
+        "contains": [
+          "deductible",
+          "explains",
+          "$400.00",
+          "$80.00"
+        ]
+      }
+    ],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Three Infusion",
+    "date": "2026-03-04"
+  },
+  "v-tc4-a": {
+    "case": "TC-REC-14-4",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Four Infusion",
+    "date": "2026-02-05"
+  },
+  "v-tc4-b": {
+    "case": "TC-REC-14-4",
+    "flags": [
+      {
+        "name": "Your share changed",
+        "contains": [
+          "96413",
+          "$400.00",
+          "$250.00",
+          "$150.00"
+        ]
+      }
+    ],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Four Infusion",
+    "date": "2026-03-05"
+  },
+  "v-tc5a-a": {
+    "case": "TC-REC-14-5 person",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Five Person",
+    "date": "2026-02-06"
+  },
+  "v-tc5a-b": {
+    "case": "TC-REC-14-5 person",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Five Person",
+    "date": "2026-03-06"
+  },
+  "v-tc5b-a": {
+    "case": "TC-REC-14-5 group",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Five Group One",
+    "date": "2026-02-07"
+  },
+  "v-tc5b-b": {
+    "case": "TC-REC-14-5 group",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Five Group Two",
+    "date": "2026-03-07"
+  },
+  "v-tc5c-a": {
+    "case": "TC-REC-14-5 plan",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Five Plan",
+    "date": "2026-02-08"
+  },
+  "v-tc5c-b": {
+    "case": "TC-REC-14-5 plan",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Five Plan",
+    "date": "2026-03-08"
+  },
+  "v-tc5d-a": {
+    "case": "TC-REC-14-5 year",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Five Year",
+    "date": "2025-12-09"
+  },
+  "v-tc5d-b": {
+    "case": "TC-REC-14-5 year",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Five Year",
+    "date": "2026-01-09"
+  },
+  "v-tc6a-a": {
+    "case": "TC-REC-14-6 units",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Six Units",
+    "date": "2026-02-10"
+  },
+  "v-tc6a-b": {
+    "case": "TC-REC-14-6 units",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Six Units",
+    "date": "2026-03-10"
+  },
+  "v-tc6b-a": {
+    "case": "TC-REC-14-6 modifier",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Six Modifier",
+    "date": "2026-02-11"
+  },
+  "v-tc6b-b": {
+    "case": "TC-REC-14-6 modifier",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Six Modifier",
+    "date": "2026-03-11"
+  },
+  "v-tc7a-1": {
+    "case": "TC-REC-14-7 series",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Seven Series",
+    "date": "2026-01-12"
+  },
+  "v-tc7a-2": {
+    "case": "TC-REC-14-7 series",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Seven Series",
+    "date": "2026-02-12"
+  },
+  "v-tc7a-3": {
+    "case": "TC-REC-14-7 series",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Seven Series",
+    "date": "2026-03-12"
+  },
+  "v-tc7a-4": {
+    "case": "TC-REC-14-7 series",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Seven Series",
+    "date": "2026-04-12"
+  },
+  "v-tc7a-5": {
+    "case": "TC-REC-14-7 series",
+    "flags": [
+      {
+        "name": "Codes changed in a series",
+        "contains": [
+          "added C1003",
+          "Worth a closer look",
+          "a new contract",
+          "an added service",
+          "a different dose"
+        ]
+      }
+    ],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Seven Series",
+    "date": "2026-05-12"
+  },
+  "v-tc7b-1": {
+    "case": "TC-REC-14-7 short",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Seven Short",
+    "date": "2026-01-13"
+  },
+  "v-tc7b-2": {
+    "case": "TC-REC-14-7 short",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Seven Short",
+    "date": "2026-02-13"
+  },
+  "v-tc7b-3": {
+    "case": "TC-REC-14-7 short",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Seven Short",
+    "date": "2026-03-13"
+  },
+  "v-tc8a-a": {
+    "case": "TC-REC-14-8 no lines",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Eight Totals",
+    "date": "2026-02-14"
+  },
+  "v-tc8a-b": {
+    "case": "TC-REC-14-8 no lines",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Eight Totals",
+    "date": "2026-03-14"
+  },
+  "v-tc8b-a": {
+    "case": "TC-REC-14-8 unconfirmed",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Eight Unconfirmed",
+    "date": "2026-02-15"
+  },
+  "v-tc9-1": {
+    "case": "TC-REC-14-9",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Nine Infusion",
+    "date": "2026-01-16"
+  },
+  "v-tc9-2": {
+    "case": "TC-REC-14-9",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Nine Infusion",
+    "date": "2026-02-16"
+  },
+  "v-tc9-3": {
+    "case": "TC-REC-14-9",
+    "flags": [
+      {
+        "name": "Allowed amount changed",
+        "contains": [
+          "$150.00"
+        ]
+      }
+    ],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Nine Infusion",
+    "date": "2026-03-16"
+  },
+  "v-tc9-4": {
+    "case": "TC-REC-14-9",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Nine Infusion",
+    "date": "2026-04-16"
+  },
+  "v-tc9-5": {
+    "case": "TC-REC-14-9",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Case Nine Infusion",
+    "date": "2026-05-16"
+  },
+  "v-tol-a": {
+    "case": "Tolerance",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Extra Tolerance",
+    "date": "2026-02-17"
+  },
+  "v-tol-b": {
+    "case": "Tolerance",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Extra Tolerance",
+    "date": "2026-03-17"
+  },
+  "v-both-a": {
+    "case": "Both change",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Extra Both",
+    "date": "2026-02-18"
+  },
+  "v-both-b": {
+    "case": "Both change",
+    "flags": [
+      {
+        "name": "Allowed amount changed",
+        "contains": [
+          "$150.00"
+        ]
+      },
+      {
+        "name": "Billed amount changed",
+        "contains": [
+          "$100.00"
+        ]
+      }
+    ],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Extra Both",
+    "date": "2026-03-18"
+  },
+  "v-back-a": {
+    "case": "Back again",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Extra Back",
+    "date": "2026-02-19"
+  },
+  "v-back-b": {
+    "case": "Back again",
+    "flags": [
+      {
+        "name": "Allowed amount changed",
+        "contains": [
+          "$150.00"
+        ]
+      }
+    ],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Extra Back",
+    "date": "2026-03-19"
+  },
+  "v-back-c": {
+    "case": "Back again",
+    "flags": [
+      {
+        "name": "Allowed amount changed",
+        "contains": [
+          "$150.00"
+        ]
+      }
+    ],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Extra Back",
+    "date": "2026-04-19"
+  },
+  "v-den-a": {
+    "case": "Denied claim",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Extra Denied",
+    "date": "2026-02-20"
+  },
+  "v-den-b": {
+    "case": "Denied claim",
+    "flags": [],
+    "notes": [],
+    "status": null,
+    "at_issue": 0,
+    "provider": "Extra Denied",
+    "date": "2026-03-20"
+  },
+  "v-ded-a": {
+    "case": "Deductible reached",
+    "flags": [],
+    "notes": [],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Extra Deductible",
+    "date": "2026-02-21"
+  },
+  "v-ded-b": {
+    "case": "Deductible reached",
+    "flags": [],
+    "notes": [
+      {
+        "name": "Your share changed",
+        "contains": [
+          "deductible",
+          "explains"
+        ]
+      }
+    ],
+    "status": "Complete",
+    "at_issue": 0,
+    "provider": "Extra Deductible",
+    "date": "2026-03-21"
+  },
+  "v-stmt-a": {
+    "case": "Statement lines",
+    "flags": [],
+    "notes": [],
+    "status": null,
+    "at_issue": null,
+    "provider": "Extra Statements",
+    "date": "2026-02-22"
+  },
+  "v-stmt-b": {
+    "case": "Statement lines",
+    "flags": [
+      {
+        "name": "Billed amount changed",
+        "contains": [
+          "$400.00",
+          "$250.00",
+          "$150.00"
+        ]
+      }
+    ],
+    "notes": [],
+    "status": null,
+    "at_issue": null,
+    "provider": "Extra Statements",
+    "date": "2026-03-22"
+  }
+}

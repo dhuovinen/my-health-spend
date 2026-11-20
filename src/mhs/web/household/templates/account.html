@@ -11,12 +11,34 @@
   <p>You have <strong>{{ left }}</strong> unused recovery code{{ 's' if left != 1 }}. Each one lets you back in once if you forget your password or lose your phone.</p>
   <form method="post" action="/account/recovery-codes" class="stack">
     {{ csrf_input() }}
+    {% if code_required %}
     <label>Code from your authenticator app <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required></label>
+    {% else %}
+    <label>Your password <input type="password" name="password" autocomplete="current-password" required></label>
+    {% endif %}
     <button class="btn" type="submit">Make new recovery codes</button>
   </form>
   {% endif %}
+  <h2 class="section">Consent and privacy</h2>
+  <p><a class="btn" href="/consent">Your consent</a> <a class="btn" href="/privacy-notice">Privacy notice</a></p>
+  {% if sign_in_providers %}
+  <h2 class="section">Sign-in accounts</h2>
+  <p class="muted small">Link an account to use it in place of your password. {% set labels = sign_in_providers | map(attribute="label") | list %}{{ labels[:-1] | join(", ") ~ " or " ~ labels[-1] if labels | length > 1 else labels[0] }} will know you signed in here, but sees nothing of your records.</p>
+  {% for p in sign_in_providers %}
+  <div class="social-link">
+    {% if p.name in identities %}
+    <span>{{ p.label }}: linked{% if identities[p.name] %} ({{ identities[p.name] }}){% endif %}</span>
+    <form method="post" action="/account/identities/{{ p.name }}/unlink" data-confirm="Stop using this {{ p.label }} account to sign in?">{{ csrf_input() }}<button class="btn" type="submit">Unlink</button></form>
+    {% else %}
+    <span>{{ p.label }}: not linked</span>
+    <a class="btn" href="/account/link/{{ p.name }}">Link {{ p.label }}</a>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
   <div class="actions section">
     <a class="btn" href="/data">Your data</a>
+    {% if session and session.is_owner %}<a class="btn" href="/admin">Admin</a>{% endif %}
     <form method="post" action="/signout">{{ csrf_input() }}<button class="btn" type="submit">Sign out</button></form>
   </div>
 </section>

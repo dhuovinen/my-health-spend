@@ -100,7 +100,7 @@ def test_demo_setup_creates_a_ready_household_and_can_rerun(cli_env, pgdb, capsy
     second = run_demo_setup(capsys)
     assert second["household_id"] == first["household_id"]
     assert (second["password"], second["secret"]) != (first["password"], first["secret"])
-    assert c.get("/", follow_redirects=False).status_code == 303  # the old session ended
+    assert c.get("/visits", follow_redirects=False).status_code == 303  # the old session ended
     assert household.accounts.check_password(first["email"], first["password"]) is None
     assert not household.accounts.enrolment_link_valid(first["QR code"].rsplit("/", 1)[1])  # cancelled by the new secret
     c = sign_in(household, second["email"], second["password"], second["secret"])

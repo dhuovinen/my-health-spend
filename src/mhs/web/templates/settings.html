@@ -16,7 +16,7 @@
   {% endif %}
 </div>
 
-<nav class="toc small"><a href="#plans">Insurance plans</a><a href="#members">Household members</a><a href="#accounts">Payment accounts</a><a href="#providers">Providers</a><a href="#relationships">Provider matches</a><a href="#reconciliation">Reconciliation</a><a href="#later">Coming later</a></nav>
+<nav class="toc small"><a href="#plans">Insurance plans</a><a href="#members">Household members</a><a href="#accounts">Payment accounts</a><a href="#providers">Providers</a><a href="#relationships">Provider matches</a><a href="#reconciliation">Reconciliation</a>{% if not path_import %}<a href="#review">Reviewing uploads</a>{% endif %}</nav>
 
 <section id="reconciliation" class="section">
   <h2>Reconciliation</h2>
@@ -29,60 +29,33 @@
   </div>
 </section>
 
+{% if not path_import %}
+<section id="review" class="section">
+  <h2>Reviewing uploads</h2>
+  <div class="card">
+    <form method="post" action="/settings/review" class="inline">{{ csrf_input() }}
+      <label>Mark a field "Check" when the reader is less than
+        <select name="check_below">{% for c in check_below %}<option value="{{ c }}" {{ 'selected' if c == review.check_below }}>{{ (c * 100)|int }}% sure</option>{% endfor %}</select>
+      </label>
+      <label>Show how sure the reader was
+        <select name="show_confidence">
+          {% for v, t in [('flagged', 'Only on fields marked Check'), ('always', 'On every field'), ('never', 'Never')] %}<option value="{{ v }}" {{ 'selected' if v == review.show_confidence }}>{{ t }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn primary">Save</button>
+    </form>
+    <p class="muted small">"100% sure" marks every field the reader wasn't certain of, so you look at more of them. Whatever you choose, check the marked fields against the document before you confirm.</p>
+  </div>
+</section>
+{% endif %}
+
 <section id="plans" class="section">
   <h2>Insurance plans</h2>
-  {% for p in plans %}
-  <div class="card section">
-    <h3>{{ p.insurer }} · {{ p.plan_name }} {{ p.plan_year }}{% if p.coverage_order %} <span class="badge s-matched">{{ p.coverage_order|humanize }}</span>{% endif %}</h3>
-    <form method="post" action="/settings/plans/{{ p.id }}" class="inline">{{ csrf_input() }}
-      <label>Insurer<input name="insurer" value="{{ p.insurer }}" required></label>
-      <label>Plan name<input name="plan_name" value="{{ p.plan_name }}"></label>
-      <label>Plan year<input name="plan_year" type="number" value="{{ p.plan_year }}" class="w-6"></label>
-      <label>Coverage order<select name="coverage_order">{{ options(['primary', 'secondary', 'tertiary'], p.coverage_order, '—') }}</select></label>
-      <label>Coverage start<input name="coverage_start" type="date" value="{{ p.coverage_start or '' }}"></label>
-      <label>Coverage end<input name="coverage_end" type="date" value="{{ p.coverage_end or '' }}"></label>
-      <label>Coinsurance %<input name="coinsurance_pct" type="number" step="0.1" min="0" max="100" class="w-6"
-        value="{{ (p.coinsurance_rate * 100)|round(1) if p.coinsurance_rate is defined and p.coinsurance_rate is not none else '' }}"></label>
-      <label>Copays (one per line, "specialist: 60")<textarea name="copays" rows="2">{% for k, v in (p.copays or {}).items() %}{{ k }}: {{ '%.2f'|format(v / 100) }}
-{% endfor %}</textarea></label>
-      <div><div class="muted small">Members covered</div>
-        {% for m in members %}<label class="check-label"><input type="checkbox" name="member_ids" value="{{ m.id }}" {{ 'checked' if m.id in (p.member_ids or []) }}> {{ m.name }}</label>{% endfor %}
-      </div>
-      <label class="check-label"><input type="checkbox" name="hsa_eligible_plan" {{ 'checked' if p.hsa_eligible_plan }}> HSA-eligible plan</label>
-      <button class="btn primary">Save plan</button>
-    </form>
-
-    <h3 class="section">Deductibles and out-of-pocket maximums</h3>
-    {% if p.limits %}
-    <div class="table-wrap"><table>
-      <tr><th>Type</th><th>Network</th><th>Level</th><th>Member</th><th class="num">Amount</th><th></th></tr>
-      {% for l in p.limits %}
-      <tr><td>{{ l.type|humanize }}</td><td>{{ l.network|humanize }}</td><td>{{ l.level|humanize }}</td>
-        <td>{{ member_names.get(l.member_id, 'Each member' if l.level == 'individual' else '—') }}</td>
-        <td class="num">{{ l.amount|money }}</td>
-        <td class="num"><form method="post" action="/settings/plans/{{ p.id }}/limits/{{ loop.index0 }}/delete">{{ csrf_input() }}<button class="btn small danger">Remove</button></form></td></tr>
-      {% endfor %}
-    </table></div>
-    {% else %}<p class="muted small">No limits yet.</p>{% endif %}
-    <form method="post" action="/settings/plans/{{ p.id }}/limits" class="inline section">{{ csrf_input() }}
-      <label>Type<select name="type">{{ options(opts.limit_types, 'deductible') }}</select></label>
-      <label>Network<select name="network">{{ options(opts.limit_networks, 'in_network') }}</select></label>
-      <label>Level<select name="level">{{ options(['individual', 'family'], 'individual') }}</select></label>
-      <label>Member (individual only)<select name="member_id"><option value="">Each member</option>{% for m in members %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}</select></label>
-      <label>Amount<input name="amount" inputmode="decimal" placeholder="4500.00" required class="w-8"></label>
-      <button class="btn">Add limit</button>
-    </form>
+  <div class="card">
+    <p class="flush">Your plans, what they cover, and their deductibles and out-of-pocket maximums are on the <a href="/coverage">Coverage</a> page, where you also edit them.</p>
+    {% if plans %}<ul class="kv section">{% for p in plans %}<li><span><a href="/coverage?year={{ p.plan_year }}#plan-{{ p.id }}">{{ p.insurer }}{% if p.plan_name %}, {{ p.plan_name }}{% endif %}</a> <span class="muted small">{{ p.plan_year }}{% if p.coverage_order %} · {{ p.coverage_order|humanize }}{% endif %}</span></span><span class="small {{ 'good-ink' if p.terms_confirmed else 'warn-ink' }}">{{ 'Terms confirmed' if p.terms_confirmed else 'Terms not confirmed' }}</span></li>{% endfor %}</ul>{% endif %}
+    <p class="section flush"><a class="btn" href="/coverage">Open Coverage</a></p>
   </div>
-  {% endfor %}
-  <details class="card section">
-    <summary><strong>Add a plan</strong></summary>
-    <form method="post" action="/settings/plans" class="inline section">{{ csrf_input() }}
-      <label>Plan year<input name="plan_year" type="number" required class="w-6"></label>
-      <label>Insurer<input name="insurer" required></label>
-      <label>Plan name<input name="plan_name" placeholder="Medical" required></label>
-      <button class="btn primary">Add plan</button>
-    </form>
-  </details>
 </section>
 
 <section id="members" class="section">
@@ -130,6 +103,8 @@
   <p class="muted small">"Names in source files" maps the insurer's provider name and the HSA card merchant name to this provider. Assigning members lets HSA payments with no claim be attributed.</p>
   <div class="card">
     {% for p in providers %}
+    <details class="settings-item">
+    <summary><strong>{{ p.name }}</strong> <span class="small muted">{{ (p.kind or 'other')|humanize }} · {{ (p.network_status or 'unknown')|humanize }}{% if p.aliases and p.aliases|length > 1 %} · {{ p.aliases|length }} names{% endif %}</span></summary>
     <form method="post" action="/settings/providers/{{ p.id }}" class="inline settings-row">{{ csrf_input() }}
       <label>Name<input name="name" value="{{ p.name }}" required></label>
       <label>Kind<select name="kind">{{ options(opts.provider_kinds, p.kind) }}</select></label>
@@ -140,7 +115,8 @@
       </div>
       <button class="btn">Save</button>
     </form>
-    {% endfor %}
+    </details>
+    {% else %}<p class="muted">No providers yet: they're added from your documents.</p>{% endfor %}
   </div>
 </section>
 
@@ -162,11 +138,4 @@
   </div>
 </section>
 
-<section id="later" class="section">
-  <h2>Coming later</h2>
-  <div class="grid two">
-    <div class="card"><h3>Data</h3><p class="muted small">Export, backup and delete all data.</p></div>
-    <div class="card"><h3>Rules</h3><p class="muted small">"Waiting" threshold (fixed at 30 days for now) and FSA rules.</p></div>
-  </div>
-</section>
 {% endblock %}

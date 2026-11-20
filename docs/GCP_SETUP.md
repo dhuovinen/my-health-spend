@@ -1,6 +1,6 @@
 # Google Cloud staging setup, step by step
 
-How to stand up the `mhs-staging` project (phase 1.3) from nothing. The plan behind it is in [DEPLOYMENT.md](DEPLOYMENT.md). **Staging holds synthetic data only.** Nothing here has been run against a real project yet; the scripts are tested with `--dry-run` (`tests/test_gcp_scripts.py`).
+How to stand up the `mhs-staging` project (phase 1.3) from nothing. It is Stages 1 and 2 of [OWNER_SETUP.md](OWNER_SETUP.md), the checklist of everything the owner sets up outside the code. The plan behind it is in [DEPLOYMENT.md](DEPLOYMENT.md). **Staging holds synthetic data only.** Parts A to C were first run against a real project on 2026-11-14 (`mhs-staging-512010`), which fixed three things the dry runs couldn't catch: a Cloud SQL flag this gcloud doesn't have, the wait for newly enabled APIs, and secrets for worker pools. The scripts are also tested with `--dry-run` (`tests/test_gcp_scripts.py`).
 
 Every script takes `PROJECT_ID` (required) and `REGION` (default `us-east4`), checks whether each resource exists before creating it, and prints every command without running anything under `--dry-run`. Try that first:
 
@@ -12,7 +12,7 @@ PROJECT_ID=mhs-staging-12345 tools/gcp/setup.sh --dry-run
 
 1. **Google Cloud account and billing.** Sign in at console.cloud.google.com, create a billing account and add a payment method.
 2. **Budget alerts.** Billing > Budgets & alerts: a budget of, say, $50 a month for the project, with alerts at 50%, 90% and 100%.
-3. **Install gcloud** (`brew install --cask google-cloud-sdk`), then sign in twice (the second is for tools on your laptop, such as the accuracy run):
+3. **Install gcloud** (`brew install --cask google-cloud-sdk`; Homebrew now names it `gcloud-cli`). Homebrew's gcloud lacks the `grpc` module that `gcloud run worker-pools` needs, so give gcloud its own environment once: `gcloud config virtualenv create --enable-virtualenv`. Then sign in twice (the second is for tools on your laptop, such as the accuracy run):
    ```bash
    gcloud auth login
    ```
@@ -55,6 +55,8 @@ B10. **Anthropic key (only if AI extraction will be on, and only under the data-
 gcloud secrets create mhs-anthropic-api-key --data-file=- --project=mhs-staging-12345
 ```
 
+B11. **Sign-in providers (optional):** add each provider's secrets (OWNER_SETUP.md 3a lists the names: `mhs-google-client-id`, `mhs-google-client-secret` and so on), then rerun `setup.sh secrets` to grant them to `mhs-app`. `deploy.sh` turns on each provider whose secrets all exist, as environment variables from Secret Manager, so every later deploy keeps them.
+
 ## Part C: deploy (`tools/gcp/deploy.sh`)
 
 ```bash
@@ -66,8 +68,8 @@ PROJECT_ID=mhs-staging-12345 tools/gcp/deploy.sh
 | `image` | Builds `git archive HEAD` (committed files only, so `data/` can never get in) for `linux/amd64`, target `runtime`, and pushes it as `<region>-docker.pkg.dev/<project>/mhs/mhs:<commit>`. Skipped if that tag exists. |
 | `migrate` | Cloud Run job `mhs-migrate` (`mhs-stack migrate`, admin user `postgres`), then runs it |
 | `vault` | Service `mhs-vault`: ingress internal, port 8100, `vault` KMS key |
-| `app` | Service `mhs-app`: public, port 3063, `MHS_COOKIE_SECURE=1`, `MHS_PUBLIC_URL` = its run.app address (or `PUBLIC_URL`), GCS, KMS `app` key, Document AI, Presidio |
-| `worker` | Worker pool `mhs-worker` (layout rules), tag `mhs-no-egress`; `WORKER_INSTANCES=0` pauses it |
+| `app` | Service `mhs-app`: public, port 3063, `MHS_COOKIE_SECURE=1`, `MHS_PUBLIC_URL` = its run.app address (or `PUBLIC_URL`), GCS, KMS `app` key, Document AI, Presidio, and the sign-in providers whose secrets exist (B11) |
+| `worker` | Worker pool `mhs-worker` (layout rules), tag `mhs-no-egress`; `WORKER_INSTANCES=0` pauses it. Worker pools can't mount secrets as files yet, so its database password (and the AI worker's key) arrive as environment variables |
 | `admin` | Job `mhs-admin` running as `mhs-app` |
 | `worker-ai` | Only with `--with-ai` and `MHS_AI_PROXY` set (see open items) |
 
@@ -111,7 +113,104 @@ Rough monthly figures for the smallest sizes in `us-east4`, October 2026; they a
 | KMS (2 keys), Secret Manager (7 secrets), Storage, Artifact Registry | ~$1–2 |
 | **Total** | **~$15–20 paused, ~$60–75 with the worker running** |
 
-## Part F: tear it down
+## Part F: your own domain (`app.myhealthspend.com`)
+
+First the app gets its own subdomain, pointed at Cloud Run, while `myhealthspend.com` keeps serving the old Hostinger site; then (ADR-058) `myhealthspend.com` itself moves to the app and becomes the main address. Its address goes into every sign-in and insurer redirect URI, so do this before registering production OAuth clients. Browsers treat `myhealthspend.com` and `app.myhealthspend.com` as the same site, so a member who follows the landing page's "Sign in" link arrives with the app's `SameSite=Strict` session cookie intact. Don't frame the app in the Hostinger site, mask its address, or proxy it through Hostinger: Google, Microsoft and Apple refuse to show their sign-in pages in a frame, the app's policy forbids framing, and a proxy would put health data through a host outside ADR-028.
+
+The domain's DNS is at Hostinger (nameservers `*.dns-parking.com`), with no CAA records, so Google can issue the certificate without any change there. The steps below use Cloud Run **domain mapping**: free, and the quickest way to a branded address, but Google still calls it a preview and says it can add latency in `us-east4`. That's fine for staging. Production should use the load balancer (see the end of this part).
+
+1. **Prove you own the domain** (once per Google account; the same proof lets the OAuth consent screen list `myhealthspend.com` as an authorized domain):
+   ```bash
+   gcloud domains verify myhealthspend.com
+   ```
+   It opens Google Search Console with a `TXT` record to add. In hPanel: Domains, `myhealthspend.com`, DNS / Nameservers, "Add record": type `TXT`, name `@`, the value Google gives, TTL 3600. Leave the existing `TXT` records alone (a domain can have several). Click Verify in Search Console once the record shows (`dig +short TXT myhealthspend.com`), usually within minutes.
+2. **Map the subdomain to the app:**
+   ```bash
+   gcloud beta run domain-mappings create --service=mhs-app --domain=app.myhealthspend.com --region=us-east4 --project=mhs-staging-12345
+   ```
+3. **Read the record Google wants:**
+   ```bash
+   gcloud beta run domain-mappings describe --domain=app.myhealthspend.com --region=us-east4 --project=mhs-staging-12345 --format="yaml(status.resourceRecords)"
+   ```
+   For a subdomain it is a `CNAME` to `ghs.googlehosted.com.`
+4. **Add it at Hostinger:** hPanel, DNS / Nameservers, "Add record": type `CNAME`, name `app`, target `ghs.googlehosted.com`, TTL 300 while you set up (raise it to 3600 later). Change nothing for `@` or `www`: they keep serving the landing page. Check it from your laptop:
+   ```bash
+   dig +short CNAME app.myhealthspend.com
+   ```
+5. **Wait for the certificate.** Google issues it once the record resolves: usually 15 to 60 minutes, at most 24 hours. Repeat the `describe` from step 3 without `--format` until `CertificateProvisioned` and `Ready` are `True`. Until then `https://app.myhealthspend.com` shows a certificate error; the `run.app` address keeps working.
+6. **Redeploy the app and the admin job with the new address**, so enrolment links and redirect URIs use it:
+   ```bash
+   PUBLIC_URL=https://app.myhealthspend.com PROJECT_ID=mhs-staging-12345 tools/gcp/deploy.sh app admin
+   ```
+   Later `deploy.sh` runs keep the address the app has unless you give a new `PUBLIC_URL` (ADR-058).
+7. **Check it:**
+   ```bash
+   PUBLIC_URL=https://app.myhealthspend.com PROJECT_ID=mhs-staging-12345 tools/gcp/check.sh
+   ```
+   Then sign in at `https://app.myhealthspend.com/signin` and post a form (any setting): a refused post means the proxy-header workaround (open item 1) didn't go out with the deploy.
+8. **Point the sign-in providers at it.** Add `https://app.myhealthspend.com/signin/with/<provider>/callback` to the Google and Microsoft clients and to Apple's Services ID (Apple also wants `app.myhealthspend.com` under "Domains and Subdomains"), and `/connect/<payer>/callback` to each insurer registration. SETUP.md "Social sign-in" has the details, and OWNER_SETUP.md 3a the secrets `deploy.sh` reads. Remove the `run.app` URIs once the domain works.
+9. **Link to it from the landing page** while Hostinger still serves `myhealthspend.com`: "Sign in" goes to `https://app.myhealthspend.com/signin`. Not needed once `myhealthspend.com` serves the app (below).
+
+**As set up for staging (2026-11-19).** Project `mhs-staging-512010`. The domain was verified in Search Console and the mapping created on 2026-11-19; Google then reported the `app` record as correct and the certificate as pending. The DNS records at Hostinger afterwards ([screenshot](images/hostinger-dns-2026-11-19.png)):
+
+| Type | Name | Content | TTL | What it's for |
+| --- | --- | --- | --- | --- |
+| ALIAS | `@` | `myhealthspend.com.cdn.hstgr.net` | 300 | The landing page on Hostinger (Hostinger's own) |
+| CNAME | `www` | `www.myhealthspend.com.cdn.hstgr.net` | 300 | The landing page at `www` (Hostinger's own) |
+| A | `ftp` | `82.25.87.209` | 1800 | Hostinger file upload (Hostinger's own) |
+| TXT | `@` | `google-site-verification=c8DO_…9ACc` | 14400 | Step 1: proves to Google that you own the domain. Keep it: removing it can undo the verification |
+| CNAME | `app` | `ghs.googlehosted.com` | 300 | Step 4: the app on Cloud Run |
+
+![DNS records at Hostinger, 2026-11-19](images/hostinger-dns-2026-11-19.png)
+
+**Then for `myhealthspend.com` itself (2026-11-20, ADR-058).** Both mappings created (`myhealthspend.com`, `www.myhealthspend.com`). Hostinger hosted the old site as a Node.js website with its CDN already off, so the records it served by then were an `A` and an `AAAA` to its own server and `www` → `myhealthspend.com`, not the `ALIAS`/CDN records above. The change, made through the Hostinger API (DNS server `hostinger-dns-mcp`), replaced only those three; Hostinger keeps a snapshot of the old zone:
+
+| Type | Name | Content | TTL |
+| --- | --- | --- | --- |
+| A | `@` | `216.239.32.21`, `216.239.34.21`, `216.239.36.21`, `216.239.38.21` | 300 |
+| AAAA | `@` | `2001:4860:4802:32::15`, `…:34::15`, `…:36::15`, `…:38::15` | 300 |
+| CNAME | `www` | `ghs.googlehosted.com` | 300 |
+| CNAME | `app` | `ghs.googlehosted.com` (unchanged) | 300 |
+| TXT | `@` | `google-site-verification=c8DO_…9ACc` (unchanged) | 14400 |
+| A | `ftp` | `82.25.87.209` (unchanged, Hostinger's) | 1800 |
+
+The old website still exists at Hostinger but nothing reaches it; remove it, or cancel its hosting, when you no longer want it.
+
+Notes from doing it:
+- In hPanel's "Add record" form, the `TXT` record's Name is `@` and its value is the whole `google-site-verification=…` string, without quotation marks. `dig` shows TXT values in quotes; they aren't part of the value.
+- The first `gcloud beta` command asks to install the "gcloud Beta Commands" component; answer yes.
+- The Hostinger connection for Claude Code comes in parts: `hostinger-hosting-mcp` has the website tools but no DNS; DNS is `hostinger-dns-mcp`, added with the same API token (hPanel, Account, API).
+
+**Then `myhealthspend.com` itself (ADR-058).** The bare domain and `www` point at the app too, the Hostinger website is retired (DNS stays at Hostinger), and `https://myhealthspend.com` becomes the main address. The app forwards every other address (`app.`, `www.`, `run.app`) to it, because cookies belong to one address: a sign-in that starts on one and returns to another fails. Do it after sign-in works on `app.myhealthspend.com`, with both callbacks already registered with each provider (OWNER_SETUP.md 3a).
+
+1. **Deploy the forwarding code first** (any commit from 2026-11-20 on; the address doesn't change yet):
+   ```bash
+   PROJECT_ID=mhs-staging-12345 tools/gcp/deploy.sh
+   ```
+2. **Map both names to the app** (the domain is already verified):
+   ```bash
+   gcloud beta run domain-mappings create --service=mhs-app --domain=myhealthspend.com --region=us-east4 --project=mhs-staging-12345
+   ```
+   ```bash
+   gcloud beta run domain-mappings create --service=mhs-app --domain=www.myhealthspend.com --region=us-east4 --project=mhs-staging-12345
+   ```
+   Each prints the records it needs. For the bare domain they are four `A` and four `AAAA` records (Google's are usually `216.239.32.21`, `216.239.34.21`, `216.239.36.21`, `216.239.38.21` and `2001:4860:4802:32::15`, `…:34::15`, `…:36::15`, `…:38::15`; use what the command prints). For `www`, a `CNAME` to `ghs.googlehosted.com`.
+3. **Stop Hostinger serving the site.** The `ALIAS @` and `CNAME www` records point at Hostinger's CDN for the website. In hPanel, turn off the website's CDN (or remove the website) first, so Hostinger doesn't put the records back. From here until step 5, `myhealthspend.com` shows an error; `app.myhealthspend.com` is unaffected.
+4. **Change the records at Hostinger** (DNS / Nameservers): delete `ALIAS @` and `CNAME www`; add the four `A` and four `AAAA` records with name `@`, and `CNAME www` → `ghs.googlehosted.com`. Keep the `TXT` verification record and `CNAME app`. TTL 300 while you set up.
+5. **Wait for both certificates** (usually under an hour): `describe` each mapping until `Ready` is `True`, or until `curl -sS -o /dev/null -w "%{http_code}\n" https://myhealthspend.com/health` prints `200`.
+6. **Make it the main address:**
+   ```bash
+   PUBLIC_URL=https://myhealthspend.com PROJECT_ID=mhs-staging-12345 tools/gcp/deploy.sh app admin
+   ```
+   Then `https://app.myhealthspend.com/...` and `https://www.myhealthspend.com/...` forward to the same page on `https://myhealthspend.com`, and the old site's `/auth` goes to the sign-in page.
+7. **Check:** `PUBLIC_URL=https://myhealthspend.com PROJECT_ID=mhs-staging-12345 tools/gcp/check.sh`, then sign in with a password, with Google and with Microsoft at `https://myhealthspend.com/signin`.
+8. **Google branding links** can now use `https://myhealthspend.com` (OWNER_SETUP.md 3a).
+
+**For production: a load balancer instead.** A global external Application Load Balancer with a serverless network endpoint group for `mhs-app` and a Google-managed certificate for `app.myhealthspend.com`. At Hostinger the `app` record becomes an `A` record to the load balancer's static IP. It costs about $18 a month or more, avoids the domain-mapping latency, and lets Cloud Armor add rate limits and a web firewall in front of sign-in. Turn the app's ingress to "internal and load balancing" afterwards, so the `run.app` address no longer reaches it. Not scripted yet (open items).
+
+Not for this app: **Firebase Hosting** in front of Cloud Run. It forwards only one cookie, named `__session`, so the session, flow and view cookies would never reach the app.
+
+## Part G: tear it down
 
 ```bash
 PROJECT_ID=mhs-staging-12345 tools/gcp/teardown.sh --delete-project
@@ -129,5 +228,6 @@ Shuts down the whole project (undo within 30 days with `gcloud projects undelete
 6. **AI worker egress proxy:** Cloud Run can't allow just one domain; `worker-ai` needs a proxy (for example Secure Web Proxy or a small Squid VM) that only lets `api.anthropic.com` through. Until then `deploy.sh` won't deploy it.
 7. **Inbound email (ADR-039):** `mhs-mail` speaks SMTP, which Cloud Run can't receive. It needs an inbound-mail provider posting to an HTTP endpoint the app doesn't have yet, plus a domain with MX records.
 8. **Corpus through Document AI:** `tools/extraction_accuracy.py` has no OCR option; scanned corpus documents need one to measure Document AI.
-9. **Cloud SQL's `postgres` user isn't a true superuser.** The migrations use nothing that needs one (no extensions, no `BYPASSRLS`), but the first real `migrate` run is the proof.
+9. **Cloud SQL's `postgres` user isn't a true superuser.** The first `migrate` run (2026-11-14) worked; the second (2026-11-19) failed restating `NOSUPERUSER` on the existing roles, which only a superuser may do. `ensure_role` now only sets an existing role's password, and stops if a tier role has superuser, BYPASSRLS, CREATEDB or CREATEROLE (`tests/test_r1_database.py` reruns the migrations as a non-superuser admin).
 10. **KMS key rotation** isn't set; old versions keep unwrapping, so turning it on later is safe.
+11. **The load balancer** for production (Part F) isn't scripted.

@@ -1,0 +1,77 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 3317 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+40 760 Td
+(EquiHealth HSA Bank) Tj T*
+(HSA ACTIVITY STATEMENT) Tj T*
+(Account holder: David Henderson) Tj T*
+(HSA account number: HSA-1100420653) Tj T*
+(Period: 01/01/2026 to 09/30/2026) Tj T*
+() Tj T*
+(DISBURSEMENTS) Tj T*
+(Date Transaction Payee Patient Claim Amount) Tj T*
+(02/10/2026 HSA-HEN-8001 Summit Orthopedic Group David Henderson EOB-HEN-2001 $260.00) Tj T*
+(02/16/2026 HSA-HEN-8018 Dr. Patricia Gomez, MD Noah Henderson EOB-HEN-2018 $150.00) Tj T*
+(02/18/2026 HSA-HEN-8002 Metro Imaging Center David Henderson EOB-HEN-2002 $720.00) Tj T*
+(03/10/2026 HSA-HEN-8010 Dr. Karen Mehta, MD Elena Henderson EOB-HEN-2010 $210.00) Tj T*
+(03/12/2026 HSA-HEN-8011 Quest Diagnostics Inc. Elena Henderson EOB-HEN-2011 $85.00) Tj T*
+(04/05/2026 HSA-HEN-8003A St. Jude Surgical Pavilion David Henderson EOB-HEN-2003 $2,020.00) Tj T*
+(04/08/2026 HSA-HEN-8004 Summit Orthopedic Group David Henderson EOB-HEN-2004 $330.00) Tj T*
+(04/10/2026 HSA-HEN-8016 Children's Specialty Radiology Olivia Henderson EOB-HEN-2016 $210.00) Tj T*
+(04/10/2026 HSA-HEN-8016 Pediatric Spine Center Olivia Henderson EOB-HEN-2016 $225.00) Tj T*
+(04/13/2026 HSA-HEN-PT-501 Peak Performance Physical Therapy David Henderson EOB-HEN-PT-101 $22.00) Tj T*
+(04/16/2026 HSA-HEN-8017 BioTech Orthotics & Prosthetics Olivia Henderson EOB-HEN-2017 $1,450.00) Tj T*
+(04/20/2026 HSA-HEN-8003B St. Jude Surgical Pavilion David Henderson EOB-HEN-2003 $556.00) Tj T*
+(04/20/2026 HSA-HEN-PT-502 Peak Performance Physical Therapy David Henderson EOB-HEN-PT-102 $22.00) Tj T*
+(04/27/2026 HSA-HEN-PT-503 Peak Performance Physical Therapy David Henderson EOB-HEN-PT-103 $22.00) Tj T*
+(05/04/2026 HSA-HEN-PT-504 Peak Performance Physical Therapy David Henderson EOB-HEN-PT-104 $22.00) Tj T*
+(05/06/2026 HSA-HEN-8014 Dr. Harrison Lee, MD James Henderson EOB-HEN-2014 $240.00) Tj T*
+(05/06/2026 HSA-HEN-8014 Valley Pulmonary Clinic James Henderson EOB-HEN-2014 $140.00) Tj T*
+(05/11/2026 HSA-HEN-PT-505 Peak Performance Physical Therapy David Henderson EOB-HEN-PT-105 $22.00) Tj T*
+(05/18/2026 HSA-HEN-PT-506 Peak Performance Physical Therapy David Henderson EOB-HEN-PT-106 $22.00) Tj T*
+(05/25/2026 HSA-HEN-PT-507 Peak Performance Physical Therapy David Henderson EOB-HEN-PT-107 $22.00) Tj T*
+(06/01/2026 HSA-HEN-PT-508 Peak Performance Physical Therapy David Henderson EOB-HEN-PT-108 $22.00) Tj T*
+(06/08/2026 HSA-HEN-PT-509 Peak Performance Physical Therapy David Henderson EOB-HEN-PT-109 $22.00) Tj T*
+(06/11/2026 HSA-HEN-8015 Allergy & Asthma Associates James Henderson EOB-HEN-2015 $280.00) Tj T*
+(06/15/2026 HSA-HEN-PT-510 Peak Performance Physical Therapy David Henderson EOB-HEN-PT-110 $22.00) Tj T*
+(06/22/2026 HSA-HEN-PT-511 Peak Performance Physical Therapy David Henderson EOB-HEN-PT-111 $22.00) Tj T*
+(06/29/2026 HSA-HEN-PT-512 Peak Performance Physical Therapy David Henderson EOB-HEN-PT-112 $22.00) Tj T*
+(07/28/2026 HSA-HEN-8019 Dr. Patricia Gomez, MD Noah Henderson EOB-HEN-2019 $150.00) Tj T*
+(09/08/2026 HSA-HEN-8012 Dr. Karen Mehta, MD Elena Henderson EOB-HEN-2012 $210.00) Tj T*
+(09/30/2026 HSA-HEN-8013 Vanguard Retina Associates Elena Henderson EOB-HEN-2013 $135.00) Tj T*
+() Tj T*
+(Number of disbursements: 29) Tj T*
+(Total disbursements: $7,635.00) Tj T*
+(Contributions and balances aren't shown in this test data.) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000003554 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+3680
+%%EOF

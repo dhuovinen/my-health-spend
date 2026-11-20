@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Connect your insurer{% endblock %}
+{% block content %}
+<p class="small"><a class="back" href="/uploads">← Uploads</a></p>
+<div class="page-head"><div>
+  <h1>Connect your insurer</h1>
+  <div class="muted">Bring in your claims straight from your insurer instead of uploading each EOB.</div>
+</div></div>
+{% if not allowed %}<p class="alert warn">Give your consent first: <a href="/consent">Consent</a>.</p>{% endif %}
+<section class="card section">
+  {% if payers %}
+  <p>You'll sign in at your insurer and approve read-only access to your claims. MHS reads them once and doesn't keep that access: to bring in newer claims, connect again. You'll see what was read before anything is saved.</p>
+  {% for p in payers %}
+  <h2>{{ p.label }}</h2>
+  <p class="small muted">Whose claims?</p>
+  <div class="actions">
+    {% for m in members %}<a class="btn" href="/connect/{{ p.name }}?who={{ m.id }}">{{ m.name }}</a>{% endfor %}
+    <a class="btn" href="/connect/{{ p.name }}">Not sure</a>
+  </div>
+  {% endfor %}
+  <p class="muted small section">Your insurer will know you connected MHS. Names and member numbers from your insurer aren't copied into MHS.</p>
+  {% else %}
+  <p class="muted">No insurer is set up for connection on this server yet. The owner adds one in the server settings (SETUP.md, "Insurer connection"). Until then, upload your EOBs on the Uploads page.</p>
+  {% endif %}
+</section>
+{% endblock %}

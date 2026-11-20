@@ -5,7 +5,7 @@
 {% set FLAG_TEXT = {'overpaid': ('Overpaid', 'bad'), 'unpaid': ('Unpaid', ''), 'gap': ('Owed per insurer, not billed or paid', 'bad'),
   'no_claim': ('HSA payment, no claim', 'info'), 'outside_hsa': ('Paid outside HSA', ''), 'duplicate': ('Possible duplicate', 'bad'),
   'unconfirmed': ('Unconfirmed match', 'idle')} %}
-<div class="page-head"><h1>Providers</h1>{{ year_select(report, "/providers") }}</div>
+<div class="page-head"><h1>Providers</h1><div class="actions"><a class="btn small" href="/charges?year={{ report.year }}">Charges over time</a>{{ year_select(report, "/providers") }}</div></div>
 <p class="muted">Payments are balanced against everything you owe each provider. Providers joined by a match in Settings are shown together.</p>
 {% if flag %}<p class="small">Showing providers flagged <span class="chip {{ FLAG_TEXT.get(flag, ('', ''))[1] }}">{{ FLAG_TEXT.get(flag, (flag, ''))[0] }}</span> <a href="/providers?year={{ report.year }}">Show all</a></p>{% endif %}
 <div class="card table-wrap">

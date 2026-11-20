@@ -16,7 +16,7 @@ These need your Google account and decisions; nothing in the repository can do t
 
 | Local (compose) | Google Cloud | Notes |
 | --- | --- | --- |
-| `app` | Cloud Run service, public over HTTPS, `MHS_COOKIE_SECURE=1`, `MHS_PUBLIC_URL=https://…` | The only public entry point |
+| `app` | Cloud Run service, public over HTTPS, `MHS_COOKIE_SECURE=1`, `MHS_PUBLIC_URL=https://…`, `MHS_REDIRECT_OTHER_HOSTS=1` (ADR-058) | The only public entry point |
 | `vault` | Cloud Run service, internal ingress only, reachable from `app` | Own service account and KMS key |
 | `worker` | Cloud Run worker pool with no egress beyond Cloud SQL | Rules extraction |
 | `worker-ai` | Cloud Run worker pool whose only egress is the Anthropic API (a proxy or a NAT rule) | Only if AI extraction is on (ADR-034) |

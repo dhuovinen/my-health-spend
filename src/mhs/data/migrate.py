@@ -23,15 +23,24 @@ class Roles:
         return {"app": self.app, "worker": self.worker, "vault": self.vault}
 
 
+class RoleError(Exception):
+    """A tier role exists with more rights than it should have."""
+
+
 def ensure_role(conn: psycopg.Connection, name: str, password: str) -> None:
-    exists = conn.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (name,)).fetchone()
-    verb = "ALTER" if exists else "CREATE"
+    """Create the role, or set its password if it exists. An existing role isn't altered back to NOSUPERUSER or
+    NOBYPASSRLS: restating either needs a true superuser, which Cloud SQL's `postgres` isn't, so it is checked
+    instead and the migration stops if it has any of those rights."""
+    found = conn.execute("SELECT rolsuper, rolbypassrls, rolcreatedb, rolcreaterole FROM pg_roles WHERE rolname = %s",
+                         (name,)).fetchone()
     # Utility statements can't take bind parameters; the password is quoted as a literal.
-    conn.execute(
-        sql.SQL(verb + " ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD {}").format(
-            sql.Identifier(name), sql.Literal(password)
-        )
-    )
+    if found is None:
+        conn.execute(sql.SQL("CREATE ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD {}")
+                     .format(sql.Identifier(name), sql.Literal(password)))
+        return
+    if any(found):
+        raise RoleError(f"role {name} has superuser, BYPASSRLS, CREATEDB or CREATEROLE; remove them by hand")
+    conn.execute(sql.SQL("ALTER ROLE {} LOGIN PASSWORD {}").format(sql.Identifier(name), sql.Literal(password)))
 
 
 def migrate(admin_url: str, roles: Roles, passwords: dict[str, str]) -> list[str]:

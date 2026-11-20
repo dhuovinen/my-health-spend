@@ -1,10 +1,10 @@
 # My Health Spend (MHS): Test Plan
 
-Oct 15, 2026 · Revised Oct 15, 2026: all conflicts and ambiguities decided; P1 = Release 1 (49 requirements)
+Oct 15, 2026 · Revised Oct 15, 2026: all conflicts and ambiguities decided; P1 = Release 1 (49 requirements). Nov 5, 2026: REC-14 added. Nov 6, 2026: UX-11 added. Nov 19, 2026: REC-15 added
 
-**Covers:** all 100 requirements in the [Product Requirements](<My Health Spend (MHS) Product Requirements.md>) (the PRD). They are checked against [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) (agreed and built 2026-10-09) and the [Problem Statement & Plan](<My Health Spend (MHS) Problem Statement & Plan.md>).
+**Covers:** all 102 requirements in the [Product Requirements](<My Health Spend (MHS) Product Requirements.md>) (the PRD). They are checked against [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) (agreed and built 2026-10-09) and the [Problem Statement & Plan](<My Health Spend (MHS) Problem Statement & Plan.md>).
 
-**At a glance:** 326 test cases cover all 100 requirements; 183 are for Release 1 (P1), none of them blocked. All 16 conflicts and 14 ambiguities are decided. 3 Release 2 cases still wait on one PRD open question (does self-pay count toward the deductible). 22 cases are already partly or fully automated by the existing 32 tests.
+**At a glance:** 351 test cases cover all 102 requirements; 183 are for Release 1 (P1), none of them blocked. All 16 conflicts and 14 ambiguities are decided. 3 Release 2 cases still wait on one PRD open question (does self-pay count toward the deductible). 22 cases are already partly or fully automated by the existing 32 tests.
 
 **How to use it**
 
@@ -217,7 +217,7 @@ Severity: **High** means the build or existing tests would have to change, or tw
 | A-11 | CMP-06 | Process or software? | **Decided:** Process; tested by a review record plus versioned reference tables (PLT-01) |
 | A-12 | PRV-08 | What may a "pseudonymous event" contain? | **Decided:** An allow-list schema: event name, pseudonymous install ID, timestamp, app version; no amounts, providers or codes |
 | A-13 | DSP-04 | Default follow-up interval? | **Decided:** 30 days for providers and insurers; user-editable per case |
-| A-14 | REC-10 | A "changed unit price" relative to what? | **Decided (with X-06):** the same code from the same provider on an earlier bill or EOB within the plan year, or the GFE (PRE-06). Now in REC-10 |
+| A-14 | REC-10 | A "changed unit price" relative to what? | **Decided (with X-06):** the same code from the same provider on an earlier bill or EOB within the plan year, or the GFE (PRE-06). Now in REC-10 and REC-14 |
 
 ---
 
@@ -225,7 +225,7 @@ Severity: **High** means the build or existing tests would have to change, or tw
 
 ### 2.1 Scope
 
-- **In scope:** functional, data-integrity, UI, privacy/security, performance and compliance checks for the 100 PRD requirements.
+- **In scope:** functional, data-integrity, UI, privacy/security, performance and compliance checks for the 102 PRD requirements.
 - **Regression scope:** the built MVP (Appendix A).
 - **Out of scope:** the market and presentation data in the Problem Statement; legal sign-off itself, though CMP cases check that the inputs to that sign-off exist.
 
@@ -430,7 +430,7 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-REC-09-3 | REC-09 | Unknown code | Shown with "unknown code"; logged for table update; no crash | U | New |
 | TC-REC-10-1 | REC-10 | Difference of $0.50 | Auto-cleared; recorded as "cleared within tolerance" and visible on request | U | New |
 | TC-REC-10-2 | REC-10 | Differences of $0.99 and $1.00 | $0.99 clears; $1.00 is flagged | U | New |
-| TC-REC-10-3 | REC-10 | Code 99214 billed $150.00 in March and $150.10 in June by the same provider | Unit price change of $0.10 flagged despite the tolerance | U | New |
+| TC-REC-10-3 | REC-10 | Code 99214 billed $150.00 in March and $150.10 in June by the same provider | Unit price change of $0.10 flagged despite the tolerance (the rule is now REC-14) | U | New |
 | TC-REC-10-4 | REC-10 | Change the tolerance setting | Findings recompute with the new tolerance | I | New |
 | TC-REC-10-5 | REC-10 | Six $0.90 differences at one provider in a plan year | Each clears alone; the sixth takes the total to $5.40 and the provider is flagged | U | New |
 | TC-REC-11-1 | REC-11 | One fixture visit per status (9) | Each of In dispute, Discrepancy found, Needs review, Balance outstanding, Awaiting EOB, Awaiting documents, Missing documents, Resolved, Complete is reachable and shown | U | Exists: `test_r1_reconcile.py::test_rec_11_1_every_status_is_reachable` |
@@ -445,6 +445,25 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-REC-13-2 | REC-13 | Visit drops off a later statement with no matching payment | Unexplained remainder flagged with its amount | U | Exists: `test_visit_that_drops_off_a_later_statement_is_settled` |
 | TC-REC-13-3 | REC-13 | Responsibility $100.00; paid $120.00; then a $20.00 refund | Before the refund: credit due $20.00 (REC-03); after: still owed $0.00 | U | Exists: `test_r1_reconcile.py::test_rec_03_4_and_rec_13_3_refund_resolves_the_overpayment` |
 | TC-REC-13-4 | REC-13 | Provider with 4 visits | Provider-level settlement equals the sum of its visits | U | Exists: `test_r1_reconcile.py::test_rec_13_4_provider_settlement_is_the_sum_of_its_visits` |
+| TC-REC-14-1 | REC-14 | Same person, provider, plan and code in one plan year; deductible not met; allowed $400.00, then $250.00 | Flagged on the second visit: both dates, both amounts, difference $150.00, "worth a closer look". Status and dollars at stake unchanged | U | New |
+| TC-REC-14-2 | REC-14 | Code 99214 billed $150.00, then $150.10; allowed amount unchanged | Billed change of $0.10 flagged; no tolerance on price changes (ADR-015) | U | New |
+| TC-REC-14-3 | REC-14 | Allowed $400.00 on both visits; member share $400.00, then $80.00; the deductible was met between them | No flag; the later visit says the deductible explains the difference | U | New |
+| TC-REC-14-4 | REC-14 | Allowed $400.00 on both visits; deductible not met on either; member share $400.00, then $250.00 | Flagged as a changed member share, difference $150.00 | U | New |
+| TC-REC-14-5 | REC-14 | Same code and price change, but a different person; a different provider group; a different plan; the next plan year | No flag in any of the four | U | New |
+| TC-REC-14-6 | REC-14 | Same code at 2 units for $200.00, then 1 unit for $100.00; same code with a different modifier | Same price per unit, so no flag; with a different modifier the prices aren't compared | U | New |
+| TC-REC-14-7 | REC-14 | Four visits with codes A and B, then one with A, B and C; separately, only two earlier visits | Changed codes flagged on the visit with C, naming C; no flag without three visits in the series | U | New |
+| TC-REC-14-8 | REC-14 | Statement with no line detail; a document not yet confirmed | Not compared; no flag | U | New |
+| TC-REC-14-9 | REC-14 | Allowed $400.00 twice, then $250.00 three times; the member closes the flag as "It was wrong" | One flag, on the first $250.00 visit; it stays closed and counts on Finding accuracy (ADR-044) | U | New |
+| TC-REC-14-10 | REC-14 | Open a flagged visit at 375px and 1280px | Both visits shown side by side in words, with the common reasons and the next step; page stays CSP-clean | I | New |
+| TC-REC-15-1 | REC-15 | Plan years generated from known terms: embedded deductible with 20% coinsurance; a copay plan; an HSA-eligible deductible-first plan; a year that reaches the out-of-pocket maximum | Every term the generated EOBs reach comes back as known with the generating value (within $1.00); the claims behind each are listed | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-2 | REC-15 | Twelve claims at 20% coinsurance and one at 30% | Coinsurance known at 20%; the 30% claim listed as an outlier with its numbers; the inferred value unchanged | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-3 | REC-15 | A plan year where the running deductible is $1,200.00 and every claim still charges deductible | Deductible "at least $1,200.00"; never used to check a claim or fill a field | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-4 | REC-15 | Only two claims show a copay for specialist visits; separately, four specialist claims at $40.00, $40.00, $60.00 and $75.00 | Unknown with two claims; conflicting with four (50% agree); neither used | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-5 | REC-15 | A secondary plan's EOB, a denied claim, an out-of-network claim and a superseded EOB version (ADR-052) added to a year | None of them changes any inferred term or its evidence count | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-6 | REC-15 | Entered coinsurance 20%; EOBs show 30% as known; terms confirmed, then not confirmed | A terms_mismatch finding that names both values and the claims, a flag either way; visit statuses and dollars at stake unchanged; closable as real or wrong and counted on Finding accuracy (ADR-044) | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-7 | REC-15 | Plan with no coinsurance rate entered; EOBs show 20% as known; one claim charges 30% | REC-06 checks the claims with 20% re-inferred without each checked claim; the 30% claim is a flag that says "using what your EOBs show"; an entered rate always wins over an inferred one | U | Automated: `test_plan_inference.py` |
+| TC-REC-15-8 | REC-15 | Open Coverage at 375px and 1280px for a plan with inferred terms; press "Use this" on an empty field | The "What your EOBs show" column shows each term's state, claim count and a link to the claims; the field is filled in the form but nothing is saved until the member saves; terms_confirmed is not ticked; page stays CSP-clean | I | Automated: `test_plan_pages.py` |
+| TC-REC-15-9 | REC-15 | Two households with EOBs from the same plan | Each household's inferred terms come only from its own claims; no inferred term is stored as a record | I | Automated: `test_plan_pages.py` |
 
 ### 3.4 Charge allocation (ALC)
 
@@ -594,6 +613,21 @@ Columns: **Level** per 2.2. **Status:** *New*; *Exists: `test_name`* (partly or 
 | TC-UX-09-2 | UX-09 | Quit the wizard midway and return | Resumes at the step left | E | New |
 | TC-UX-10-1 | UX-10 | 375px-wide phone: capture a photo and review the visit list | No horizontal scroll; camera capture works one-handed; tap targets ≥ 44px | E | New |
 | TC-UX-10-2 | UX-10 | 1280px desktop: full reconciliation of a 6-line visit | All panels usable without zooming | E | New |
+| TC-UX-11-1 | UX-11 | Two providers and 3 members in the current plan year | One dot per bill at its service date and amount billed; the dots and table rows are the same bills and their totals match | I | New |
+| TC-UX-11-2 | UX-11 | One provider serves 2 members; one member sees 2 providers | Each member has one color across providers, shown in a legend; the table and tooltip name the member, so color isn't the only signal | E | New |
+| TC-UX-11-3 | UX-11 | Hover, keyboard focus and a tap at 375px on a dot | Each shows provider, member, service date, amount billed, the member's share and status | E | New |
+| TC-UX-11-4 | UX-11 | Provider with 4 bills in the prior plan year | Hint says "4 earlier bills" and names the year; the control extends the chart and table, with the two years visibly separated; turning it off returns to the current year | E | New |
+| TC-UX-11-5 | UX-11 | Provider with no prior-year bills | No hint and no control | I | New |
+| TC-UX-11-6 | UX-11 | Bills from two plan years back | Not shown and not counted in the hint | I | New |
+| TC-UX-11-7 | UX-11 | Filter by provider, by member and by both; reload the URL | Chart, table and hint show only matching bills; the same filters are restored after reload | I | New |
+| TC-UX-11-8 | UX-11 | Filters that match no bills | Empty chart with "No bills match" and a clear-filters link | E | New |
+| TC-UX-11-9 | UX-11 | Expand a table row for a bill with 3 line items | Shows code, description, billed, allowed and the member's share per line; lines add up to the row's amount, or the difference is shown | E | New |
+| TC-UX-11-10 | UX-11 | Expand a row for a bill that shows only totals | Says the bill shows totals only; no empty line table | E | New |
+| TC-UX-11-11 | UX-11 | Visit with a payment but no billed amount | No dot; listed in the table with no amount and counted in a note under the chart | I | New |
+| TC-UX-11-12 | UX-11 | Two members with the same provider, date and amount | Both dots can be reached and read; neither hides the other | E | New |
+| TC-UX-11-13 | UX-11 | Open the page at 375px and 1280px | No horizontal scroll at 375px; no third-party requests; no inline styles or scripts (CSP clean) | S | New |
+| TC-UX-11-14 | UX-11 | Two bills of $400.00 with member shares of $80.00 and $50.00; switch from billed to the member's share and reload the URL | Dots are level on billed and differ on the member's share; the table's amount follows; billed is the default; the choice is restored after reload | I | New |
+| TC-UX-11-15 | UX-11 | Bill with a billed amount and no member's share yet (no EOB); switch to the member's share | No dot in that view; listed in the table with no amount and counted in the note; plotted again on billed | I | New |
 
 ### 3.9 Privacy, security and pseudonymization (PRV)
 
@@ -631,6 +665,13 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-PRV-11-1 | PRV-11 | Sign in with password only | Second factor required; no data reachable before it | S | New |
 | TC-PRV-11-2 | PRV-11 | Member of household A requests visit, document and API ids belonging to household B | Not found or forbidden; nothing from household B returned or leaked in errors | S | New |
 | TC-PRV-11-3 | PRV-11 | Sign out; session idle past the timeout | Session tokens invalid; next request needs sign-in | S | New |
+| TC-PRV-12-1 | PRV-12 | Member with a linked Google, then Microsoft, account signs in through the provider | While the code is required (PLT-09): code asked for, no data reachable before it, Home after it | S | New |
+| TC-PRV-12-2 | PRV-12 | Sign in with a provider account linked to no member, including one whose email matches a member's | No access, no account created, no link made, and the response doesn't reveal whether the email is a member's | S | New |
+| TC-PRV-12-3 | PRV-12 | Callback with a wrong or missing `state`, a wrong `nonce`, a reused code, or a token for another client or issuer | Refused; no session started | S | New |
+| TC-PRV-12-4 | PRV-12 | Member links, then unlinks, a provider account on the Account page; provider account's email changes | Link needs a passed sign-in; after unlinking that account no longer signs in; a changed email still matches the same member | S | New |
+| TC-PRV-12-5 | PRV-12 | Full sign-in in a real browser under the app's policy and SameSite=Strict session cookie | Reaches the provider and returns to the code step with the session intact; no policy violations | S | New |
+| TC-PRV-12-6 | PRV-12 | Delete the member; check the access log and what is requested from the provider | Links deleted with the member; sign-ins and link changes logged; only `openid` and `email` requested (Apple: nothing) | S | New |
+| TC-PRV-12-7 | PRV-12 | Link and sign in with Apple (ADR-057), against the fake provider in Apple's shape; then on staging against Apple itself | No scope, no PKCE and `response_mode=query` sent; the client secret is an ES256 token from the configured key, valid minutes only; linked with no email; code still asked for; another Apple subject gets no access; a bad key stops the app | S | New |
 
 ### 3.10 Regulatory and compliance (CMP)
 
@@ -668,6 +709,9 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-PLT-06-3 | PLT-06 | Seeded-identifier scan of the library | No real identifiers in fixtures | S | New |
 | TC-PLT-07-1 | PLT-07 | Contract tests with sample FHIR EOB, HSA export and X12 835 payloads | Each adapter maps to the same internal model; REC-01 holds | I | New |
 | TC-PLT-08-1 | PLT-08 | KPI job on a fixture dataset with known answers | First-pass match rate, findings per visit, dollars recovered and time to resolution equal the expected values | U | New |
+| TC-PLT-09-1 | PLT-09 | A member, and a visitor, open the admin screen | Refused for both; only the owner reaches it | S | Automated: `test_r1_admin.py` |
+| TC-PLT-09-2 | PLT-09 | Owner turns the required code off, then on | Off: sign-in needs no code. On: open sessions without a code end and the code is asked for; a member who never set up an authenticator is taken through it. Each change logged | S | Automated: `test_r1_admin.py` |
+| TC-PLT-09-3 | PLT-09 | Owner opens the admin screen | Shows no household's health data | S | Automated: `test_r1_admin.py` |
 
 ---
 
@@ -675,7 +719,7 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 
 One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities that hold back at least one of its cases.
 
-**Totals:** 100 requirements, 326 test cases (P1 183, P2 134, P3 9). 3 cases (2 requirements) are blocked on a decision; 22 are already partly or fully automated.
+**Totals:** 102 requirements, 351 test cases (P1 183, P2 159, P3 9). 3 cases (2 requirements) are blocked on a decision; 22 are already partly or fully automated.
 
 | Req | Priority | Test cases | Levels | Blocked by | Automated today |
 | --- | --- | --- | --- | --- | --- |
@@ -712,6 +756,7 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | REC-11 | P1 | 1, 2, 3, 4, 5 (5) | EU | — | 1 partly |
 | REC-12 | P2 | 1, 2, 3 (3) | U | PRD open question | — |
 | REC-13 | P1 | 1, 2, 3, 4 (4) | U | — | 1 partly |
+| REC-14 | P2 | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 (10) | IU | — | — |
 | ALC-01 | P1 | 1, 2, 3, 4 (4) | U | — | — |
 | ALC-02 | P2 | 1, 2, 3, 4 (4) | U | — | — |
 | ALC-03 | P1 | 1, 2, 3 (3) | U | — | — |
@@ -754,6 +799,7 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | UX-08 | P2 | 1, 2, 3 (3) | IS | — | — |
 | UX-09 | P2 | 1, 2 (2) | E | — | — |
 | UX-10 | P1 | 1, 2 (2) | E | — | — |
+| UX-11 | P2 | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 (15) | EIS | — | — |
 | PRV-01 | P1 | 1, 2, 3 (3) | SU | — | — |
 | PRV-02 | P1 | 1, 2 (2) | U | — | — |
 | PRV-03 | P1 | 1, 2, 3 (3) | U | — | — |
@@ -765,6 +811,7 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | PRV-09 | P2 | 1, 2, 3 (3) | IS | — | — |
 | PRV-10 | P2 | 1, 2 (2) | SU | — | — |
 | PRV-11 | P1 | 1, 2, 3 (3) | S | — | — |
+| PRV-12 | P2 | 1, 2, 3, 4, 5, 6, 7 (7) | S | — | — |
 | CMP-01 | P2 | 1, 2, 3 (3) | MRS | — | — |
 | CMP-02 | P2 | 1, 2, 3 (3) | EI | — | — |
 | CMP-03 | P2 | 1, 2 (2) | R | — | — |
@@ -779,6 +826,7 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | PLT-06 | P1 | 1, 2, 3 (3) | RS | — | — |
 | PLT-07 | P2 | 1 (1) | I | — | — |
 | PLT-08 | P2 | 1 (1) | U | — | — |
+| PLT-09 | P2 | 1, 2, 3 (3) | S | — | — |
 
 ---
 

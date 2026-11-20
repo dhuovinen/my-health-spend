@@ -1,0 +1,48 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 480 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+40 760 Td
+(GRANITE MUTUAL) Tj T*
+(Explanation of Benefits - this is not a bill) Tj T*
+(Member: Alex Sample) Tj T*
+(Member ID: GMX-448-2201) Tj T*
+(Provider: Brookside Podiatry) Tj T*
+(Date of service: 06/09/2026) Tj T*
+(Claim number: GM-20640) Tj T*
+(Submitted by provider $335.00) Tj T*
+(Contracted rate $240.00) Tj T*
+(Granite remitted $192.00) Tj T*
+(Member portion $48.00) Tj T*
+(Questions? Call Granite Mutual member services at \(555\) 010-4420.) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000000716 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+842
+%%EOF

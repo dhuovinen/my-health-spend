@@ -24,7 +24,7 @@
 <div class="page-head">
   <div>
     <h1>{{ v.provider.name }}</h1>
-    <div class="muted">{{ v.visit.date|nice_date }} · {{ v.visit.category|humanize }}{% if not v.insured %} · no insurance claim{% endif %}{% if v.member %} · {{ v.member.name }}{% endif %}{% if plan %} · {{ plan.insurer }} {{ plan.plan_name }} {{ plan.plan_year }}{% endif %}</div>
+    <div class="muted">{{ v.visit.date|nice_date }} · {{ v.visit.category|humanize }}{% if not v.insured %} · no insurance claim{% endif %}{% if v.member %} · {{ v.member.name }}{% endif %}{% if plan %} · <a href="/coverage?year={{ plan.plan_year }}#plan-{{ plan.id }}">{{ plan.insurer }}{% if plan.plan_name %}, {{ plan.plan_name }}{% endif %} ({{ plan.plan_year }})</a>{% endif %}</div>
     {% if v.visit.description %}<div class="small">{{ v.visit.description }}</div>{% endif %}
   </div>
   {{ badge(v.status) }}
@@ -59,6 +59,23 @@
 </div>
 {% endfor %}
 
+{% for kept, newer in v.version_conflicts %}
+<div class="alert warn" id="version">
+  <strong>A newer EOB arrived for claim {{ newer.claim_number or 'without a number' }}{% if newer.version_reason %} ({{ newer.version_reason|humanize|lower }}){% endif %}.</strong>
+  You corrected the one on file, so MHS keeps using yours until you choose.
+  <div class="table-wrap"><table class="small">
+    <tr><th></th><th class="num">Yours ({{ kept.date|nice_date }})</th><th class="num">Newer ({{ newer.date|nice_date }})</th></tr>
+    {% for k, label in [('billed', 'Billed'), ('allowed', 'Allowed'), ('insurer_paid', 'Insurer paid'), ('deductible', 'Deductible'), ('copay', 'Copay'), ('coinsurance', 'Coinsurance'), ('not_covered', 'Not covered'), ('patient_responsibility', 'You owe')] %}
+    <tr class="{{ 'disagree' if kept.get(k) != newer.get(k) }}"><td>{{ label }}</td><td class="num">{{ kept.get(k)|money }}</td><td class="num">{{ newer.get(k)|money }}</td></tr>
+    {% endfor %}
+  </table></div>
+  <div class="actions section">
+    <form method="post" action="/visits/{{ v.id }}/versions/{{ newer.id }}" class="inline">{{ csrf_input() }}<button class="btn small primary" name="choice" value="use_newer">Use the newer EOB</button></form>
+    <form method="post" action="/visits/{{ v.id }}/versions/{{ newer.id }}" class="inline">{{ csrf_input() }}<button class="btn small" name="choice" value="keep_mine">Keep mine</button></form>
+  </div>
+</div>
+{% endfor %}
+
 <nav class="jump" aria-label="On this page">
   <a href="#findings">What's wrong{% if v.findings %} ({{ v.findings|length }}){% endif %}</a>
   <a href="#cases">Cases{% if v.cases %} ({{ v.cases|length }}){% endif %}</a>
@@ -76,13 +93,16 @@
   <div class="card tile"><div class="label">Paid (allocated)</div><div class="value">{{ v.paid|money }}</div>{% if v.remaining %}<div class="small warn-ink">{{ v.remaining|money }} still unpaid</div>{% endif %}</div>
 </div>
 
+{% if v.visit.estimated_share is defined and v.visit.estimated_share is not none and v.insurer_owed is not none %}
+<p class="small muted" id="estimate">Before the visit, MHS estimated you would owe {{ v.visit.estimated_share|money }}; the EOB says {{ v.insurer_owed|money }}{% if v.insurer_owed > v.visit.estimated_share %}, {{ (v.insurer_owed - v.visit.estimated_share)|money }} more{% elif v.insurer_owed < v.visit.estimated_share %}, {{ (v.visit.estimated_share - v.insurer_owed)|money }} less{% endif %}.</p>
+{% endif %}
 <div class="grid two">
   <div class="card" id="findings">
     <h2>What's wrong</h2>
     {% if not v.findings %}<p class="good-ink small">No open findings.</p>{% endif %}
-    {% for c in v.checks if c.result in ('fail', 'closed', 'info') %}
+    {% for c in v.checks if c.result in ('fail', 'closed', 'info', 'flag') %}
     <div class="check {{ c.result }}">
-      <div class="mark">{{ {'fail': '✕', 'closed': '✓', 'info': 'i'}[c.result] }}</div>
+      <div class="mark">{{ {'fail': '✕', 'closed': '✓', 'info': 'i', 'flag': '?'}[c.result] }}</div>
       <div><strong>{{ c.name }}</strong>{% if c.kind_label %} <span class="chip {{ 'bad' if c.result == 'fail' else 'idle' }}">{{ c.kind_label }}</span>{% endif %}
         <div class="small muted">{{ c.detail[:1]|upper }}{{ c.detail[1:] }}</div>
         {% if c.result == 'closed' %}
@@ -90,6 +110,20 @@
           <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}"><input type="hidden" name="action" value="reopen">
           <span class="muted">Closed by you on {{ c.closed.closed|nice_date }} ({{ closed_how(c.closed) }}){% if c.closed.reason %}: {{ c.closed.reason }}{% endif %}.</span> <button class="btn small">Reopen</button>
         </form>
+        {% elif c.result == 'flag' %}
+        <div class="actions small">
+        {% if c.earlier_visit %}<a class="btn small" href="/visits/{{ c.earlier_visit }}">See the earlier visit</a>{% endif %}
+        {% if c.kind == 'terms_mismatch' %}<a class="btn small" href="/coverage?year={{ v.visit.date[:4] }}#eob-terms-{{ v.visit.plan_id }}">Compare on Coverage</a>{% endif %}
+        <details class="small close-finding">
+          <summary>Close this</summary>
+          <form method="post" action="/visits/{{ v.id }}/findings" class="inline small">{{ csrf_input() }}
+            <input type="hidden" name="code" value="{{ c.code }}"><input type="hidden" name="amount" value="{{ c.amount }}">
+            <label class="grow">Why (optional)<input name="reason" maxlength="200"></label>
+            <button class="btn small" name="verdict" value="real">It was a real problem</button>
+            <button class="btn small" name="verdict" value="wrong">It was wrong</button>
+          </form>
+        </details>
+        </div>
         {% elif c.result == 'fail' %}
         <div class="actions small">
         {% set in_case = v.open_cases|selectattr('findings', 'contains_finding', c)|list %}
@@ -260,7 +294,8 @@
     {% if v.claims|length > 1 %}<h4>Claim {{ e.claim_number or loop.index }}</h4>{% endif %}
     <ul class="kv">
       <li><span>Claim</span><span>{{ e.claim_number or '—' }} · {{ e.claim_status|humanize }}</span></li>
-      <li><span>Received / processed</span><span>{{ e.received_date|nice_date }} / {{ e.date|nice_date }}</span></li>
+      {% if e.received_date %}<li><span>Received</span><span>{{ e.received_date|nice_date }}</span></li>{% endif %}
+      <li><span>Processed</span><span>{{ e.date|nice_date }}</span></li>
       <li><span>Network</span><span>{{ (e.network_status or 'unknown')|humanize }}</span></li>
       <li><span>Billed</span><span class="num">{{ e.billed|money }}</span></li>
       <li><span>Plan discount</span><span class="num">{{ e.adjustment|money }}</span></li>
@@ -272,10 +307,33 @@
       <li><span>Not covered</span><span class="num">{{ e.not_covered|money }}</span></li>
       <li><strong>Your cost</strong><strong class="num">{{ e.patient_responsibility|money }}</strong></li>
     </ul>
+    {% set notes_here = v.code_notes %}
+    {% if notes_here and loop.last %}
+    <h4 class="section" id="codes">What the codes mean</h4>
+    <dl class="codes">
+      {% for n in notes_here %}<div class="code-row"><dt><code>{{ n.code }}</code><span class="small muted">{{ n.where }}</span></dt><dd>{{ n.text }}{% if n.appealable %} <span class="chip">Can often be corrected or appealed</span>{% elif not n.known %} <span class="chip idle">Unknown code</span>{% endif %}</dd></div>{% endfor %}
+    </dl>
+    <p class="muted small">Plain-language meanings from MHS's code table. Information, not legal advice.</p>
+    {% endif %}
     {% if e.match and e.match.status in ('auto', 'proposed') %}<p class="small muted">Matched to this visit automatically ({{ (e.match.score * 100)|round|int }}%: {{ e.match.reasons|join(', ') }}).</p>{% endif %}
     {% if e.stored_file %}<p><a href="/files/{{ e.id }}" target="_blank">Open document</a></p>{% endif %}
     {{ move_form(e, 'Not this visit', reject=True) }}
     {% endfor %}
+    {% for e in v.secondary_claims %}
+    <h4 class="section">Second insurer{% if e.claim_number %}: claim {{ e.claim_number }}{% endif %}</h4>
+    <ul class="kv">
+      <li><span>Processed</span><span>{{ e.date|nice_date }}</span></li>
+      <li><span>Second insurer paid</span><span class="num">{{ e.insurer_paid|money }}</span></li>
+      <li><strong>Your cost after both plans</strong><strong class="num">{{ e.patient_responsibility|money }}</strong></li>
+    </ul>
+    {% if e.stored_file %}<p><a href="/files/{{ e.id }}" target="_blank">Open document</a></p>{% endif %}
+    {% endfor %}
+    {% if v.secondary_expected and not v.secondary_claims %}<p class="small warn-ink">You're also covered by a second plan: wait for its EOB before paying what the first plan left.</p>{% endif %}
+    {% if v.versions %}
+    <details class="small section"><summary>{{ v.versions|length }} earlier version{{ 's' if v.versions|length != 1 }} of this EOB</summary>
+      {% for e in v.versions %}<p>{{ e.date|nice_date }}: claim {{ e.claim_number or '—' }}, you owed {{ e.patient_responsibility|money }}{% if e.member_edited %} (corrected by you){% endif %}{% if e.stored_file %} · <a href="/files/{{ e.id }}" target="_blank">Open</a>{% endif %}</p>{% endfor %}
+    </details>
+    {% endif %}
   </div>
 
   <div class="card">
@@ -338,6 +396,10 @@
     <label class="check-label"><input type="radio" name="path" value="insurance" {{ 'checked' if v.visit.payment_path == 'insurance' }}> Insurance</label>
     <label class="check-label"><input type="radio" name="path" value="self_pay" {{ 'checked' if v.visit.payment_path == 'self_pay' }}> Self-pay (no claim)</label>
     <button class="btn small">Save</button>
+  </form>
+  <form method="post" action="/visits/{{ v.id }}/service-type" class="inline section">{{ csrf_input() }}
+    <label>Kind of service<select name="service_type"><option value="">Not set</option>{% for k, label in service_types.items() %}<option value="{{ k }}" {{ 'selected' if v.visit.service_type == k }}>{{ label }}</option>{% endfor %}</select></label>
+    <button class="btn small">Save</button> <span class="muted small">Used to check the copay and that preventive care cost you nothing.</span>
   </form>
   {% if not v.insured %}
   <form method="post" action="/visits/{{ v.id }}/estimate" class="inline section">{{ csrf_input() }}

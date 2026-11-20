@@ -22,27 +22,27 @@
 {% macro reason(v) %}{% set f = v.findings|first %}{% if v.due %}{{ due_text(v.due[0]) }}{% elif f %}<strong>{{ f.kind_label or f.name }}:</strong> {{ f.detail[:1]|upper }}{{ f.detail[1:] }}{% else %}{{ v.status_help }}{% endif %}{% endmacro %}
 
 {# UX-01: person, provider, date, status badge, document completeness and amount at issue (ADR-041). #}
-{% macro visit_card(v) %}
+{# One visit as a row (ADR-046). On a phone the same cells stack. #}
+{% macro visit_row(v) %}
 {% set docs = v.documents|rejectattr('state', 'equalto', 'not_applicable')|list %}
 {% set have = docs|selectattr('state', 'equalto', 'present')|list|length %}
-<a class="card visit-card s-edge-{{ v.status }}" href="/visits/{{ v.id }}">
-  <div class="top">
-    <div>
-      <div class="provider">{{ v.provider.name }}</div>
-      <div class="muted small">{{ v.visit.date|nice_date }} · <span class="person">{{ v.member.name if v.member else 'No one assigned' }}</span></div>
-    </div>
-    {{ badge(v.status) }}
-  </div>
-  <div class="money">
-    <div><span>At issue</span>{% if v.at_stake %}<strong class="bad-ink">{{ v.at_stake|money }}</strong>{% else %}<span class="none">None</span>{% endif %}</div>
-    <div><span>Still owed</span>{{ v.remaining|money if v.remaining else '—' }}</div>
-    <div><span>Billed</span>{{ v.total_billed|money }}</div>
-  </div>
-  {% if v.status not in ('complete',) %}<p class="reason small">{{ reason(v) }}</p>{% endif %}
-  <div class="small docs" title="Documents"><span class="doc-count {{ 'good-ink' if have == docs|length else 'warn-ink' }}">{{ have }} of {{ docs|length }} documents</span>
-    {% for d in docs %}<span class="{{ 'good-ink' if d.state == 'present' else 'warn-ink' }}">{{ '✓' if d.state == 'present' else '…' }} {{ d.label }}</span>{% endfor %}</div>
-  {% for f in v.hsa_flags %}<span class="chip">HSA: {{ f }}</span>{% endfor %}
+<a class="visit-row s-edge-{{ v.status }}" href="/visits/{{ v.id }}">
+  <span class="vr-date">{{ v.visit.date|nice_date }}</span>
+  <span class="vr-who"><span class="provider">{{ v.provider.name }}</span> <span class="muted small person">{{ v.member.name if v.member else 'No one assigned' }}</span></span>
+  <span class="vr-status">{{ badge(v.status) }}</span>
+  <span class="vr-num"><span class="vr-label">Billed</span>{{ v.total_billed|money }}</span>
+  <span class="vr-num"><span class="vr-label">Still owed</span>{{ v.remaining|money if v.remaining else '—' }}</span>
+  <span class="vr-num"><span class="vr-label">At issue</span>{% if v.at_stake %}<strong class="bad-ink">{{ v.at_stake|money }}</strong>{% else %}<span class="muted" aria-label="None">—</span>{% endif %}</span>
+  <span class="vr-docs small {{ 'good-ink' if have == docs|length else 'warn-ink' }}" title="{% for d in docs %}{{ '✓' if d.state == 'present' else '…' }} {{ d.label }}{{ ', ' if not loop.last }}{% endfor %}">{{ have }} of {{ docs|length }} documents{% set needed = docs|rejectattr('state', 'equalto', 'present')|map(attribute='label')|list %}{% if needed %}<span class="vr-needs">Needs: {{ needed|join(', ') }}</span>{% endif %}</span>
+  {% if v.status != 'complete' or v.hsa_flags or v.repeat_flags %}<span class="vr-note small">{% if v.status != 'complete' %}<span class="reason">{{ reason(v) }}</span>{% endif %}{% for f in v.hsa_flags %} <span class="chip">HSA: {{ f }}</span>{% endfor %}{% if v.repeat_flags %} <span class="chip">Worth a closer look: {{ v.repeat_flags|length }}</span>{% endif %}</span>{% endif %}
 </a>
+{% endmacro %}
+
+{% macro visit_head(sort_link='', sort='newest') %}
+<div class="visit-row visit-head small muted">
+  <span>{% if sort_link %}<a href="{{ sort_link }}" aria-label="Sort by date, {{ 'oldest' if sort == 'newest' else 'newest' }} first">Date {{ '↓' if sort == 'newest' else '↑' }}</a>{% else %}Date{% endif %}</span>
+  <span>Provider and person</span><span>Status</span><span class="vr-num">Billed</span><span class="vr-num">Still owed</span><span class="vr-num">At issue</span><span>Documents</span>
+</div>
 {% endmacro %}
 
 {# UX-06: show the whole family or one member; the choice holds across pages (ADR-041). #}

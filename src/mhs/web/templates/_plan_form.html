@@ -1,0 +1,15 @@
+{% macro plan_fields(v, providers, members, plans, service_types) %}
+<div class="form-grid">
+  <label>Date<input name="date" type="date" required value="{{ v.date or '' }}"></label>
+  <label>For<select name="member_id"><option value="">—</option>{% for m in members %}<option value="{{ m.id }}" {{ 'selected' if v.member_id == m.id }}>{{ m.name }}</option>{% endfor %}</select></label>
+  <label>Provider<select name="provider_id"><option value="new">A new provider (name it)</option>{% for p in providers %}<option value="{{ p.id }}" {{ 'selected' if v.provider_id == p.id }}>{{ p.name }}</option>{% endfor %}</select></label>
+  <label>New provider's name<input name="provider" placeholder="Lakeside Imaging"></label>
+  <label>Plan<select name="plan_id"><option value="">That year's plan</option>{% for p in plans %}<option value="{{ p.id }}" {{ 'selected' if v.plan_id == p.id }}>{{ p.insurer }} {{ p.plan_name or '' }} {{ p.plan_year }}</option>{% endfor %}</select></label>
+  <label>Kind of service<select name="service_type"><option value="">Not sure</option>{% for k, label in service_types.items() %}<option value="{{ k }}" {{ 'selected' if v.service_type == k }}>{{ label }}</option>{% endfor %}</select></label>
+  <label class="full">What it's for<input name="description" value="{{ v.description or '' }}" placeholder="MRI of the left knee"></label>
+  <label>Plan's allowed amount<input name="expected_allowed" inputmode="decimal" value="{{ '%.2f'|format(v.expected_allowed / 100) if v.expected_allowed is not none and v.expected_allowed is defined }}" placeholder="800.00"></label>
+  <label>Cash price (optional)<input name="cash_price" inputmode="decimal" value="{{ '%.2f'|format(v.cash_price / 100) if v.cash_price is not none and v.cash_price is defined }}"></label>
+  <label>Good-faith estimate (optional)<input name="good_faith_estimate" inputmode="decimal" value="{{ '%.2f'|format(v.good_faith_estimate / 100) if v.good_faith_estimate is not none and v.good_faith_estimate is defined }}"></label>
+  <label class="check-label full"><input type="checkbox" name="self_pay" {{ 'checked' if v.payment_path == 'self_pay' }}> I'll pay without insurance</label>
+</div>
+{% endmacro %}

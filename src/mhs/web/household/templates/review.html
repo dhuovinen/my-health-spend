@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <h1>Review: {{ rec.filename }}</h1>
-  <p class="muted small">Read from the {{ ext.how_read or 'file' }}{% if ext.pages %}, {{ ext.pages }} page{{ 's' if ext.pages != 1 }}{% endif %}{% if ext.extractor == 'ai' %}, fields found by AI ({{ ext.ai_model }}){% endif %}. Check every field against the document; fields marked <span class="badge s-balance_outstanding">check</span> were read with less confidence or weren't found. <a href="/uploads/{{ rec.id }}">Open the original</a>.</p>
+  <p class="muted small">Read from the {{ ext.how_read or 'file' }}{% if ext.pages %}, {{ ext.pages }} page{{ 's' if ext.pages != 1 }}{% endif %}{% if ext.extractor == 'ai' %}, fields found by AI ({{ ext.ai_model }}){% endif %}. Check the fields against the document, above all the ones marked <span class="badge s-balance_outstanding">Check</span>: the reader was less than {{ (threshold * 100)|int }}% sure of them or didn't find them. <a href="/uploads/{{ rec.id }}">Open the original</a> · <a href="/settings#review">Change when fields are marked</a></p>
 </div>
 {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
 {% if rec.status == 'confirmed' %}<p class="alert good">Confirmed. Saving again updates the visit with your changes.</p>{% endif %}
@@ -24,8 +24,8 @@
 {% endif %}
 
 <section class="card section">
-  <form method="post" action="/uploads/{{ rec.id }}/reclassify" class="inline">{{ csrf_input() }}
-    <label>Document type <span class="muted">({{ (ext.type_confidence * 100)|round|int }}% sure)</span>
+  <form method="post" action="/uploads/{{ rec.id }}/reclassify" class="inline type-row">{{ csrf_input() }}
+    <label>Document type{% if show_type %} <span class="muted">({{ (ext.type_confidence * 100)|round|int }}% sure)</span>{% endif %}
       <select name="doc_type">
         {% for value, label in types.items() %}<option value="{{ value }}" {{ 'selected' if value == ext.doc_type }}>{{ label }}</option>{% endfor %}
       </select>
@@ -36,41 +36,12 @@
 
 <form method="post" action="/uploads/{{ rec.id }}/confirm" class="card section review">{{ csrf_input() }}
   {% if extracted %}
-  <div class="grid two">
-    <label>Provider
-      <select name="provider_id">
-        <option value="new" {{ 'selected' if not provider_id }}>New provider (name below)</option>
-        {% for p in providers %}<option value="{{ p.id }}" {{ 'selected' if p.id == provider_id }}>{{ p.name }}</option>{% endfor %}
-      </select>
-    </label>
-    <label>Patient{% if patient %} <span class="muted">(on the document: {{ patient }})</span>{% endif %}
-      <select name="member_id">
-        <option value="">Not a listed member</option>
-        {% for m in members %}<option value="{{ m.id }}" {{ 'selected' if m.id == member_id }}>{{ m.name }}</option>{% endfor %}
-      </select>
-    </label>
-    {% if ext.doc_type == 'eob' %}
-    <label>Plan
-      <select name="plan_id">
-        {% for p in plans %}<option value="{{ p.id }}" {{ 'selected' if p.id == plan_id }}>{{ p.insurer }} {{ p.plan_name or '' }} {{ p.plan_year }}</option>{% endfor %}
-      </select>
-    </label>
-    {% endif %}
-    {% if ext.doc_type == 'eob' or not lines %}
-    <label>Visit
-      <select name="visit_id">
-        <option value="new" {{ 'selected' if not visit_id }}>New visit on the service date</option>
-        {% for v in visits %}<option value="{{ v.id }}" {{ 'selected' if v.id == visit_id }}>{{ v.date }} · {{ v.description or v.id }}</option>{% endfor %}
-      </select>
-    </label>
-    {% if match %}<p class="small muted">{{ 'Matched automatically' if match.decision == 'link' else 'Proposed, check it' }} ({{ (match.score * 100)|round|int }}%): {{ match.reasons|join(', ') }}.</p>{% endif %}
-    {% endif %}
-  </div>
-
-  <div class="grid two section">
-    {% for name, f in fields.items() %}
-    <label class="{{ 'low' if f.low }}">{{ f.label }}
-      {% if f.low %}<span class="badge s-balance_outstanding">check</span>{% endif %}
+  {% if copy and copy.kind == 'version' and ext.doc_type == 'eob' %}
+  <label>This EOB is<select name="version_reason"><option value="corrected">A corrected EOB</option><option value="reprocessed">The claim reprocessed</option><option value="appealed">The insurer's answer to an appeal</option></select></label>
+  {% endif %}
+  {% macro field(name, f) %}
+    <label class="field{{ ' low' if f.low }}">
+      <span class="field-label">{{ f.label }}{% if f.low %} <span class="badge s-balance_outstanding">Check</span>{% endif %}</span>
       {% if name == 'claim_status' %}
       <select name="claim_status">{% for s in ['processed', 'denied', 'pending', 'adjusted'] %}<option value="{{ s }}" {{ 'selected' if s == f.value }}>{{ s|humanize }}</option>{% endfor %}</select>
       {% elif name == 'network_status' %}
@@ -78,11 +49,50 @@
       {% else %}
       <input name="{{ name }}" value="{{ f.value }}" {% if name.endswith('date') or name.startswith('service_') %}placeholder="YYYY-MM-DD"{% endif %}>
       {% endif %}
-      <span class="muted small">{% if f.note %}{{ f.note }} · {% endif %}{{ (f.confidence * 100)|round|int }}%</span>
+      {% if f.note == 'not on document' %}<span class="field-note">Not found on the document</span>
+      {% elif f.note or f.show %}<span class="field-note">{% if f.note %}{{ f.note[:1]|upper }}{{ f.note[1:] }}{% endif %}{% if f.note and f.show %} · {% endif %}{% if f.show %}{{ (f.confidence * 100)|round|int }}% sure{% endif %}</span>{% endif %}
     </label>
-    {% endfor %}
+  {% endmacro %}
+
+  <h2 class="review-head">Who and what</h2>
+  <div class="grid two review-grid">
+    <label class="field">Provider
+      <select name="provider_id">
+        <option value="new" {{ 'selected' if not provider_id }}>New provider (name below)</option>
+        {% for p in providers %}<option value="{{ p.id }}" {{ 'selected' if p.id == provider_id }}>{{ p.name }}</option>{% endfor %}
+      </select>
+    </label>
+    {% if fields.provider %}{{ field('provider', fields.provider) }}{% else %}<span></span>{% endif %}
+    <label class="field">Patient
+      <select name="member_id">
+        <option value="">Not a listed member</option>
+        {% for m in members %}<option value="{{ m.id }}" {{ 'selected' if m.id == member_id }}>{{ m.name }}</option>{% endfor %}
+      </select>
+      {% if patient %}<span class="field-note">On the document: {{ patient }}</span>{% endif %}
+    </label>
+    {% if ext.doc_type == 'eob' %}
+    <label class="field">Plan
+      <select name="plan_id">
+        {% for p in plans %}<option value="{{ p.id }}" {{ 'selected' if p.id == plan_id }}>{{ p.insurer }} {{ p.plan_name or '' }} {{ p.plan_year }}</option>{% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    {% if ext.doc_type == 'eob' or not lines %}
+    <label class="field">Visit
+      <select name="visit_id">
+        <option value="new" {{ 'selected' if not visit_id }}>New visit on the service date</option>
+        {% for v in visits %}<option value="{{ v.id }}" {{ 'selected' if v.id == visit_id }}>{{ v.date }} · {{ v.description or v.id }}</option>{% endfor %}
+      </select>
+      {% if match %}<span class="field-note">{{ 'Matched automatically' if match.decision == 'link' else 'Proposed, check it' }} ({{ (match.score * 100)|round|int }}%): {{ match.reasons|join(', ') }}.</span>{% endif %}
+    </label>
+    {% endif %}
+  </div>
+
+  <h2 class="review-head section">What the document says</h2>
+  <div class="grid two review-grid">
+    {% for name, f in fields.items() if name != 'provider' %}{{ field(name, f) }}{% endfor %}
     {% if ext.doc_type != 'eob' and not lines %}
-    <label>Date of service (for a new visit)<input name="service_start" placeholder="YYYY-MM-DD"></label>
+    <label class="field">Date of service (for a new visit)<input name="service_start" placeholder="YYYY-MM-DD"></label>
     {% endif %}
   </div>
 

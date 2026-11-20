@@ -21,6 +21,7 @@ from typing import Callable
 from mhs.data.db import Database
 from mhs.data.queue import Job, JobQueue
 from mhs.data.records import HouseholdRecords
+from mhs.ingest import learn
 from mhs.ingest.dates import offset_for, person_key, shift_text, unshift_extraction
 from mhs.ingest.extract import extract
 from mhs.stack import database_url
@@ -69,6 +70,7 @@ def handle_extract(job: Job, db: Database, ai=None) -> None:
             unshift_extraction(result, days, tuple(DATES))
             result["dates_shifted"] = True
         cap_confidence(result, p.get("text_confidence", 1.0))
+        use_hints(result, p["text"], HouseholdRecords(db, job.household_id))
         if note:
             result["warnings"].insert(0, note)
     records = HouseholdRecords(db, job.household_id)
@@ -83,6 +85,18 @@ def handle_extract(job: Job, db: Database, ai=None) -> None:
         "job_id": job.id,
         **result,
     })
+
+
+def use_hints(result: dict, text: str, records: HouseholdRecords) -> None:
+    """ING-06 (ADR-051): note each value's label for learning, and read the fields this layout has hints for."""
+    result["layout_key"] = learn.layout_key(result.get("doc_type", "other"), text)
+    result["value_labels"] = learn.value_labels(text)
+    changed = learn.apply(text, result, records.get(learn.HINT, learn.hint_id(result["layout_key"])))
+    if changed:
+        result["learned_fields"] = changed
+        result.setdefault("warnings", []).append(
+            "Some fields were read with labels you corrected on earlier documents from this sender: "
+            + ", ".join(f.replace("_", " ") for f in changed) + ".")
 
 
 def cap_confidence(result: dict, text_confidence: float) -> None:

@@ -32,6 +32,20 @@ GENERATED_SECRETS=(mhs-db-admin-password mhs-db-app-password mhs-db-worker-passw
                    mhs-vault-token mhs-member-password)
 AI_KEY_SECRET=mhs-anthropic-api-key               # added by the owner, only if AI extraction is turned on
 
+# Social sign-in (PRV-12): the secrets the owner adds for each provider (OWNER_SETUP.md 3a), as the app setting each
+# becomes. A provider is on only when all of its secrets exist; client IDs are kept there too, so a deploy needs
+# nothing typed again.
+SIGNIN_PROVIDERS=(google microsoft apple)
+signin_pairs() {  # provider -> SETTING=secret-name ...
+  case "$1" in
+    google) echo MHS_GOOGLE_CLIENT_ID=mhs-google-client-id MHS_GOOGLE_CLIENT_SECRET=mhs-google-client-secret ;;
+    microsoft) echo MHS_MICROSOFT_CLIENT_ID=mhs-microsoft-client-id \
+                    MHS_MICROSOFT_CLIENT_SECRET=mhs-microsoft-client-secret ;;
+    apple) echo MHS_APPLE_CLIENT_ID=mhs-apple-client-id MHS_APPLE_TEAM_ID=mhs-apple-team-id \
+                MHS_APPLE_KEY_ID=mhs-apple-key-id MHS_APPLE_PRIVATE_KEY=mhs-apple-private-key ;;
+  esac
+}
+
 APIS=(run.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com cloudkms.googleapis.com
       storage.googleapis.com documentai.googleapis.com artifactregistry.googleapis.com
       servicenetworking.googleapis.com compute.googleapis.com logging.googleapis.com)
@@ -79,11 +93,14 @@ exists() {
   "$@" >/dev/null 2>&1
 }
 
-# Print a command's output, or <PLACEHOLDER> under --dry-run.
+# Print a command's output, or <PLACEHOLDER> under --dry-run. A test can give a dry run's answer instead, in
+# DRY_<PLACEHOLDER> with every character that can't be in a variable name as an underscore (bash 4 and later refuse
+# such a name; macOS's bash 3.2 lets it through).
 lookup() {
   local placeholder="$1"; shift
   if [[ "$DRY_RUN" == 1 ]]; then
-    printf '<%s>' "$placeholder"
+    local answer="DRY_${placeholder//[^A-Za-z0-9_]/_}"
+    printf '%s' "${!answer:-<$placeholder>}"
   else
     "$@"
   fi

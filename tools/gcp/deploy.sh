@@ -6,7 +6,9 @@
 #   PROJECT_ID=<id> tools/gcp/deploy.sh [--dry-run] [--with-ai] [part ...]
 #
 # Parts, in order: image migrate vault app worker admin (default: all), plus worker-ai with --with-ai.
-# TAG (default: the commit at HEAD) picks the image; PUBLIC_URL overrides the app's run.app address.
+# TAG (default: the commit at HEAD) picks the image; PUBLIC_URL sets the app's main address (default: the one it
+# has, else its run.app address), and the app forwards every other host there (ADR-058). Sign-in
+# providers are on when their secrets are in Secret Manager (lib.sh signin_pairs).
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 
@@ -30,13 +32,63 @@ lookups() {
   [[ -n "$SQL_IP" ]] || die "no Cloud SQL instance $SQL_INSTANCE: run tools/gcp/setup.sh first"
   DOCAI_PROCESSOR="$(docai_processor)"
   [[ -n "$DOCAI_PROCESSOR" ]] || die "no Document AI processor $DOCAI_NAME: run tools/gcp/setup.sh docai"
-  APP_URL="${PUBLIC_URL:-$(service_url mhs-app)}"
+  APP_URL="${PUBLIC_URL:-$(current_public_url)}"
+  APP_URL="${APP_URL:-$(service_url mhs-app)}"
+  note "Main address: $APP_URL"
   VAULT_URL="$(service_url mhs-vault)"
+  signin_lookup
+}
+
+# The main address the app has now, so a deploy without PUBLIC_URL keeps it rather than going back to the run.app
+# address (ADR-058). Nothing before the first deploy. A dry run answers from DRY_CURRENT_PUBLIC_URL.
+current_public_url() {
+  if [[ "$DRY_RUN" == 1 ]]; then
+    printf '%s' "${DRY_CURRENT_PUBLIC_URL:-}"
+    return
+  fi
+  gcloud run services describe mhs-app --region="$REGION" "${P[@]}" --format=json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    containers = json.load(sys.stdin)["spec"]["template"]["spec"]["containers"]
+except (ValueError, KeyError, IndexError):
+    sys.exit()
+for e in containers[0].get("env", []):
+    if e.get("name") == "MHS_PUBLIC_URL":
+        print(e.get("value", ""), end="")
+' || true
+}
+
+# The sign-in providers whose secrets are all in Secret Manager, as more --set-secrets entries for the app. They
+# reach it as environment variables, so every deploy keeps them (OWNER_SETUP.md 3a).
+signin_lookup() {
+  local have provider pair missing
+  have=" $(lookup SIGNIN_SECRETS gcloud secrets list "${P[@]}" --format='value(name.basename())' | tr '\n' ' ') "
+  SIGNIN_SECRETS=""
+  for provider in "${SIGNIN_PROVIDERS[@]}"; do
+    missing=()
+    for pair in $(signin_pairs "$provider"); do
+      [[ "$have" == *" ${pair#*=} "* ]] || missing+=("${pair#*=}")
+    done
+    if [[ ${#missing[@]} -eq 0 ]]; then
+      for pair in $(signin_pairs "$provider"); do
+        SIGNIN_SECRETS+=",$pair:latest"
+      done
+      note "Sign-in with $provider: on"
+    elif [[ ${#missing[@]} -lt $(wc -w <<<"$(signin_pairs "$provider")") ]]; then
+      note "Sign-in with $provider: off, missing ${missing[*]}"
+    fi
+  done
 }
 
 db_env() {  # role
   printf 'MHS_DB_HOST=%s,MHS_DB_NAME=%s,MHS_DB_USER=%s,MHS_DB_PASSWORD_FILE=%s' \
     "$SQL_IP" "$DB_NAME" "$1" "$DB_PASSWORD_FILE"
+}
+
+# Worker pools can't mount secrets as files yet, so they get theirs as environment variables (MHS_DB_PASSWORD,
+# MHS_ANTHROPIC_API_KEY), which stack.secret() reads the same way.
+pool_db_env() {  # role
+  printf 'MHS_DB_HOST=%s,MHS_DB_NAME=%s,MHS_DB_USER=%s' "$SQL_IP" "$DB_NAME" "$1"
 }
 
 # What the app and the mhs-admin job share: database, KMS app key, bucket, Document AI, Presidio, public URL.
@@ -104,8 +156,8 @@ app() {
 --forwarded-allow-ips=*,--no-server-header" \
     --port="$APP_PORT" --ingress=all --allow-unauthenticated "${VPC[@]}" \
     --cpu=1 --memory=2Gi --cpu-boost --min-instances=0 --max-instances=2 --concurrency=20 --timeout=300 \
-    --set-env-vars="$(app_env),MHS_VAULT_URL=$VAULT_URL,MHS_VAULT_TOKEN_FILE=$VAULT_TOKEN_FILE" \
-    --set-secrets="$DB_PASSWORD_FILE=mhs-db-app-password:latest,$VAULT_TOKEN_FILE=mhs-vault-token:latest"
+    --set-env-vars="$(app_env),MHS_VAULT_URL=$VAULT_URL,MHS_VAULT_TOKEN_FILE=$VAULT_TOKEN_FILE,MHS_REDIRECT_OTHER_HOSTS=1" \
+    --set-secrets="$DB_PASSWORD_FILE=mhs-db-app-password:latest,$VAULT_TOKEN_FILE=mhs-vault-token:latest$SIGNIN_SECRETS"
 }
 
 worker() {
@@ -113,8 +165,8 @@ worker() {
   run gcloud run worker-pools deploy mhs-worker --image="$IMAGE" --region="$REGION" "${P[@]}" \
     --service-account="$(sa_email mhs-worker)" --command=mhs-worker \
     "${VPC[@]}" "${NO_EGRESS[@]}" --cpu=1 --memory=1Gi --instances="$WORKER_INSTANCES" \
-    --set-env-vars="$(db_env mhs_worker),MHS_EXTRACTOR=rules" \
-    --set-secrets="$DB_PASSWORD_FILE=mhs-db-worker-password:latest"
+    --set-env-vars="$(pool_db_env mhs_worker),MHS_EXTRACTOR=rules" \
+    --set-secrets="MHS_DB_PASSWORD=mhs-db-worker-password:latest"
 }
 
 worker-ai() {
@@ -124,9 +176,8 @@ worker-ai() {
   run gcloud run worker-pools deploy mhs-worker-ai --image="$IMAGE" --region="$REGION" "${P[@]}" \
     --service-account="$(sa_email mhs-worker-ai)" --command=mhs-worker \
     "${VPC[@]}" --cpu=1 --memory=1Gi --instances=1 \
-    --set-env-vars="$(db_env mhs_worker),MHS_EXTRACTOR=claude,\
-MHS_ANTHROPIC_API_KEY_FILE=/secrets/anthropic/key,MHS_AI_PROXY=$MHS_AI_PROXY" \
-    --set-secrets="$DB_PASSWORD_FILE=mhs-db-worker-password:latest,/secrets/anthropic/key=$AI_KEY_SECRET:latest"
+    --set-env-vars="$(pool_db_env mhs_worker),MHS_EXTRACTOR=claude,MHS_AI_PROXY=$MHS_AI_PROXY" \
+    --set-secrets="MHS_DB_PASSWORD=mhs-db-worker-password:latest,MHS_ANTHROPIC_API_KEY=$AI_KEY_SECRET:latest"
 }
 
 admin() {

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Consent{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>Your consent</h1>
+  <div class="muted">What MHS may do with your health data. Read the <a href="/privacy-notice">privacy notice</a> (version {{ version }}) first.</div>
+</div></div>
+{% if saved %}<p class="alert good">Saved.</p>{% endif %}
+{% if withdrawn %}<p class="alert warn">You've withdrawn consent. MHS won't take uploads, forwarded email, imports or insurer claims from you. What's already here stays until you delete it: <a href="/data">export or delete your data</a>.</p>
+{% elif not current and required %}<p class="alert warn">Before MHS can take your documents, say whether you agree below.</p>{% endif %}
+<form method="post" action="/consent" class="card section stack">{{ csrf_input() }}
+  <label class="check-label"><input type="checkbox" name="collection" {{ 'checked' if current }}> I agree that MHS collects and stores my health and billing documents, claims and payments to reconcile them, as the privacy notice describes.</label>
+  <label class="check-label"><input type="checkbox" name="ai_sharing" {{ 'checked' if current and (rec.ai_sharing or {}).get('given') }}> I also agree that, if my household turns AI reading on, the text of my documents is sent to the AI service (Anthropic's Claude) with names and ID numbers replaced by tokens and dates shifted. Separate from the first; leave it unticked to keep AI reading off.</label>
+  <button class="btn primary" type="submit">Save my choice</button>
+</form>
+<p class="muted small">You can change this at any time. Unticking the first box stops collection from you; unticking the second turns AI reading off for your household. Neither deletes what's already here; <a href="/data">Your data</a> does.</p>
+{% if rec and rec.history %}
+<details class="small section"><summary>Your choices so far</summary>
+  <ul>{% for h in rec.history|reverse %}<li>{{ h.date|nice_date }}: collection {{ 'yes' if h.collection else 'no' }}, AI {{ 'yes' if h.ai_sharing else 'no' }} (notice {{ h.version }})</li>{% endfor %}</ul>
+</details>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_plan_form.html" import plan_fields %}
+{% block title %}Planned: {{ provider.name }}{% endblock %}
+{% block content %}
+<p class="small"><a class="back" href="/plan">← Plan ahead</a></p>
+<div class="page-head"><div>
+  <h1>{{ provider.name or 'Planned visit' }}</h1>
+  <div class="muted">Planned for {{ v.date|nice_date }}{% if member %} · {{ member.name }}{% endif %}{% if est.plan %} · <a href="/coverage?year={{ est.plan.plan_year }}#plan-{{ est.plan.id }}">{{ est.plan.insurer }} {{ est.plan.plan_year }}</a>{% endif %}{% if v.description %} · {{ v.description }}{% endif %}</div>
+</div><span class="badge s-na">Planned</span></div>
+{% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
+
+{% if est.past_due %}
+<div class="alert warn" id="outcome">
+  <strong>Did this visit happen?</strong> Its date has passed and no documents have arrived.
+  <div class="actions section">
+    <form method="post" action="/plan/{{ v.id }}/outcome" class="inline">{{ csrf_input() }}<button class="btn small primary" name="outcome" value="happened">Yes, wait for its documents</button></form>
+    <form method="post" action="/plan/{{ v.id }}/outcome" class="inline">{{ csrf_input() }}<button class="btn small" name="outcome" value="cancelled">No, it was cancelled</button></form>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid two">
+  <div class="card" id="estimate">
+    <h2>What you'll likely owe</h2>
+    {% if est.total is not none %}
+    <p class="value-line"><strong class="num big">{{ est.total|money }}</strong> <span class="muted">through insurance</span></p>
+    <ol class="small">{% for s in est.expected.steps %}<li>{{ s }}</li>{% endfor %}</ol>
+    {% else %}<p class="warn-ink">{{ est.missing }}.</p>{% endif %}
+    <ul class="kv small">
+      {% if est.deductible_left is not none %}<li><span>Deductible left this year</span><span class="num">{{ est.deductible_left|money }}</span></li>{% endif %}
+      {% if est.oop_left is not none %}<li><span>Left before the out-of-pocket maximum</span><span class="num">{{ est.oop_left|money }}</span></li>{% endif %}
+    </ul>
+    <p class="muted small">From your plan's terms on <a href="/coverage">Coverage</a> and the EOBs you have this year. The real amount depends on the codes billed and what the plan allows.</p>
+    {% if est.cash %}
+    <h3 class="section" id="cash">Cash or insurance</h3>
+    <p class="cash-text">{{ est.cash.text }}.</p>
+    {% endif %}
+  </div>
+  <div class="card" id="pay">
+    <h2>Which account should pay</h2>
+    {% if est.recommendation %}<p>{{ est.recommendation.text }}</p>{% if est.recommendation.alternative %}<p class="small muted">{{ est.recommendation.alternative }}</p>{% endif %}{% endif %}
+    <h3 class="section" id="questions">Ask before the visit</h3>
+    <ul class="small">{% for q in est.questions %}<li>{{ q }}</li>{% endfor %}</ul>
+  </div>
+</div>
+<p class="disclaimer">{{ disclaimer }}</p>
+
+<details class="card section">
+  <summary><strong>Change this planned visit</strong></summary>
+  <form method="post" action="/plan/{{ v.id }}" class="section">{{ csrf_input() }}
+    {{ plan_fields(v, providers, members, plans, service_types) }}
+    <div class="form-actions"><button class="btn primary">Save</button></div>
+  </form>
+</details>
+{% endblock %}

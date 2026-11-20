@@ -52,6 +52,19 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 042 | Dispute cases on the visit record: four dated statuses, follow-ups and deadlines in the attention queue, a call log on provider notes, letters drafted on request in the application tier and never stored, outcomes feeding lifetime savings | 2026-10-18 | Accepted |
 | 043 | HSA and tax: dated reference tables, "likely" tags per visit, account rules on the account record, receipt vault, contribution limits by month, year-end summary | 2026-10-18 | Accepted |
 | 044 | False-positive tracking: the member says real or wrong when closing a finding; the rate is wrong over decided, per kind and release, counts only for the owner | 2026-10-18 | Accepted |
+| 046 | Visits as rows with date sort; a different date can't propose a visit; REC-14 flags as their own result; UX-11 as server-drawn SVG | 2026-11-06 | Accepted |
+| 047 | The public landing page is a server-rendered page in the app; `/` shows it to anyone not signed in; no React, Supabase or Google/Microsoft sign-in | 2026-11-07 | Proposed |
+| 048 | Social sign-in (PRV-12): Google and Microsoft through direct OpenID Connect; invitation only for now; linked by provider subject | 2026-11-07 | Accepted |
+| 049 | Owner-only admin screen with feature toggles (PLT-09); the authenticator code becomes owner-controlled | 2026-11-07 | Accepted |
+| 050 | Plan cost-sharing check (REC-06) in insurer processing order, soft until the member confirms the plan's terms; denial and adjustment codes from a dated reference table (REC-09) | 2026-11-12 | Accepted |
+| 051 | Learning from corrections (ING-06): per-household label hints keyed by document layout, applied after the layout rules, never across layouts | 2026-11-12 | Accepted |
+| 052 | EOB versions kept side by side (MAT-08), refunds traced to the paying account (ALC-08), secondary insurance as a second adjudication step (ALC-05) | 2026-11-12 | Accepted |
+| 053 | Planned visits and the pre-visit estimate (PRE-01, 02, 04 to 07) as a visit field and a pure estimator; not a tenth status | 2026-11-12 | Accepted |
+| 054 | Insurer connection (ING-09) by SMART on FHIR from the application tier: one pull per consent, no stored tokens, results reviewed like an import | 2026-11-12 | Accepted |
+| 055 | Onboarding checklist (UX-09), per-member consent records (CMP-02), a published privacy notice and breach plan (CMP-01, CMP-03); the launch gate still needs an attorney | 2026-11-12 | Accepted |
+| 056 | Plan terms inferred from the household's own EOBs (REC-15): shown beside the entered terms with their evidence, never written to the plan; a disagreement is a flag | 2026-11-19 | Accepted |
+| 057 | Sign in with Apple as the third social sign-in provider (PRV-12): no scopes, so the callback stays a GET; a short-lived signed client secret; no PKCE | 2026-11-19 | Accepted |
+| 058 | myhealthspend.com served by the app on Cloud Run, retiring the Hostinger website; one main address, every other host forwarded to it | 2026-11-20 | Accepted |
 
 ## Records
 
@@ -353,3 +366,207 @@ How PLT-02's second target (at most 5% of findings dismissed by the member as wr
 
 **Consequences.** The ingest schema's closing entry gains four optional fields, so exports keep the verdicts and older files stay valid. The member's word is the measure (A-01): a member can mark a correct finding wrong, and the report can't tell. A finding whose amount changes after it was closed comes back open (findings are keyed by check and amount) and can be decided again, so it counts twice. Findings fixed by corrected documents without a case, and findings in a case resolved as denied, drop out without a verdict, which leaves some real problems out of the denominator and makes the rate read high, the safe side for a ceiling. `mhs.RELEASE` has to be changed when Release 2 is cut, or its verdicts are counted under Release 1.
 
+### ADR-046 · Visits as rows, repeat visits stay apart, charges chart (Accepted)
+Choices made building the owner's request of 2026-11-06 for a row layout, REC-14 and UX-11. Proposed by the build session on 2026-11-06 and accepted by the owner as written on 2026-11-06.
+
+**Decision.**
+- **Visits are rows, not cards,** on the Visits page and Home, replacing the cards of ADR-041 at the owner's request. Phones stack each row's cells. Visits adds From and To dates, a "Worth a closer look" filter and a sort by date, newest first by default, from the Sort list or the Date heading. Home has a short filter form that opens Visits. A row shows its document count and names what's missing; the rest are on hover and on the visit page.
+- **A different date can't propose a visit.** MAT-05 now caps the score below the proposal line when the dates are more than 3 days apart and no claim number matches, however alike the rest is. This changes ADR-035's scoring, because without it weekly or monthly treatment merges into one visit and REC-14 has nothing to compare. A resent statement keeps its original service date, so it still matches.
+- **REC-14 flags are a check result of their own,** `flag`. They aren't `fail`, so status and dollars at stake can't change. The member closes one as real or wrong, and it counts on Finding accuracy under "Repeat service". A share change the deductible explains is an `info` note: the line's deductible was applied before and none applies now, or the plan's individual deductible is reached by this visit.
+- **REC-14 reads line detail only:** EOB lines, else the latest statement's service lines, which have no allowed amount or share to compare. Insurer claims exports have no lines, so their claims aren't compared.
+- **UX-11 is a server-drawn SVG on `/charges`,** with no chart library, which keeps it inside the content security policy. Dot details show in a panel under the chart rather than a floating tooltip. On phones the chart scrolls inside its card, so each dot stays a 44px target and the page doesn't scroll sideways. A bill is a visit. "Charges" joins the top nav; on phones it's reached from the Visits page.
+
+**Consequences.** A document more than 3 days from its visit's date no longer links by itself; the member chooses the visit when confirming. Line items in UX-11 come from the EOB when it has lines, so their billed and share come from the insurer.
+
+### ADR-045 · Repeat services across visits (Accepted)
+REC-14, split out of REC-10's changed-price rule and widened, because that rule compares only the price per code. A member on a repeating treatment can see the same treatment cost different amounts from month to month, and no check today looks across visits. Proposed on 2026-11-05 and accepted by the owner as written on 2026-11-06; nothing is built.
+
+**Decision.**
+- **Four changes are flagged:** the allowed amount, the billed amount, the member's share when the allowed amount is the same and the deductible being met between the visits doesn't explain it, and the set of codes on a visit in a series.
+- **A flag isn't a failed check.** It says "worth a closer look" and doesn't change the visit's status or the dollars at stake. A price can change for good reasons (a new contract, an added service, a different dose), and the comparison can't tell which of the two amounts is right. This narrows ADR-015's "always flagged": still flagged at any size, but not as a discrepancy. The member's share keeps the $1.00 tolerance; prices have none (ADR-015).
+- **What is compared:** same person, provider group and plan, within one plan year; same code with the same modifiers, per unit; against the most recent earlier occurrence. A new plan year starts over, since rates and deductibles reset.
+- **A series is three or more visits with the same codes,** so a one-off difference between two visits isn't called a coding change.
+- **Line detail on confirmed documents only.** Totals alone say too little, so a visit without line detail isn't compared.
+- **One flag per change,** on the first visit it appears. The member closes it as real or wrong like any finding (ADR-044).
+- **Priority stays P2,** and can be built ahead of Release 2, as disputes (ADR-042) and tax (ADR-043) were.
+
+**Consequences.** It's a new cross-visit check in `core/`, with no schema change, since EOB lines already hold code, units, billed, allowed and cost sharing. It adds no AI step. Because prices have no tolerance, small changes will show up; if members mark them wrong too often (ADR-044, the 5% target), reconsider that first.
+
+### ADR-047 · Public landing page in the app (Proposed)
+The landing page was built separately in Lovable (`dhuovinen/health-reconciler`: TanStack Start, React, Tailwind, Supabase). Proposed by the build session on 2026-11-07 when bringing it into the app.
+
+**Decision.**
+- **Rebuilt, not merged.** The page is a Jinja template with its own stylesheet and a small script (`templates/landing.html`, `static/landing.css`, `static/landing.js`). A React runtime can't run under the app's policy (PRV-08) without weakening it, and a second build chain isn't worth one page.
+- **`/` depends on who is asking.** On Release 1, anyone without a session sees the landing page, a member who has passed MFA sees Home, and a member between password and code goes to `/signin/mfa`. Data routes still redirect to `/signin`. The page reads no household data. `/` stays `no-store`, since one URL now answers differently per session.
+- **Release 0 keeps Home at `/`.** It has one owner, no sign-in and no anonymous visitor, and every "Home" link points there. Both apps serve the page at `/welcome`.
+- **The landing page doesn't bring sign-in with it.** The Lovable project's `/auth`, `/account` and Supabase session code aren't brought over, because they would replace email, password and TOTP with a third-party identity service outside the hosting boundary and the data-processing agreement (ADR-028). "Sign in" links to `/signin`. The owner does want social sign-in (2026-11-07): it is PRV-12, proposed in ADR-048 without that service.
+- **Only the billing-chaos concept.** The Lovable project's own rule keeps the alternative concept out of the main site, so its coral theme and photo stay behind.
+- **The page follows `docs/UI_GUIDE.md`.** `$500B+` and `$25-50B` are unverified, so that band now asks the questions from the problem statement. Nothing is below 12px. Copy that called the product a concept or said uploads don't exist is corrected, and lines implying savings are reworded. The fade over the hero photo is the one gradient, and only to keep text readable over the picture.
+
+**Consequences.** A signed-out visitor to `/` no longer lands on the sign-in form; it's one click away. Sign-out and expired sessions on data routes still go to `/signin`. The FAQ describes access as early access by invitation, because members are created by `mhs-admin`; change it when sign-up exists. The Lovable repository stops being the source for this page.
+
+### ADR-048 · Social sign-in (Accepted; Apple added by ADR-057)
+PRV-12: the owner wants Google and Microsoft sign-in, first built in the Lovable project on Supabase and never tried with a real account. Proposed by the build session on 2026-11-07 and accepted by the owner the same day, with the authenticator change in ADR-049 and self-service sign-up expected later (B-24).
+
+**Decision.**
+- **Direct OpenID Connect from the application tier.** Authorization code flow with PKCE, `state` and `nonce`, over the httpx the app already uses. The ID token comes straight from the provider's token endpoint over TLS, so its claims (issuer, audience, expiry, nonce) are checked and its signature isn't (OpenID Connect Core 3.1.3.7), which needs no new library. No Supabase, Lovable or other broker, so no outside service holds sessions or the member list.
+- **It replaces the password, not the code.** While the code is required, the member still enters it after the provider (PRV-11); ADR-049 makes that the owner's choice. The app can't rely on what a provider says about its own second factor, and the session keeps ADR-031's cookie, timeouts and rotation.
+- **Invitation only for now.** A social account never creates a member or a household. An unlinked account gets the same answer whether or not its email belongs to a member.
+- **Linked by provider and subject, never by email.** A new table, `app.member_identities` (provider, subject, member), in its own migration. Emails can change and be reassigned, so matching on them could hand over a household's data. A member links an account from the Account page, once signed in, so a new member signs in with a password the first time.
+- **Least data.** Only the `openid` and `email` scopes. Provider tokens are used once and not kept, and no document, amount or provider name goes to them. Sign-ins and link changes go in the security log.
+- **Passwords and recovery stay** (ADR-037's recovery codes), so a member who loses the Google or Microsoft account can still get in. Going password-free is a later decision.
+- **Release 1 stack only.** Release 0 has no sign-in.
+
+**What the build allows for.**
+- The buttons must be plain links (GET), not forms: the policy's `form-action 'self'` can block a form post that redirects to the provider. The policy itself doesn't change.
+- The session cookie is `SameSite=Strict`, so it isn't sent on the redirect chain that started at the provider. The callback shows the code step itself rather than redirecting to it, and the short-lived `state` cookie is `SameSite=Lax`. Linking an account can't read the session on the callback either, so the member is recorded when the flow starts, against its `state`.
+- The app tier needs outbound HTTPS to the two providers' token endpoints. On compose it already has a route out; check Google Cloud when staging exists.
+- New OAuth clients for each environment, with secrets in the `secrets` volume and Secret Manager. Lovable's are managed by Lovable and can't be carried over.
+
+**Consequences.** Google or Microsoft learns each time a member signs in to a medical billing app, though nothing about their records; the sign-in page should say so, and a member can keep using a password. Losing the provider account removes that route only. Open: whether the privacy notice (CMP) and ADR-028 need updating before real households use it. Test cases: TC-PRV-12-1 to TC-PRV-12-6.
+
+### ADR-049 · Admin screen and an owner-controlled authenticator (Accepted)
+PLT-09. The owner wants one screen to manage features and toggles, and wants the authenticator code to be optional, under the owner's control. Owner's decision on 2026-11-07; the build session proposed the details and the owner accepted them the same day ("build it"), with the two open points settled as below.
+
+**Decision.**
+- **The owner decides, for the whole service.** One setting says whether the code is required. Narrowing ADR-031 and PRV-11, turning it off means a password or a linked Google or Microsoft account alone reaches a household's data.
+- **It starts on.** A new or upgraded stack asks for the code until the owner turns it off, so an upgrade never quietly removes protection.
+- **The owner is a role on a member** (`app.members.is_owner`), given and taken away with `mhs-admin owner`, not a separate operator sign-in. There can be more than one.
+- **Toggles are records, not environment settings** (`app.service_settings`), so a change needs no deploy. Each change goes in the security log as its own event (`setting_<name>_on` / `_off`) with the owner who made it and when. Turning the code off needs the owner's current code, typed again.
+- **The owner's own sign-in always needs the code,** even when it's off for members, and the screen only opens to a session that entered one. Otherwise one stolen password could turn off the service's protection.
+- **The screen shows no household's health data,** only settings and counts, like `mhs-admin false-positives`. Anyone else gets 404, as for a page that doesn't exist. `mhs-admin require-code` keeps a way in if the screen is unavailable.
+- **Turning it on is safe for those already in.** Sessions that didn't enter a code end at once. A member who has signed in without a code and never confirmed an authenticator is shown it at their next sign-in and confirms it with a code before reaching any data. A member who was added but never signed in uses the enrolment link from `mhs-admin` as before, so a password alone never shows a new member's authenticator.
+- **First toggles:** the required code, and each social sign-in provider that is configured (on by default). A provider's client settings stay in the environment; the toggle only hides or shows it. AI extraction per household stays in `mhs-admin` for now, since moving it here would put household names on the screen.
+
+**Consequences.** With the code off, a single stolen credential exposes real health data, so the screen says so in the toggle's own words. The launch gate for other users should decide whether the code must be on for them. A member who signed in without a code and whose password is then stolen can have the authenticator set up by the thief when the code comes back on; the owner can reset it with `mhs-admin reset-mfa`. Test cases: TC-PLT-09-1 to TC-PLT-09-3.
+
+### ADR-050 · Plan cost-sharing check and plain-language codes (Accepted)
+REC-06 and REC-09. The identities (ADR-014) prove the documents agree with each other, not that the insurer applied the plan. The owner asked for these on 2026-11-12 ("make these enhancements"); the build session set the details below.
+
+**Decision.**
+- **Expected cost share per claim, from the plan record.** `core/costshare.py` replays the plan year's in-network, non-denied claims in the insurer's processing order (EOB date, then claim number; TC-REC-06-4), keeping individual and family deductible and out-of-pocket totals. For each claim it works out what the plan's terms say: deductible up to what is left (an embedded individual deductible ends at the individual or the family amount, whichever comes first), the copay for the visit's service type, coinsurance at the plan's rate on what is left of the allowed amount, everything capped at the out-of-pocket maximum left, and $0 for a preventive visit. It compares the EOB's deductible, copay and coinsurance with that and reports each difference over the $1.00 tolerance (ADR-015) as one finding, `plan` / `cost_share`, with the math in the sentence.
+- **Soft until the terms are confirmed.** Wrong plan terms make every claim look wrong, and accuracy beats speed. Until the member ticks "These terms match my plan documents" on the plan (`terms_confirmed`), a difference is a `flag` (like REC-14, ADR-045): shown, but it doesn't change the status or the dollars at stake. Once confirmed it's a `fail` and counts as a discrepancy. Out-of-network claims, claims without a cost-sharing breakdown and plans without the needed terms get `na` with the reason.
+- **A new visit field, `service_type`** (preventive, primary_care, specialist, urgent_care, emergency, other), set by the member; the copay comes from the plan's `copays` map by that key. Without it, the copay isn't checked.
+- **Codes from a dated reference table** (`data/reference/claim_codes.json`, PLT-01), CARC group-and-reason codes and common RARC remark codes, each described in our own plain words with whether it usually means the member owes and whether it looks appealable. The visit page explains every code on an EOB. An unknown code says so and is never guessed (TC-REC-09-3).
+- **An appealable denial is a finding** (`denial` / `appealable_denial`) on a denied claim or a line the member is charged for under an appealable code (missing information, coding, authorization, timely filing by the provider). It is an insurer finding, so it starts the appeal deadline and drafts the appeal letter (ADR-042), and it prints the CMP-04 disclaimer. Codes that aren't appealable are explained, not flagged.
+
+**Consequences.** Plans need their coinsurance rate, copays and limits in Settings for the check to say anything; the Settings page says what is missing. The replay order means an EOB processed late can change earlier findings' expectations only for the claims after it, as at the insurer. Out-of-network cost sharing and per-service coinsurance rates are not checked yet.
+
+### ADR-051 · Learning from corrections per layout (Accepted)
+ING-06. The layout rules read 61.5% of held-out amounts correctly; members see the same few providers and insurers over and over, so their corrections are the cheapest training data there is. Owner's request of 2026-11-12; details by the build session.
+
+**Decision.**
+- **A layout key** is the document type plus the issuer as read (the insurer or provider name, normalized), so corrections on one provider's statements never change another's (TC-ING-06-2). It is computed from scrubbed text, so it never holds a member identifier.
+- **A hint is the label the member's value sits behind.** When a member confirms a document with a corrected money or date field, `ingest/learn.py` finds the confirmed value in the scrubbed text and keeps the words before it on that line as that field's label for the layout. Hints are household records (`layout_hint`), so they stay inside the household, go with export and delete, and are never shared between households.
+- **Hints apply after the rules and the AI,** in the worker, only for the same layout, and only where the label is found with a value after it. A field filled or changed by a hint says so on the review page ("read with the label you corrected on an earlier document from this sender"), with confidence 0.9, and the review page lists the fields hints changed. Two corrections that disagree keep the latest.
+- **Measured, not assumed:** the corpus test corrects two documents of a layout and checks that the field error rate on the next five drops by at least half (TC-ING-06-1).
+
+**Consequences.** A layout whose labels change every time won't improve; the AI path (ADR-028) remains the plan for those. Hints never leave the household, so a new household starts from the rules alone.
+
+### ADR-052 · EOB versions, refunds to the paying account, secondary insurance (Accepted)
+MAT-08, ALC-08 and ALC-05. Disputes (ADR-042) end in a reprocessed EOB and a refund, and two-plan families get two EOBs per visit; until now the newer EOB replaced the older one in place, refunds weren't traced and a secondary EOB was added up as a second claim. Owner's request of 2026-11-12; details by the build session.
+
+**Decision.**
+- **Versions are kept.** A corrected, reprocessed or appealed EOB for a claim number already on file is stored as a new document (`version_of` the earlier one, `version_reason`), not over it. The latest by processed date is current, whatever order they arrive in (TC-MAT-08-3); earlier ones stay on the visit page as history.
+- **A member's edit wins until they say otherwise** (ADR-011). If the member changed the earlier version (`member_edited`, set when they corrected a field at review), the new version is not applied: the visit goes to Needs review with both side by side, and the member chooses "Use the newer EOB" or "Keep mine". The member says on the review page whether a version is corrected, reprocessed or the answer to an appeal; the visit's history shows it. Updating an open insurer case from an appealed version (TC-MAT-08-4) is left for later.
+- **Refunds are traced to the account that paid.** A refund goes back against the visit's overpayment as before, and is now compared with the accounts the overpaid payments came from. A refund owed for an HSA-paid overpayment that arrives in another account is a finding (`refund` / `refund_to_hsa`): deposit it back to the HSA as a returned mistaken distribution. What is still owed back is shown per visit (TC-ALC-08-3).
+- **Secondary insurance is a second step, not a second claim.** An EOB from a plan with `coverage_order` secondary (or tertiary) for the same visit is the secondary adjudication. The member's share is the last plan's patient responsibility; insurer paid adds up across plans; the visit's billed is the primary's. A coordination check verifies that the primary's patient responsibility equals the secondary's payment, its adjustments and the member's final share within tolerance. When the member is covered by a secondary plan and only the primary EOB is in, the member's share is pending and the visit is Awaiting EOB (TC-ALC-05-2).
+
+**Consequences.** Document ids for corrected EOBs gain a suffix (`-v2`); the claim number stays the link. Bills compare against the final share after every plan. A family with a secondary plan that never sends an EOB (because nothing was left) needs the member to mark the secondary EOB not applicable, as for any expected document.
+
+### ADR-053 · Planned visits and the pre-visit estimate (Accepted)
+PRE-01, PRE-02, PRE-04 to PRE-07, the vision's priority two. Owner's request of 2026-11-12; details by the build session.
+
+**Decision.**
+- **A planned visit is a visit with `planned: true`,** an expected allowed amount and optionally a cash price, a good-faith estimate (PRE-06 reuses the existing field and check) and a service type. It isn't reconciled and doesn't get one of the nine statuses (ADR-009 stays nine): while it has no documents it is left out of the report and listed on the Plan page. The first EOB, bill or receipt matched to it turns it into an ordinary visit and keeps the estimate for comparison. A planned date in the past with no documents asks "Did this visit happen?" (TC-PRE-01-3).
+- **The estimate is pure (`core/estimate.py`)** over the plan's terms and this year's totals from the same replay as ADR-050, and shows its math: deductible left, coinsurance on the rest, a copay instead when the service has one, $0 for preventive care, capped at the out-of-pocket maximum left (TC-PRE-02-1 to 3).
+- **Cash or insurance (PRE-04).** The comparison shows both prices and whether paying cash counts toward the deductible. That is the PRD's open question, so it's a plan setting (`cash_counts_toward_deductible`: yes, no or unknown) that defaults to unknown, and the recommendation says what changes either way.
+- **Which account (PRE-07)** comes from `core.tax.recommend` with the same inputs as TAX-03; **questions to ask (PRE-05)** are a fixed list by network status and whether a good-faith estimate is expected. Every block that suggests an action prints the CMP-04 disclaimer.
+
+**Consequences.** Estimates are only as good as the plan's terms and the expected allowed amount the member enters; PRE-03 (price transparency data) stays P3.
+
+### ADR-054 · Insurer connection by SMART on FHIR (Accepted)
+ING-09. Gathering EOBs is the biggest effort for members and the least accurate step. Payers regulated by CMS publish a Patient Access API (FHIR R4, CARIN Blue Button `ExplanationOfBenefit`). Owner's request of 2026-11-12; details by the build session.
+
+**Decision.**
+- **The application tier connects, from the Uploads page.** Authorization code with PKCE and `state` against the payer's SMART endpoints, scope `patient/ExplanationOfBenefit.read patient/Coverage.read launch/patient openid`. Payers are configured by the operator (`MHS_FHIR_PAYERS`, a JSON file of name, FHIR base, authorize and token URLs and client id; secrets in the secrets volume), because each needs its own registration.
+- **One pull per consent, no stored tokens.** The access token is used for one pull and dropped, like ADR-048's provider tokens. Pulling again means signing in at the payer again. Revoking at the payer therefore stops all pulls (TC-ING-09-4), and MHS holds no long-lived credential to a member's insurer.
+- **Mapped, not trusted.** `ingest/fhir.py` maps each `ExplanationOfBenefit` (adjudication categories submitted, eligible, benefit, deductible, copay, coinsurance, noncovered, memberliability, discount) to an ingest EOB with lines, CARC codes as `remark_codes`, and the claim number from `identifier`. Patient names and member ids from the bundle are never stored; the member picks which household member the pull is for, and the provider's display name becomes a provider. The result goes through the import preview (validate, show counts, confirm) like any ingest file, and its records are marked as from the payer feed, so a member's edits win (ADR-011) and the same claim already uploaded is matched by claim number, not added twice (TC-ING-09-3).
+- **Retries are bounded:** a 429 or 5xx is retried with back-off three times, then the pull reports the failure; nothing is half-imported, because nothing is committed before the preview is confirmed (TC-ING-09-5).
+
+**Consequences.** Real payers need registration per environment and a public redirect URL, so this works for real only from staging on; tests use a fake FHIR server, as for social sign-in. The payer learns that the member uses MHS. Release 0 doesn't get it.
+
+### ADR-055 · Onboarding, consent and the published privacy pages (Accepted)
+UX-09 and the parts of the launch gate the software can carry (CMP-01 to CMP-03). Owner's request of 2026-11-12; details by the build session.
+
+**Decision.**
+- **Onboarding is a checklist computed from the household's records,** not a separate wizard state: members, a plan with its limits and terms, an HSA or other account, a first document, a first reconciled visit. Home shows it until every step is done, with a link to each step's page and a "Show me the first result" link at the end. Leaving and coming back resumes where the records say (TC-UX-09-2).
+- **Consent is a record per member** (`consent`, kept in the household like a preference): collection of health data, and separately sharing with the AI service (ADR-028), both unticked by default, each with the notice version and date, and a history of changes. It is checked where data comes in, not on every page: uploads, forwarded email, imports and insurer pulls. Requiring it is an owner toggle on the admin screen (`require_consent`, ADR-049's pattern), **off by default for the owner's own household and to be turned on before anyone else is invited**; with it on, nothing is collected from a member until they tick it (TC-CMP-02-1). A member who withdrew is refused whatever the toggle says, and withdrawing AI sharing turns AI extraction off for the household (TC-CMP-02-2). Release 0 has one owner and no consent page.
+- **The privacy notice is a page in the app** (`/privacy-notice`), written to match what the code does, with each statement pointing to its ADR, and the breach response plan is `docs/BREACH_RESPONSE.md`. Both are drafts until the healthcare privacy attorney reviews them, and say so.
+
+**Consequences.** The launch gate is still closed: attorney review, a tabletop exercise (TC-CMP-01-2) and anomaly alerts (TC-CMP-01-3) remain. Self-service sign-up is still out of scope, so onboarding starts once `mhs-admin` has created the member.
+
+### ADR-056 · Plan terms inferred from the household's own EOBs (Accepted)
+REC-15. REC-06 (ADR-050) checks each claim against the terms the member typed into Coverage, and stays a `flag` until they tick `terms_confirmed`, because wrong terms make every claim look wrong. The estimate (ADR-053) and the planned plan comparison (PRE-08) need the same terms. But every adjudicated EOB already shows how the insurer applied the plan: the allowed amount, then the deductible, copay and coinsurance it charged. Read as a year in processing order, those EOBs show the plan's terms. Proposed 2026-11-19 from a review of where the app could learn facts from its data instead of relying on what is typed in; accepted by the owner the same day.
+
+**Decision.**
+- **A pure inference over one plan year (`core/plan_inference.py`).** Its input is the claims `costshare.check_claims` already replays: in network, not denied, the current EOB version (`claim_versions()`, ADR-052), primary plan only (a secondary plan's EOBs show coordination, not its own terms; ALC-05), in `claim_order`, with the visit's member and `service_type`. Its output is an `InferredTerms` with one entry per field (individual and family deductible, individual and family out-of-pocket maximum, coinsurance rate, copay per service type, and whether copays wait for the deductible) and the claims behind each entry.
+- **Each field is read from what the EOBs show:**
+  - *Coinsurance rate:* coinsurance ÷ (allowed − deductible − copay) on each claim with coinsurance, as a fraction such as 0.2.
+  - *Copay:* the copay amount most often charged for each service type. If a copay appears only after the deductible stops being charged, the plan is read as deductible-first (ADR-050's `hdhp` rule).
+  - *Deductible and out-of-pocket maximum:* the running totals per member and per family, as in the REC-06 replay. A limit is known exactly only when the EOBs show it reached: a claim charges less deductible than the allowed amount would allow, and later claims for that person (or the family) charge none. The deductible is then the running total at that claim. The out-of-pocket maximum is found the same way, from the point where the member's share stops. Before that, the most the app can say is "at least" the running total.
+- **Each field has one of four states:** `known` (at least `MIN_AGREE` = 3 claims agree within the $1.00 tolerance, ADR-015, and they are at least `AGREE_SHARE` = 80% of the claims that show the field), `at_least` (a lower bound from the running totals), `conflicting` (claims show the field but don't agree enough) or `unknown`. The thresholds are constants in the module, so tests can change them.
+- **Claims that disagree are outliers.** A claim that disagrees with a `known` value is listed as an outlier of that field, with its numbers. An insurer mistake therefore shows up against the rest of the year instead of changing the inferred value. When an inferred value is used to check a claim (see below), it is inferred again without that claim, so a claim is never checked against a value it helped set.
+- **Shown, never written for the member (the member decides).** The Coverage page gets a "What your EOBs show" column beside each entered term, with its state, the number of claims and a link to them. A "Use this" button fills an empty field, and the member still saves it and still ticks `terms_confirmed` themselves. Imports and the worker never change a plan record because of an inference (ADR-011).
+- **A disagreement is a flag, not a fail.** When an entered term and a `known` inferred term differ by more than the tolerance, the plan gets a finding `plan` / `terms_mismatch`: "Your EOBs since <date> charge 30% coinsurance, but your plan says 20%. Either the plan entry or the insurer is wrong: check your plan documents." It is a `flag` (like REC-14, ADR-045) whether or not the terms are confirmed. Two sources disagree and the app can't tell which is wrong, so it changes no status and no dollars at stake. It can be marked "real problem" or "wrong" when closed (ADR-044) under its own finding kind, so its false-positive rate is measured from the first month.
+- **Inferred values fill gaps; they never override.** In REC-06 and the estimate, a term the member left empty may be filled by a `known` inferred value. The check then stays a `flag`, and its sentence says "using what your EOBs show". An entered term always wins. `at_least`, `conflicting` and `unknown` values are never used to compute anything.
+- **Only inside the household.** Inference reads one household's records, runs in the back-end tier on records that hold tokens only, sends nothing to the AI or anywhere else, and stores nothing. It is recomputed with the report, so a new or corrected EOB changes it at once. Nothing is pooled across households.
+
+**Testing.**
+- *Round trip:* generate plan years from known terms with `costshare.expected_share` (embedded and non-embedded deductibles, a copay plan, an HSA-eligible deductible-first plan, a year that reaches the out-of-pocket maximum), infer the terms, and get them back as `known`.
+- *One insurer mistake:* the mistaken claim is the outlier and the inferred terms don't change.
+- *Not enough evidence:* a year before the deductible is met gives `at_least`; two claims give `unknown`.
+- *Exclusions:* a secondary EOB and a superseded EOB version change nothing.
+- *Pages and findings:* a web test for the Coverage column, and a finding test for `terms_mismatch` as a `flag`.
+- *Synthetic data only:* the walkthrough and harness samples gain a plan whose entered coinsurance doesn't match its EOBs.
+
+**Consequences.**
+- *What it gives:* the plan becomes something the app checks against its own evidence. A mistyped term is caught without the member re-reading the plan documents. REC-06, the estimate and PRE-08 can say something before Settings is complete.
+- *What it can't do:* a plan year with few claims tells little (most households reach `known` coinsurance and copays within months, but a deductible only once it is met). Plans that use a different coinsurance rate per service (ADR-050 doesn't check those yet) show as `conflicting`, not wrong. Out-of-network terms aren't inferred.
+- *Requirement and tests:* REC-15 is in the Product Requirements, and TC-REC-15-1 to TC-REC-15-9 are in TEST_PLAN.md.
+
+**As built (2026-11-19).**
+- *The code:* `core/plan_inference.py` is the inference. `build_report` puts it on `Report.plan_terms`, and `_terms_checks` in `reconcile.py` adds the flags. Gap filling goes through a `fill` argument to `costshare.check_claims`, so `costshare` doesn't import the inference.
+- *Where the flag lives:* a finding has to sit on a visit to be closed (ADR-044), so a `terms_mismatch` flag sits on the visit whose EOB made the term known. That visit is the third agreeing claim for a rate or copay, or the claim where a limit ran out. Its check code is `terms-<term>` (`terms-coinsurance`, `terms-copay:specialist`). A flag whose visit is in another year's report shows only on Coverage. Whether copays wait for the deductible is shown, never flagged: a plan that isn't HSA-eligible may work either way.
+- *Where a limit ran out:* every claim that charges the deductible (or the out-of-pocket share) is a possible end point:
+  - one where it ran out partway through the claim (the deductible was less than the allowed amount);
+  - or one after which the person's next claim shows it had run out.
+  Each end point is supported by itself and the person's later claims that show it had run out, and contradicted by later claims that still charge it and by earlier end points. An end point charged again more often than not is dropped (a fully covered service isn't a met out-of-pocket maximum). The best-supported end point wins, and a tie is "no single answer", never known. The walkthrough sample's extra $300.00 deductible charge is such a tie: a $1,300.00 deductible with an early stop would look the same. So the inference stays silent, and REC-06 flags the claim against the entered $1,000.00.
+- *Too few claims:* with fewer than `MIN_AGREE` claims showing a term, it is `unknown` (TC-REC-15-4), not conflicting.
+
+### ADR-057 · Sign in with Apple (Accepted)
+PRV-12, ADR-048. The owner asked on 2026-11-19 to add Apple as the third sign-in provider, beside Google and Microsoft, and accepted it the same day. Apple follows OpenID Connect closely enough for ADR-048's flow, with three differences the build has to allow for.
+
+**Decision.**
+- **Apple is a third `SignInProvider`, through the same routes and checks.** Same callback, same `state` and `nonce`, same claim checks (issuer `https://appleid.apple.com`, audience the Services ID). Linked by provider and subject, never email; invitation only; the code still follows (ADR-049); the owner can turn it off on the admin screen.
+- **No scopes, so the callback stays a GET.** Apple sends the result as a cross-site POST (`response_mode=form_post`) whenever the name or email scope is asked for. The flow's `state` cookie is `SameSite=Lax`, which a browser doesn't send on a cross-site POST, and the app refuses posts from another origin. Taking the POST would mean a `SameSite=None` cookie and an exception to the origin check. The app doesn't need the email (links are by subject), so it asks for no scope and `response_mode=query`. That is even less data than ADR-048's `openid email`: Apple gives the subject only, and the member isn't asked whether to hide their email. The Account page shows "Apple: linked" without an address.
+- **The client secret is a signed token, made per request.** Apple's client secret is an ES256 JWT signed with a private key from the Apple Developer account (issuer the Team ID, subject the Services ID, audience `https://appleid.apple.com`). The app makes one for each token request, valid for 5 minutes, with the `cryptography` library it already has, rather than storing a six-month token that would need replacing. The private key is a secret like the others (`MHS_APPLE_PRIVATE_KEY` or `_FILE`, Secret Manager on Google Cloud). A key that isn't a P-256 private key stops the app at start, with the variable's name only.
+- **No PKCE for Apple.** Apple doesn't document PKCE, and common client libraries leave it off for Apple. `state`, the `nonce` in the ID token and the confidential client secret still bind the code to this flow. Google and Microsoft keep PKCE.
+
+**What the build allows for.**
+- Apple accepts only HTTPS redirect URIs on a domain registered with the Services ID, never `localhost`. So Apple can't be tried on the local stack; it needs staging on its own domain (`app.myhealthspend.com`, GCP_SETUP.md "Custom domain"). Tests use the fake provider in Apple's shape.
+- It needs a paid Apple Developer Program membership.
+- Apple's guidelines ask for the "Sign in with Apple" or "Continue with Apple" wording; the button says "Continue with Apple", like the others.
+
+**Consequences.** Apple learns when a member signs in, as Google and Microsoft do, and nothing about their records. Not yet tried against Apple itself: the first real test is on staging, and if Apple refuses `response_mode=query` without a scope, the fallback is the POST callback described above, as a new decision. Test case: TC-PRV-12-7.
+
+### ADR-058 · One main address: myhealthspend.com served by the app (Accepted)
+The app went live on staging at `app.myhealthspend.com` on 2026-11-19 (GCP_SETUP.md Part F), with `myhealthspend.com` still serving the old Lovable site from Hostinger, including a `/auth` page that is Lovable's own sign-in. The app already has the landing page for signed-out visitors (ADR-047). On 2026-11-20 the owner chose to serve `myhealthspend.com` from the app as well, after Google and Microsoft sign-in worked.
+
+**Decision.**
+- **`myhealthspend.com` and `www.myhealthspend.com` point at the app** (Cloud Run domain mappings; `A`/`AAAA` records for the bare domain and a `CNAME` for `www` at Hostinger). The Hostinger website is retired; the domain's DNS stays at Hostinger. `app.myhealthspend.com` keeps working.
+- **One main address, `MHS_PUBLIC_URL`.** Cookies belong to one host, so a sign-in that starts on one address and returns to another fails, and a member signed in on one is signed out on the other. With `MHS_REDIRECT_OTHER_HOSTS=1` (set by `deploy.sh` for the app service), a request for any other host is forwarded to the same path on the main address with a 307: temporary, so browsers don't remember it and the main address can still change, and it keeps a form post a post. `/health` isn't forwarded, so the `run.app` address still answers checks. The main address becomes `https://myhealthspend.com` once its certificate is issued; until then it stays `https://app.myhealthspend.com`.
+- **`/auth` goes to `/signin`**, so links to the old site's sign-in still arrive.
+- **`deploy.sh` keeps the deployed main address** when `PUBLIC_URL` isn't given, rather than falling back to the `run.app` address, which with forwarding on would send every visitor there.
+
+**Consequences.** Every OAuth client lists both `https://myhealthspend.com/...` and `https://app.myhealthspend.com/...` callbacks, so the main address can move between them with a redeploy only. Google's branding links (home page, privacy policy) can use `myhealthspend.com` once it serves the app. Production gets its own decision on whether staging keeps these names.

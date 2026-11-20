@@ -11,7 +11,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 
-from mhs.core import disputes
+from mhs.core import costshare, disputes, plan_inference, repeats
 from mhs.core.lines import (BUCKETS, TOLERANCE_CAP, LineMatch, add_buckets, adjustment_of, buckets,
                             claim_differences, duplicate_items, fmt, judge, pair_lines, self_pay_buckets,
                             self_pay_difference)
@@ -58,8 +58,26 @@ CHECK_NAMES = {
     "claim_filed": "Claim filed with insurance",
     "estimate": "Bill within the good-faith estimate",
     "C6": "Balance outstanding",
+    "R14-allowed": "Allowed amount changed",
+    "R14-billed": "Billed amount changed",
+    "R14-share": "Your share changed",
+    "R14-codes": "Codes changed in a series",
+    "plan": "Your share matches your plan",
+    "denial": "Denial explained",
+    "cob": "Second insurer adds up",
+    "refund": "Refund went back to the right account",
+    "terms-coinsurance": "Coinsurance matches your EOBs",
+    "terms-deductible": "Deductible matches your EOBs",
+    "terms-family_deductible": "Family deductible matches your EOBs",
+    "terms-oop": "Out-of-pocket maximum matches your EOBs",
+    "terms-family_oop": "Family out-of-pocket maximum matches your EOBs",
 }
+TERMS_PREFIX = "terms-"  # REC-15: an entered plan term against what the EOBs show (ADR-056)
 FINDING_KINDS = {
+    "repeat_allowed": "Repeat service",
+    "repeat_billed": "Repeat service",
+    "repeat_share": "Repeat service",
+    "repeat_codes": "Repeat service",
     "missed_adjustment": "Missed adjustment",
     "balance_billing": "Balance billing",
     "billed_mismatch": "Charges differ from the claim",
@@ -68,11 +86,17 @@ FINDING_KINDS = {
     "unexplained": "Unexplained remainder",
     "not_filed": "Claim may not be filed",
     "over_estimate": "Bill exceeds the good-faith estimate",
+    "cost_share": "Cost sharing differs from your plan",
+    "appealable_denial": "Denial looks appealable",
+    "cob_excess": "Charged more than the first insurer left",
+    "refund_to_hsa": "Refund belongs in the HSA",
+    "terms_mismatch": "Plan terms differ from your EOBs",
 }
 # A failing check in this set makes the visit "Discrepancy found"; claim_filed and C6 have their own statuses.
-DISCREPANCY_CODES = {"C1", "self_pay", "C2", "duplicate", "C3", "C4", "settlement", "estimate"}
-STAKE_CODES = {"C1", "self_pay", "C2", "duplicate", "estimate"}
-DOCUMENT_LABELS = {"eob": "Insurance decision (EOB)", "bill": "Provider bill", "itemized_bill": "Itemized bill",
+DISCREPANCY_CODES = {"C1", "self_pay", "C2", "duplicate", "C3", "C4", "settlement", "estimate", "plan", "denial",
+                     "cob", "refund"}
+STAKE_CODES = {"C1", "self_pay", "C2", "duplicate", "estimate", "plan", "denial", "cob", "refund"}
+DOCUMENT_LABELS = {"eob": "Insurance decision (EOB)", "secondary_eob": "Second insurer's EOB", "bill": "Provider bill", "itemized_bill": "Itemized bill",
                    "receipt": "Receipt", "payment": "Payment proof"}
 
 
@@ -87,19 +111,24 @@ class Dataset:
     documents: list[dict] = field(default_factory=list)
     waiting_days: int = WAITING_DAYS  # REC-11 threshold, a household preference
     notes: list[dict] = field(default_factory=list)  # provider notes: a case's contact log (DSP-03, DSP-04)
+    claim_codes: dict = field(default_factory=dict)  # REC-09 reference table (data/reference/claim_codes.json)
 
 
 @dataclass
 class Check:
     code: str
-    result: str  # pass | fail | na | cleared (under the tolerance) | info | closed (by the member)
+    result: str  # pass | fail | na | cleared (under the tolerance) | info | closed (by the member) | flag (REC-14)
     detail: str = ""
     amount: int = 0
     kind: str = ""  # finding type, e.g. missed_adjustment (FINDING_KINDS)
     closed: dict | None = None  # the member's closing entry
+    earlier_visit: str = ""  # REC-14: the visit this one is compared with
 
     @property
     def name(self) -> str:
+        if self.code.startswith(TERMS_PREFIX + "copay:"):  # one per service type
+            kind = self.code.split(":", 1)[1]
+            return f"{costshare.SERVICE_TYPES.get(kind, kind)} copay matches your EOBs"
         return CHECK_NAMES[self.code]
 
     @property
@@ -188,6 +217,11 @@ class VisitResult:
     notice_label: str = ""  # notice wording printed on the latest such statement, e.g. "Past due"
     cases: list[disputes.CaseView] = field(default_factory=list)  # dispute cases, open first (ADR-042)
     deadlines: list[disputes.Deadline] = field(default_factory=list)  # appeal and No Surprises Act (DSP-05)
+    code_notes: list[costshare.CodeNote] = field(default_factory=list)  # REC-09: the EOB's codes in plain words
+    secondary_claims: list[dict] = field(default_factory=list)  # ALC-05: EOBs from a secondary or tertiary plan
+    secondary_expected: bool = False  # covered by a secondary plan, and the primary left the member something
+    versions: list[dict] = field(default_factory=list)  # MAT-08: earlier versions of the visit's EOBs, newest first
+    version_conflicts: list[tuple[dict, dict]] = field(default_factory=list)  # (the member's edited EOB, a newer one)
 
     @property
     def id(self) -> str:
@@ -248,6 +282,11 @@ class VisitResult:
         return [c for c in self.checks if c.result == "fail"]
 
     @property
+    def repeat_flags(self) -> list[Check]:
+        """REC-14: worth a closer look. Not findings, so they don't change the status or the dollars at stake."""
+        return [c for c in self.checks if c.result == "flag"]
+
+    @property
     def cleared(self) -> list[Check]:
         return [c for c in self.checks if c.result == "cleared"]
 
@@ -262,8 +301,14 @@ class VisitResult:
 
     @property
     def awaiting_eob(self) -> bool:
-        """Insured, no EOB yet, within the waiting threshold: a bill isn't treated as owed yet (REC-02)."""
-        return self.insured and not self.claims and self.age < self.waiting_days
+        """Insured, no EOB yet (or the second insurer's still to come, ALC-05), within the waiting threshold: a bill
+        isn't treated as owed yet (REC-02)."""
+        waiting_secondary = self.secondary_expected and not self.secondary_claims
+        return self.insured and (not self.claims or waiting_secondary) and self.age < self.waiting_days
+
+    @property
+    def secondary_paid(self) -> int:
+        return sum(c.get("insurer_paid") or 0 for c in self.secondary_claims)
 
 
 @dataclass
@@ -352,6 +397,7 @@ class Report:
     years: list[int]
     waiting_days: int = WAITING_DAYS
     recovered_lifetime: int = 0  # DSP-07: dollars recovered by resolved cases, every year
+    plan_terms: dict[str, plan_inference.InferredTerms] = field(default_factory=dict)  # REC-15, per plan id
 
     def visit(self, visit_id: str) -> VisitResult | None:
         return next((v for g in self.groups for v in g.visits if v.id == visit_id), None)
@@ -453,15 +499,61 @@ def available_years(ds: Dataset) -> list[int]:
     return sorted(years, reverse=True)
 
 
-def current_claims(eobs: list[dict]) -> dict[str, list[dict]]:
-    """Visit id -> its claims: the latest EOB per claim number (EOBs without one are versions of each other)."""
-    latest: dict[tuple[str, str], dict] = {}
-    for e in sorted(eobs, key=lambda d: (d["date"], d["id"])):
-        latest[(e["visit_id"], e.get("claim_number") or "")] = e
-    out = defaultdict(list)
-    for (vid, _), e in sorted(latest.items(), key=lambda kv: (kv[1]["date"], kv[1]["id"])):
-        out[vid].append(e)
+@dataclass
+class ClaimVersions:
+    """MAT-08 (ADR-052): one claim's EOBs. `current` is what reconciliation uses."""
+    versions: list[dict]  # oldest first, by processed date (TC-MAT-08-3)
+    current: dict
+    conflict: dict | None = None  # a newer version waiting for the member, while `current` is their edited one
+
+
+def claim_versions(eobs: list[dict]) -> dict[str, list[ClaimVersions]]:
+    """Visit id -> its claims. EOBs with the same claim number on a visit, or linked by `version_of`, are versions
+    of one claim (EOBs without a number are versions of each other). The latest by processed date is current,
+    unless the member edited an earlier one and hasn't accepted the newer (ADR-011)."""
+    by_id = {e["id"]: e for e in eobs}
+
+    def root(e: dict) -> dict:
+        seen = set()
+        while e.get("version_of") in by_id and e["id"] not in seen:
+            seen.add(e["id"])
+            e = by_id[e["version_of"]]
+        return e
+
+    groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for e in eobs:
+        r = root(e)
+        groups[(r["visit_id"], r.get("plan_id") or "", r.get("claim_number") or "")].append(e)
+    out: dict[str, list[ClaimVersions]] = defaultdict(list)
+    for (vid, _, _), versions in groups.items():
+        versions.sort(key=lambda d: (d["date"], d["id"]))
+        latest, current, conflict = versions[-1], versions[-1], None
+        edited = [v for v in versions[:-1] if v.get("member_edited")]
+        if edited and latest.get("version_choice") != "use_newer":
+            current = edited[-1]
+            if latest.get("version_choice") != "keep_mine":
+                conflict = latest
+        out[vid].append(ClaimVersions(versions, current, conflict))
+    for cs in out.values():
+        cs.sort(key=lambda c: (c.current["date"], c.current["id"]))
     return out
+
+
+def current_claims(eobs: list[dict]) -> dict[str, list[dict]]:
+    """Visit id -> its claims: the current version of each (MAT-08)."""
+    return {vid: [c.current for c in cs] for vid, cs in claim_versions(eobs).items()}
+
+
+def is_secondary(plan: dict | None) -> bool:
+    return (plan or {}).get("coverage_order") in ("secondary", "tertiary")
+
+
+def _covered_by_secondary(visit: dict, plans: list[dict]) -> bool:
+    """ALC-05: the visit's member is on a secondary plan in force on the visit's date (TC-ALC-05-3)."""
+    member, day = visit.get("member_id"), visit["date"]
+    return any(is_secondary(p) and member and member in (p.get("member_ids") or [])
+               and p.get("plan_year") == int(day[:4]) and (p.get("coverage_start") or "") <= day
+               and day <= (p.get("coverage_end") or "9999") for p in plans)
 
 
 def _line_amount(line: dict, key: str) -> int:
@@ -481,7 +573,14 @@ def build_report(ds: Dataset, year: int, today: date) -> Report:
     docs_by_type = defaultdict(list)
     for d in ds.documents:
         docs_by_type[d["type"]].append(d)
-    claims_by_visit = current_claims(docs_by_type["eob"])
+    plans = {p["id"]: p for p in ds.plans}
+    versions_by_visit = claim_versions(docs_by_type["eob"])
+    claims_by_visit: dict[str, list[dict]] = defaultdict(list)
+    secondary_by_visit: dict[str, list[dict]] = defaultdict(list)
+    for vid, cs in versions_by_visit.items():
+        for c in cs:
+            (secondary_by_visit if is_secondary(plans.get(c.current.get("plan_id"))) else claims_by_visit)[vid].append(
+                c.current)
     lines_by_visit = defaultdict(list)
     for bill in sorted(docs_by_type["provider_bill"], key=lambda d: (d["date"], d["id"]), reverse=True):
         for line in bill["lines"]:
@@ -514,6 +613,10 @@ def build_report(ds: Dataset, year: int, today: date) -> Report:
     ys = str(year)
     in_scope = []
     for v in ds.visits:
+        if v.get("planned") and (v.get("planned_outcome") == "cancelled" or not (
+                v["id"] in claims_by_visit or v["id"] in secondary_by_visit or v["id"] in lines_by_visit
+                or v["id"] in receipts_by_visit)):
+            continue  # PRE-01: a planned visit is reconciled once a document arrives for it (ADR-053)
         carry_in = v["date"][:4] < ys and any(b["date"][:4] == ys for b, _ in lines_by_visit.get(v["id"], []))
         if v["date"][:4] == ys or carry_in:
             in_scope.append((v, carry_in))
@@ -521,11 +624,16 @@ def build_report(ds: Dataset, year: int, today: date) -> Report:
     results: list[VisitResult] = []
     for v, carry_in in sorted(in_scope, key=lambda x: (x[0]["date"], x[0]["id"])):
         claims = claims_by_visit.get(v["id"], [])
+        secondary = secondary_by_visit.get(v["id"], [])
+        if secondary and not claims:  # a second insurer's EOB alone: read it as the visit's claim
+            claims, secondary = secondary, []
         lines = lines_by_visit.get(v["id"], [])
         receipts = receipts_by_visit.get(v["id"], [])
         latest = lines[0][1] if lines else None
         receipt_total = sum(r["total"] for r in receipts)
         insurer_owed = sum(c["patient_responsibility"] for c in claims) if claims else None
+        if secondary:  # ALC-05: the member owes what the last plan leaves
+            insurer_owed = sum(c["patient_responsibility"] for c in secondary)
         if latest is not None:
             billed_to_me = latest["patient_amount"]
         elif claims:
@@ -541,11 +649,20 @@ def build_report(ds: Dataset, year: int, today: date) -> Report:
             total_billed=(sum(c["billed"] for c in claims) if claims
                           else (_line_amount(latest, "billed_charge") or latest["patient_amount"] if latest
                                 else receipt_total)),
-            insurer_paid=(sum(c["insurer_paid"] for c in claims) if claims
+            insurer_paid=(sum(c["insurer_paid"] for c in claims + secondary) if claims
                           else (latest.get("insurance_paid", 0) if latest else 0)),
             insurer_owed=insurer_owed, billed_to_me=billed_to_me, insured=insured,
             age=max((today - date.fromisoformat(v["date"])).days, 0), waiting_days=ds.waiting_days,
+            secondary_claims=secondary,
         )
+        not_needed = ((v.get("documents") or {}).get("secondary_eob") or {}).get("state") == "not_applicable"
+        vr.secondary_expected = bool(claims) and _covered_by_secondary(v, ds.plans) and not not_needed \
+            and sum(c["patient_responsibility"] for c in claims) > 0
+        for cv in versions_by_visit.get(v["id"], []):
+            vr.versions += [e for e in cv.versions if e is not cv.current]
+            if cv.conflict:
+                vr.version_conflicts.append((cv.current, cv.conflict))
+        vr.versions.sort(key=lambda e: (e["date"], e["id"]), reverse=True)
         if latest is not None:
             # Provider write-offs after adjudication; asking less than the EOB counts as one (REC-02 TC-4).
             vr.write_off = _line_amount(latest, "write_off")
@@ -568,15 +685,32 @@ def build_report(ds: Dataset, year: int, today: date) -> Report:
         for vr in g.visits:
             _settle(vr, is_hsa)
 
-    plans = {p["id"]: p for p in ds.plans}
     notes_by_visit = defaultdict(list)
     for n in ds.notes:
         if n.get("case_id"):
             notes_by_visit[n.get("visit_id")].append(n)
+    primary_claims = [c for cs in claims_by_visit.values() for c in cs]
+    visit_map = {v["id"]: v for v in ds.visits}
+    plan_terms = plan_inference.infer_all(primary_claims, visit_map, plans)
+
+    def fill(terms, claim, service_type):
+        """REC-15: an empty term filled from the plan's other EOBs, never from the claim being checked."""
+        inferred = plan_terms.get(claim.get("plan_id") or "")
+        if inferred is None or not any(f.usable for f in inferred.fields.values()):
+            return terms, []
+        _, used = plan_inference.fill(terms, inferred, service_type)
+        if not used:
+            return terms, []
+        return plan_inference.fill(terms, plan_inference.infer(primary_claims, visit_map, claim["plan_id"],
+                                                               without=claim["id"]), service_type)
+
+    share = costshare.check_claims(primary_claims, visit_map, plans, fill)
     for vr in results:
-        _check_visit(vr, groups[vr.group_id], is_hsa, today)
+        _check_visit(vr, groups[vr.group_id], is_hsa, today, share, ds.claim_codes)
         _cases(vr, notes_by_visit[vr.id], plans.get(vr.visit.get("plan_id", "")), today)
 
+    _repeat_checks(results, plans)
+    _terms_checks(results, plans, plan_terms)
     for g in groups.values():
         _summarize_group(g, is_hsa, ys)
 
@@ -586,10 +720,12 @@ def build_report(ds: Dataset, year: int, today: date) -> Report:
         year=year, today=today,
         visits=sorted((v for v in results if not v.carry_in), key=lambda v: (v.visit["date"], v.id), reverse=True),
         groups=report_groups,
-        limits=_limit_progress(ds, year, [c for cs in claims_by_visit.values() for c in cs], members),
+        limits=_limit_progress(ds, year, [c for d in (claims_by_visit, secondary_by_visit) for cs in d.values()
+                                          for c in cs], members),
         years=available_years(ds) or [year],
         waiting_days=ds.waiting_days,
         recovered_lifetime=disputes.recovered(ds.visits),
+        plan_terms=plan_terms,
     )
 
 
@@ -679,7 +815,8 @@ def _settle(vr: VisitResult, is_hsa) -> None:
 
 # ---------- checks and status ----------
 
-def _check_visit(vr: VisitResult, g: ProviderGroup, is_hsa, today: date) -> None:
+def _check_visit(vr: VisitResult, g: ProviderGroup, is_hsa, today: date,
+                 share: dict[str, costshare.ShareCheck] | None = None, codes: dict | None = None) -> None:
     eob, latest = vr.eob, vr.latest_line
     checks: list[Check] = []
 
@@ -692,6 +829,8 @@ def _check_visit(vr: VisitResult, g: ProviderGroup, is_hsa, today: date) -> None
                 vr.line_buckets.append((f"{line.get('code') or line.get('description') or f'Line {i + 1}'}",
                                         buckets(line)))
         vr.buckets = add_buckets(*(_claim_buckets(c) for c in vr.claims))
+        if vr.secondary_claims:
+            checks.append(_cob_check(vr))
     elif not vr.insured and latest:
         d = self_pay_difference(latest[1])
         if d is not None:
@@ -714,12 +853,17 @@ def _check_visit(vr: VisitResult, g: ProviderGroup, is_hsa, today: date) -> None
     checks.append(_line_check(vr))
     checks.extend(_duplicate_checks(vr, g))
     checks.append(_network_check(vr))
+    checks.extend(_plan_checks(vr, share or {}))
+    checks.extend(_denial_checks(vr, codes or {}))
+    vr.code_notes = costshare.code_notes(vr.claims, codes or {})
 
     if vr.overpaid:
         result = judge(vr.overpaid)
         detail = (f"You paid {fmt(vr.overpaid)} more than you owe for this visit (all payment methods combined). "
                   f"Ask {vr.provider['name']} for a refund or a credit." if result == "fail"
                   else f"Paid {fmt(vr.overpaid)} more than you owe")
+        if vr.refunded:  # ALC-08: a partial refund leaves the rest owed back (TC-ALC-08-3)
+            detail += f" A refund of {fmt(vr.refunded)} came back; {fmt(vr.overpaid)} is still owed to you."
         checks.append(Check("C4", result, detail, vr.overpaid, "overpayment"))
     elif vr.surplus and vr.refunded:
         checks.append(Check("C4", "pass", f"A refund of {fmt(vr.refunded)} cleared the overpayment"))
@@ -727,6 +871,8 @@ def _check_visit(vr: VisitResult, g: ProviderGroup, is_hsa, today: date) -> None
         checks.append(Check("C4", "pass", f"Payments of {fmt(vr.paid)} applied"))
     else:
         checks.append(Check("C4", "na", "No payments applied"))
+    if refund := _refund_check(vr, g, is_hsa):  # ALC-08
+        checks.append(refund)
 
     checks.append(_settlement_check(vr, g))
     estimate = _estimate_check(vr)
@@ -764,7 +910,7 @@ def _check_visit(vr: VisitResult, g: ProviderGroup, is_hsa, today: date) -> None
 
     closed = {(f["code"], f["amount"]): f for f in vr.visit.get("closed_findings") or []}
     for c in checks:
-        if c.result == "fail" and (c.code, c.amount) in closed:
+        if c.result in ("fail", "flag") and (c.code, c.amount) in closed:
             c.result, c.closed = "closed", closed[(c.code, c.amount)]
     vr.checks = checks
 
@@ -788,6 +934,85 @@ def _check_visit(vr: VisitResult, g: ProviderGroup, is_hsa, today: date) -> None
     stake = max((c.amount for c in checks if c.result == "fail" and c.code in STAKE_CODES), default=0)
     overpaid = vr.overpaid if any(c.code == "C4" and c.result == "fail" for c in checks) else 0
     vr.at_stake = max(stake, overpaid)  # paying an inflated bill is the same dollars as the bill's excess
+
+
+def _cob_check(vr: VisitResult) -> Check:
+    """ALC-05 (ADR-052): the second insurer's payment and what you owe can't exceed what the first plan left."""
+    left = sum(c["patient_responsibility"] for c in vr.claims)
+    final = sum(c["patient_responsibility"] for c in vr.secondary_claims)
+    paid = vr.secondary_paid
+    reduced = left - paid - final
+    vr.buckets = {k: v for k, v in vr.buckets.items() if k not in
+                  ("deductible", "copay", "coinsurance", "not_covered", "member_unspecified")}
+    vr.buckets = add_buckets(vr.buckets, {"secondary_paid": paid, "member_unspecified": final,
+                                          "other_savings": max(reduced, 0)})
+    if reduced < 0 and judge(-reduced) == "fail":
+        return Check("cob", "fail", f"The first plan left {fmt(left)} for you; the second insurer paid {fmt(paid)} and "
+                                    f"says you owe {fmt(final)}, {fmt(-reduced)} more than was left. Ask the second "
+                                    f"insurer to reprocess the claim with the first plan's EOB", -reduced, "cob_excess")
+    detail = f"The first plan left {fmt(left)}; the second insurer paid {fmt(paid)}"
+    if reduced > 0:
+        detail += f" and reduced {fmt(reduced)}"
+    return Check("cob", "pass", detail + f"; you owe {fmt(final)}")
+
+
+def _refund_check(vr: VisitResult, g: ProviderGroup, is_hsa) -> Check | None:
+    """ALC-08 (ADR-052): a refund of an HSA-paid overpayment belongs back in the HSA."""
+    refunds = [a for a in vr.allocations if a.refund]
+    if not refunds:
+        return None
+    payments = {p["id"]: p for p in g.payments}
+    hsa_surplus = sum(a.amount for a in vr.allocations if a.surplus and not a.refund and is_hsa(a.payment))
+    elsewhere = 0
+    for a in refunds:
+        if is_hsa(a.payment):
+            continue
+        sources = [payments[i] for i in a.payment.get("refund_of") or [] if i in payments]
+        if sources:
+            if any(is_hsa(p) for p in sources):
+                elsewhere += a.amount
+        else:
+            elsewhere += a.amount
+    owed = min(elsewhere, hsa_surplus) if not any(a.payment.get("refund_of") for a in refunds) else elsewhere
+    if owed and judge(owed) == "fail":
+        return Check("refund", "fail", f"{fmt(owed)} of the refund paid back money that came from your HSA, but it went "
+                                       f"to another account. Deposit it back into the HSA (a returned mistaken "
+                                       f"distribution, by the HSA custodian's deadline) so it isn't taxed. Information, "
+                                       f"not tax advice", owed, "refund_to_hsa")
+    return Check("refund", "pass", f"Refunds of {fmt(vr.refunded)} went back to the account that paid")
+
+
+def _plan_checks(vr: VisitResult, share: dict[str, costshare.ShareCheck]) -> list[Check]:
+    """REC-06 (ADR-050): each claim's deductible, copay and coinsurance against the plan's terms."""
+    found = [share[c["id"]] for c in vr.claims if c["id"] in share]
+    if not found:
+        return [Check("plan", "na", "No EOB to compare with your plan" if vr.insured else
+                      "No insurance claim for this visit")]
+    out = []
+    for s in found:
+        kind = "cost_share" if s.result in ("fail", "flag") else ""
+        out.append(Check("plan", s.result, s.detail, s.amount if kind or s.result == "cleared" else 0, kind))
+    return out
+
+
+def _denial_checks(vr: VisitResult, codes: dict) -> list[Check]:
+    """REC-09 (ADR-050): a denial or a charge under a code that usually can be corrected or appealed."""
+    out = []
+    for c in vr.claims:
+        amount, hits = costshare.appealable_amount(c, codes)
+        label = f"Claim {c['claim_number']}: " if c.get("claim_number") and len(vr.claims) > 1 else ""
+        if not hits:
+            continue
+        meanings = "; ".join(f"{h}: {costshare.explain(h, codes).text}" for h in hits)
+        if amount >= 100:
+            out.append(Check("denial", "fail",
+                             f"{label}you're charged {fmt(amount)} under {', '.join(hits)}, which usually can be "
+                             f"corrected or appealed ({meanings}). Ask the provider whether they will fix and resend the "
+                             f"claim; if not, appeal to the insurer before the deadline. Information, not legal advice",
+                             amount, "appealable_denial"))
+        else:
+            out.append(Check("denial", "info", f"{label}{meanings}. It doesn't cost you anything on this claim"))
+    return out
 
 
 def _estimate_check(vr: VisitResult) -> Check | None:
@@ -857,7 +1082,7 @@ def _bill_vs_eob(vr: VisitResult) -> Check:
             return Check("C2", "na", "Waiting for the insurer's decision (EOB) before comparing it with the bill")
         return Check("C2", "na", "Needs both an EOB and a provider statement")
     bill, line = latest
-    asks, owes = line["patient_amount"], eob["patient_responsibility"]
+    asks, owes = line["patient_amount"], vr.insurer_owed if vr.insurer_owed is not None else eob["patient_responsibility"]
     d_pt = asks - owes
     billed_charge = _line_amount(line, "billed_charge") if (line.get("billed_charge") is not None or line.get("items")) \
         else eob["billed"]
@@ -1017,6 +1242,8 @@ def _documents(vr: VisitResult) -> list[DocumentState]:
                       "or a bill" if bill_or_receipt else ""),
         DocumentState("payment", "present" if vr.paid else "expected" if owed else "not_applicable", blocking=False),
     ]
+    if vr.secondary_claims or vr.secondary_expected or "secondary_eob" in (vr.visit.get("documents") or {}):  # ALC-05
+        out.insert(1, DocumentState("secondary_eob", "present" if vr.secondary_claims else "expected"))
     if bill_or_receipt:  # one of the two is enough: show the bill as the expected one only once
         for d in out:
             if d.kind == "receipt" and d.state == "expected":
@@ -1041,7 +1268,7 @@ def _status(vr: VisitResult, today: date) -> str:
         return "in_dispute"
     if any(c.result == "fail" and c.code in DISCREPANCY_CODES for c in vr.checks):
         return "discrepancy"
-    if vr.review:
+    if vr.review or vr.version_conflicts:
         return "needs_review"
     if vr.remaining and not vr.awaiting_eob:
         return "balance_outstanding"
@@ -1050,9 +1277,9 @@ def _status(vr: VisitResult, today: date) -> str:
     def waiting(d: DocumentState) -> bool:
         return (today - date.fromisoformat(d.since)).days < vr.waiting_days
 
-    if any(d.kind == "eob" and waiting(d) for d in expected):
+    if any(d.kind in ("eob", "secondary_eob") and waiting(d) for d in expected):
         return "awaiting_eob"
-    if any(d.kind != "eob" and waiting(d) for d in expected):
+    if any(d.kind not in ("eob", "secondary_eob") and waiting(d) for d in expected):
         return "awaiting_documents"
     if expected:
         return "missing_documents"
@@ -1060,6 +1287,44 @@ def _status(vr: VisitResult, today: date) -> str:
             or (vr.surplus and vr.refunded and not vr.overpaid):
         return "resolved"
     return "complete"
+
+
+def _repeat_checks(results: list[VisitResult], plans: dict[str, dict]) -> None:
+    """REC-14 (ADR-045): flags across the year's visits, closed by the member like a finding (ADR-044)."""
+    deductibles = {pid: limit["amount"] for pid, plan in plans.items() for limit in plan.get("limits") or []
+                   if limit.get("type") == "deductible" and limit.get("level") == "individual"
+                   and limit.get("network") == "in_network"}
+    by_id = {vr.id: vr for vr in results}
+    for f in repeats.repeat_flags(results, deductibles):
+        vr = by_id[f.visit_id]
+        check = Check(f"R14-{f.kind}", "info" if f.explained else "flag", f.detail, f.amount,
+                      "" if f.explained else f"repeat_{f.kind}", earlier_visit=f.earlier_visit)
+        closed = next((e for e in vr.visit.get("closed_findings") or []
+                       if (e["code"], e["amount"]) == (check.code, check.amount)), None)
+        if closed and check.result == "flag":
+            check.result, check.closed = "closed", closed
+        vr.checks.append(check)
+
+
+def _terms_checks(results: list[VisitResult], plans: dict[str, dict],
+                  plan_terms: dict[str, plan_inference.InferredTerms]) -> None:
+    """REC-15 (ADR-056): an entered term that differs from what the plan's EOBs show is a flag on the visit whose EOB
+    made the term known. Two sources disagree and MHS can't tell which is wrong, so it never changes a status."""
+    by_claim = {c["id"]: vr for vr in results for c in vr.claims}
+    for plan_id, inferred in plan_terms.items():
+        plan = plans.get(plan_id)
+        if plan is None or is_secondary(plan):
+            continue
+        for m in plan_inference.mismatches(plan, inferred):
+            vr = by_claim.get(m.inferred.anchor)
+            if vr is None:
+                continue  # the EOB that made it known is on a visit in another year's report
+            check = Check(TERMS_PREFIX + m.key, "flag", m.detail, m.amount, "terms_mismatch")
+            closed = next((e for e in vr.visit.get("closed_findings") or []
+                           if (e["code"], e["amount"]) == (check.code, check.amount)), None)
+            if closed:
+                check.result, check.closed = "closed", closed
+            vr.checks.append(check)
 
 
 def _age_balance(vr: VisitResult, today: date) -> None:

@@ -56,7 +56,7 @@ def test_tc_prv_11_1_password_alone_reaches_no_data(household):
 
 def test_no_session_redirects_to_sign_in(household):
     c = household.client()
-    assert c.get("/", follow_redirects=False).headers["location"] == "/signin"
+    assert c.get("/visits", follow_redirects=False).headers["location"] == "/signin"
     assert c.get("/api/visits").status_code == 401
     assert c.get("/signin/mfa", follow_redirects=False).headers["location"] == "/signin"
 
@@ -117,7 +117,7 @@ def test_tc_prv_11_3_sign_out_invalidates_the_session(household):
     replay = household.client()
     replay.cookies.set("mhs_session", token)
     assert replay.get("/api/visits").status_code == 401
-    assert replay.get("/", follow_redirects=False).headers["location"] == "/signin"
+    assert replay.get("/visits", follow_redirects=False).headers["location"] == "/signin"
 
 
 def test_tc_prv_11_3_idle_session_expires(household, pgdb):

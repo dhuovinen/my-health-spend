@@ -1,7 +1,8 @@
 """Members, sign-in with MFA, and sessions for the application tier (PRV-11, ADR-031).
 
 Sign-in is two steps: email and password (Argon2id), then a TOTP code. A session only reaches household data
-once both have passed. Only a SHA-256 of the session cookie is stored; the token rotates after MFA.
+once both have passed, or the first alone when the owner has turned the code off for members (ADR-049; owners
+always enter it). Only a SHA-256 of the session cookie is stored; the token rotates after MFA.
 """
 
 import base64
@@ -42,6 +43,11 @@ class Member:
     household_id: str
     email: str
     display_name: str
+    is_owner: bool = False
+
+
+def _member(row: dict) -> Member:
+    return Member(str(row["id"]), str(row["household_id"]), row["email"], row["display_name"], row["is_owner"])
 
 
 @dataclass(frozen=True)
@@ -52,6 +58,8 @@ class Session:
     mfa_passed: bool
     csrf_token: str
     display_name: str
+    code_passed: bool = False
+    is_owner: bool = False
 
 
 def _now() -> datetime:
@@ -161,6 +169,30 @@ class Accounts:
             c.execute("UPDATE app.members SET password_hash = %s, failed_attempts = 0, locked_until = NULL "
                       "WHERE id = %s", (_hasher.hash(password), row["id"]))
             c.execute("DELETE FROM app.sessions WHERE member_id = %s", (row["id"],))
+
+    def set_owner(self, email: str, on: bool) -> None:
+        """Give or take away the owner role (ADR-049). Ends the member's sessions, so an owner's next one enters
+        the code."""
+        row = self._member_row(email)
+        if row is None:
+            raise AccountError("No such member.")
+        with self.db.tx() as c:
+            c.execute("UPDATE app.members SET is_owner = %s WHERE id = %s", (on, row["id"]))
+            c.execute("DELETE FROM app.sessions WHERE member_id = %s", (row["id"],))
+
+    def is_owner(self, email: str) -> bool:
+        row = self._member_row(email)
+        return bool(row and row["is_owner"])
+
+    def code_setup_secret(self, member_id: str) -> str | None:
+        """The authenticator secret to show at sign-in, for a member who has signed in without a code and never
+        confirmed one (ADR-049): once the code is back on, they set it up here rather than being locked out. None
+        for everyone else; a member who never signed in uses the enrolment link instead."""
+        with self.db.tx() as c:
+            row = c.execute("SELECT * FROM app.members WHERE id = %s", (member_id,)).fetchone()
+        if row is None or row["totp_confirmed"] or not row["signed_in_without_code"]:
+            return None
+        return self.keyring.decrypt(str(row["household_id"]), bytes(row["totp_secret"]), f"totp:{member_id}").decode()
 
     def member_household(self, email: str) -> str | None:
         row = self._member_row(email)
@@ -308,7 +340,7 @@ class Accounts:
         if _hasher.check_needs_rehash(row["password_hash"]):
             with self.db.tx() as c:
                 c.execute("UPDATE app.members SET password_hash = %s WHERE id = %s", (_hasher.hash(password), row["id"]))
-        return Member(str(row["id"]), str(row["household_id"]), row["email"], row["display_name"])
+        return _member(row)
 
     def check_totp(self, member_id: str, code: str) -> bool:
         """Second factor. A code (time step) is accepted once; failures count toward the lock."""
@@ -331,21 +363,95 @@ class Accounts:
             return False
         with self.db.tx() as c:
             c.execute(
-                "UPDATE app.members SET totp_last_step = %s, failed_attempts = 0, locked_until = NULL WHERE id = %s",
+                "UPDATE app.members SET totp_last_step = %s, totp_confirmed = true, failed_attempts = 0, "
+                "locked_until = NULL WHERE id = %s",
                 (step, member_id),
             )
         return True
 
+    # --- social sign-in (PRV-12, ADR-048): linked by provider and subject, never by email ---
+
+    def member_for_identity(self, provider: str, subject: str) -> Member | None:
+        """The first factor through a provider. None for an unlinked account or a locked member (indistinguishable)."""
+        with self.db.tx() as c:
+            row = c.execute("SELECT m.* FROM app.member_identities i JOIN app.members m ON m.id = i.member_id "
+                            "WHERE i.provider = %s AND i.subject = %s", (provider, subject)).fetchone()
+        if row is None or self._locked(row):
+            return None
+        return _member(row)
+
+    def start_identity_link(self, member_id: str, state: str, minutes: int) -> None:
+        """Remember who is linking an account, against the flow's state, until the provider sends them back."""
+        with self.db.tx() as c:
+            c.execute("DELETE FROM app.enrolment_links WHERE expires_at <= now()")
+            c.execute("INSERT INTO app.enrolment_links (token_hash, member_id, expires_at, purpose) "
+                      "VALUES (%s, %s, now() + make_interval(mins => %s), 'link_identity')",
+                      (_hash_token(state), member_id, minutes))
+
+    def take_identity_link(self, state: str) -> str | None:
+        """The member linking under this state, if any. The entry is used up either way."""
+        with self.db.tx() as c:
+            row = c.execute("DELETE FROM app.enrolment_links WHERE token_hash = %s AND purpose = 'link_identity' "
+                            "RETURNING member_id, expires_at > now() AS valid", (_hash_token(state),)).fetchone()
+        return str(row["member_id"]) if row and row["valid"] else None
+
+    def start_payer_pull(self, member_id: str, state: str, minutes: int) -> None:
+        """ING-09 (ADR-054): remember who started an insurer pull, until the payer sends them back."""
+        with self.db.tx() as c:
+            c.execute("DELETE FROM app.enrolment_links WHERE expires_at <= now()")
+            c.execute("INSERT INTO app.enrolment_links (token_hash, member_id, expires_at, purpose) "
+                      "VALUES (%s, %s, now() + make_interval(mins => %s), 'payer_pull')",
+                      (_hash_token(state), member_id, minutes))
+
+    def take_payer_pull(self, state: str) -> Member | None:
+        """The member who started the pull under this state, if still valid and not locked. Used up either way."""
+        with self.db.tx() as c:
+            row = c.execute("DELETE FROM app.enrolment_links WHERE token_hash = %s AND purpose = 'payer_pull' "
+                            "RETURNING member_id, expires_at > now() AS valid", (_hash_token(state),)).fetchone()
+            if not row or not row["valid"]:
+                return None
+            member = c.execute("SELECT * FROM app.members WHERE id = %s", (row["member_id"],)).fetchone()
+        if member is None or self._locked(member):
+            return None
+        return _member(member)
+
+    def link_identity(self, member_id: str, provider: str, subject: str, email: str) -> None:
+        with self.db.tx() as c:
+            added = c.execute("INSERT INTO app.member_identities (provider, subject, member_id, email) "
+                              "VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING",
+                              (provider, subject, member_id, email)).rowcount
+        if added != 1:
+            raise AccountError("That account couldn't be linked. It may already be linked to a member, or you may "
+                               "already have one linked. Unlink the old one first.")
+
+    def unlink_identity(self, member_id: str, provider: str) -> bool:
+        with self.db.tx() as c:
+            return c.execute("DELETE FROM app.member_identities WHERE member_id = %s AND provider = %s",
+                             (member_id, provider)).rowcount == 1
+
+    def identities_of(self, member_id: str) -> dict[str, str]:
+        """Each linked provider and the account's email at the time it was linked."""
+        with self.db.tx() as c:
+            rows = c.execute("SELECT provider, email FROM app.member_identities WHERE member_id = %s",
+                             (member_id,)).fetchall()
+        return {r["provider"]: r["email"] for r in rows}
+
     # --- sessions ---
 
-    def start_session(self, member: Member) -> str:
-        """A session that has passed the password only. Returns the cookie value."""
+    def start_session(self, member: Member, without_code: bool = False) -> str:
+        """A session that has passed the first factor only, or, with without_code, one that is complete without a
+        code because the owner turned it off (ADR-049; never for an owner). Returns the cookie value."""
+        if without_code and member.is_owner:
+            raise AccountError("An owner always enters the code.")
         token = secrets.token_urlsafe(32)
         with self.db.tx() as c:
             c.execute(
-                "INSERT INTO app.sessions (token_hash, member_id, household_id, csrf_token) VALUES (%s, %s, %s, %s)",
-                (_hash_token(token), member.id, member.household_id, secrets.token_urlsafe(24)),
+                "INSERT INTO app.sessions (token_hash, member_id, household_id, csrf_token, mfa_passed) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (_hash_token(token), member.id, member.household_id, secrets.token_urlsafe(24), without_code),
             )
+            if without_code:
+                c.execute("UPDATE app.members SET signed_in_without_code = true WHERE id = %s", (member.id,))
         return token
 
     def get_session(self, token: str | None) -> Session | None:
@@ -354,7 +460,7 @@ class Accounts:
         h = _hash_token(token)
         with self.db.tx() as c:
             row = c.execute(
-                "SELECT s.*, m.display_name FROM app.sessions s JOIN app.members m ON m.id = s.member_id "
+                "SELECT s.*, m.display_name, m.is_owner FROM app.sessions s JOIN app.members m ON m.id = s.member_id "
                 "WHERE s.token_hash = %s",
                 (h,),
             ).fetchone()
@@ -366,17 +472,22 @@ class Accounts:
                 return None
             c.execute("UPDATE app.sessions SET last_seen_at = now() WHERE token_hash = %s", (h,))
         return Session(h, str(row["member_id"]), str(row["household_id"]), row["mfa_passed"], row["csrf_token"],
-                       row["display_name"])
+                       row["display_name"], row["code_passed"], row["is_owner"])
 
-    def pass_mfa(self, session: Session) -> str:
-        """Mark MFA passed under a fresh token (the pre-MFA token stops working). Returns the new cookie value."""
+    def pass_mfa(self, session: Session, code_passed: bool = True) -> str:
+        """Mark MFA passed under a fresh token (the pre-MFA token stops working). Returns the new cookie value.
+        code_passed=False completes a session left waiting when the owner turned the code off (ADR-049)."""
+        if not code_passed and session.is_owner:
+            raise AccountError("An owner always enters the code.")
         token = secrets.token_urlsafe(32)
         with self.db.tx() as c:
             c.execute(
-                "UPDATE app.sessions SET token_hash = %s, mfa_passed = true, csrf_token = %s, created_at = now(), "
-                "last_seen_at = now() WHERE token_hash = %s",
-                (_hash_token(token), secrets.token_urlsafe(24), session.token_hash),
+                "UPDATE app.sessions SET token_hash = %s, mfa_passed = true, code_passed = %s, csrf_token = %s, "
+                "created_at = now(), last_seen_at = now() WHERE token_hash = %s",
+                (_hash_token(token), code_passed, secrets.token_urlsafe(24), session.token_hash),
             )
+            if not code_passed:
+                c.execute("UPDATE app.members SET signed_in_without_code = true WHERE id = %s", (session.member_id,))
         return token
 
     def end_session(self, token: str | None) -> None:

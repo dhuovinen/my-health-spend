@@ -123,8 +123,10 @@ def test_settings_edits_are_saved_and_written_to_settings_json(web):
                     data={"type": "out_of_pocket_max", "network": "in_network", "level": "family", "amount": "9,000"},
                     follow_redirects=False)
     assert r.status_code == 303
+    assert r.headers["location"].startswith("/coverage?year=2026")  # plans are edited on the Coverage page
     page = client.get("/settings")
-    assert "Primary insurer" in page.text and "Example Health" in page.text and "$9,000.00" in page.text
+    assert "Primary insurer" in page.text and "Example Health" in page.text and 'href="/coverage' in page.text
+    assert "$9,000.00" in client.get("/coverage?year=2026").text
     exported = web.settings_json()
     plan = next(p for p in exported["plans"] if p["id"] == "plan-2026")
     assert plan["coverage_order"] == "primary" and plan["coinsurance_rate"] == 0.2

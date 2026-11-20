@@ -6,6 +6,8 @@ Run inside the app container:
     docker compose exec app mhs-admin import --household <id> /srv/mhs/samples/example-ingest.json --yes
     docker compose exec app mhs-admin demo-setup
     docker compose exec app mhs-admin false-positives --from 2026-10-01 --to 2026-10-31
+    docker compose exec app mhs-admin owner --email you@example.com on
+    docker compose exec app mhs-admin require-code status
 """
 
 import argparse
@@ -29,6 +31,7 @@ from mhs.ingest.resolve import slug
 from mhs.stack import load_app_config
 from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.auth import AccountError, Accounts
+from mhs.web.household.features import REQUIRE_CODE, Features
 
 
 def accounts_from_env() -> tuple[Database, Accounts]:
@@ -214,6 +217,13 @@ def main(argv: list[str] | None = None) -> None:
     f.add_argument("--to", dest="end", metavar="DATE", help="last closing date counted (YYYY-MM-DD)")
     f.add_argument("--release", help="only findings shown by this release, e.g. release-1")
     f.add_argument("--household", help="one household (default: all)")
+    o = sub.add_parser("owner", help="give or take away the owner role: the admin screen, and always the code "
+                                     "(PLT-09, ADR-049)")
+    o.add_argument("--email", required=True)
+    o.add_argument("state", choices=["on", "off", "status"])
+    c = sub.add_parser("require-code", help="whether members must enter the authenticator code (the admin screen "
+                                            "does the same; ADR-049)")
+    c.add_argument("state", choices=["on", "off", "status"])
     args = parser.parse_args(argv)
 
     db, accounts = accounts_from_env()
@@ -248,6 +258,19 @@ def main(argv: list[str] | None = None) -> None:
             state = "on" if accounts.ai_extraction(args.household) else "off"
             print(f"AI extraction is {state} for household {args.household}. It needs a worker with "
                   "MHS_EXTRACTOR=claude; without one, documents are read with the layout rules after a minute.")
+        elif args.command == "owner":
+            if args.state != "status":
+                accounts.set_owner(args.email, args.state == "on")
+            if accounts.member_household(args.email) is None:
+                raise AccountError("No such member.")
+            print(f"{args.email} is {'an owner' if accounts.is_owner(args.email) else 'not an owner'}. Owners open "
+                  "/admin and always enter the code; their sessions ended, so they sign in again.")
+        elif args.command == "require-code":
+            features = Features(db)
+            if args.state != "status":
+                features.set(REQUIRE_CODE, args.state == "on")
+            print("The authenticator code is " + ("required." if features.require_code() else
+                  "OFF: a password or a linked account alone reaches a household's data. Owners still enter it."))
     except AccountError as e:
         sys.exit(str(e))
     finally:

@@ -13,6 +13,7 @@ AMBIGUOUS = 0.05  # two candidates this close are only proposed
 
 W_PROVIDER = 0.35
 W_DATE = {0: 0.35, 3: 0.2, 14: 0.1}  # days apart (at most) -> weight
+SAME_VISIT_DAYS = 3  # further apart, only the claim number can tie a document to a visit
 W_MEMBER, W_MEMBER_UNKNOWN = 0.2, 0.1
 W_CLAIM = 0.3
 W_AMOUNT = 0.2
@@ -80,9 +81,12 @@ def score(facts: Facts, visit: dict, same_group: set[str] = frozenset(), claim_n
     if facts.claim_number and facts.claim_number in claim_numbers:
         total += W_CLAIM
         reasons.append(f"same claim number {facts.claim_number}")
+    same_claim = bool(facts.claim_number and facts.claim_number in claim_numbers)
     if facts.billed is not None and facts.billed in amounts:
         total += W_AMOUNT
         reasons.append(f"same billed amount ${facts.billed / 100:,.2f}")
+    if days > SAME_VISIT_DAYS and not same_claim:  # repeat treatment: another date is another visit (ADR-046)
+        total = min(total, PROPOSE - 0.01)
     return Candidate(visit["id"], round(min(total, 1.0), 2), reasons)
 
 

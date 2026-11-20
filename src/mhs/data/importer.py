@@ -33,8 +33,9 @@ SECTIONS = {
 REFERENCES = [
     ("provider_id", "provider"), ("related_provider_id", "provider"), ("visit_id", "visit"),
     ("plan_id", "plan"), ("member_id", "member"), ("account_id", "account"), ("from_account_id", "account"),
+    ("version_of", "document"),
 ]
-LIST_REFERENCES = [("member_ids", "member"), ("visit_ids", "visit"), ("payment_ids", "document")]
+LIST_REFERENCES = [("member_ids", "member"), ("visit_ids", "visit"), ("payment_ids", "document"), ("refund_of", "document")]
 
 
 # Fields the importer adds to a document record; they don't count as differences on re-import.

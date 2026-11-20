@@ -1,6 +1,6 @@
 # My Health Spend (MHS): Product Requirements
 
-Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026))
+Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026)); Nov 5, 2026 added REC-14; Nov 6, 2026 added UX-11; Nov 7, 2026 added PRV-12 and PLT-09, and made the authenticator code owner-controlled (PRV-11); Nov 19, 2026 added REC-15 and Apple to PRV-12
 
 ## Scope and sizing
 
@@ -12,15 +12,15 @@ The count is driven by multiplication: three parties (provider, insurer, member)
 | --- | --- | --- | --- |
 | Ingestion and capture | ING | 10 | Documents arrive in many formats, out of order, from many sources |
 | Data model and matching | MAT | 10 | Matching a bill to a claim to a payment is the hardest technical problem |
-| Reconciliation and discrepancies | REC | 13 | The core value: every check needs a defined rule and tolerance |
+| Reconciliation and discrepancies | REC | 14 | The core value: every check needs a defined rule and tolerance |
 | Charge allocation | ALC | 8 | Each line splits across insurer, member, accounts and adjustments |
 | HSA, FSA and tax | TAX | 10 | Distinct rules per account type, plan year and household member |
 | Pre-visit strategy | PRE | 7 | Priority two; needs plan and price data the core already collects |
 | Disputes and follow-up | DSP | 7 | Findings are worthless unless the member can act on them |
-| User experience | UX | 10 | Visit cards, household view, dashboards, exports |
-| Privacy and security | PRV | 11 | Pseudonymization and consumer health data obligations |
+| User experience | UX | 11 | Visit cards, household view, dashboards, charges over time, exports |
+| Privacy and security | PRV | 12 | Pseudonymization and consumer health data obligations |
 | Regulatory and compliance | CMP | 6 | FTC, state health data laws, future HIPAA path |
-| Platform and non-functional | PLT | 8 | Integrations, accuracy targets, performance, auditability |
+| Platform and non-functional | PLT | 9 | Integrations, accuracy targets, performance, auditability |
 
 **Priority key:** R0 = Release 0, the local MVP already built (see [`MVP_REQUIREMENTS.md`](MVP_REQUIREMENTS.md) and [Release 0 baseline](#release-0-baseline)). P1 = Release 1, the server-side responsive web app (see [Release 1 scope](#release-1-scope)). P2 = Release 2, including tax optimization, disputes and pre-visit strategy. P3 = later or provider-facing.
 
@@ -122,10 +122,12 @@ The decision behind these identities (Oct 15, 2026): adjudication buckets (ALC-0
 | REC-07 | Track deductible and out-of-pocket accumulators per person and family from EOBs, and flag in-network covered cost-sharing charged after the out-of-pocket max is met (out-of-network and non-covered charges are still owed) | P1 |
 | REC-08 | Flag network status problems. Release 1: the bill, EOB and provider record disagree, or an in-network provider was processed as out-of-network. Release 2: a surprise out-of-network bill under the No Surprises Act | P1 |
 | REC-09 | Translate denial and adjustment codes into plain language, and flag denials that look appealable (e.g. missing information, coding error) | P2 |
-| REC-10 | Apply configurable tolerances: a difference under $1.00 per check auto-clears and is recorded as "cleared within tolerance" (visible on request). Cleared amounts at one provider are added up per plan year and flagged once they pass $5.00. A changed unit price is always flagged regardless of size: the same code from the same provider costing differently from an earlier bill or EOB in the plan year, or from the good faith estimate | P2 |
+| REC-10 | Apply configurable tolerances: a difference under $1.00 per check auto-clears and is recorded as "cleared within tolerance" (visible on request). Cleared amounts at one provider are added up per plan year and flagged once they pass $5.00. A changed price is always flagged regardless of size: the same code from the same provider costing differently from an earlier bill or EOB in the plan year (REC-14), or from the good faith estimate | P2 |
 | REC-11 | Give each visit one status, the first that applies in this order: In dispute (an open case, DSP-01) → Discrepancy found (a check failed) → Needs review (unconfirmed data or a conflicting new version) → Balance outstanding (still owed > 0) → Awaiting EOB (insured visit, no EOB yet, within the waiting threshold) → Awaiting documents (another expected document missing within the threshold) → Missing documents (an expected document missing past the threshold) → Resolved (had a finding, now closed) → Complete. The waiting threshold defaults to 30 days and is configurable | P1 |
 | REC-12 | Compare self-pay or cash price against the negotiated rate when both are known, and surface the cheaper option (your $105 vs. $125 case) | P2 |
 | REC-13 | Check identity 3 (settlement) per visit and per provider: every dollar of member responsibility must be paid, refunded, written off or still owed. Flag any unexplained remainder, such as a visit that drops off a statement with no matching payment | P1 |
+| REC-14 | Compare repeat services across visits. For the same person, provider group and plan within a plan year, compare each code (with its modifiers, per unit) with its most recent earlier occurrence, and flag: (a) a changed allowed amount; (b) a changed billed amount; (c) a changed member share when the allowed amount is unchanged and the deductible being met between the two visits (REC-07) doesn't explain it; (d) a changed set of codes on a visit in a series (three or more visits with the same codes). Each flag says "worth a closer look", shows both visits and the dollar difference, and names common reasons (a new contract, an added service, a different dose). It doesn't change the visit's status or the dollars at stake, because neither amount is known to be wrong. A change is flagged once, on the first visit it appears, and needs line detail on confirmed documents (ADR-045) | P2 |
+| REC-15 | Work out the plan's in-network terms from the household's own EOBs for a plan year, in the insurer's processing order: the coinsurance rate, the copay per service type, whether copays wait for the deductible, and the individual and family deductible and out-of-pocket maximum. A deductible or out-of-pocket maximum is known only once the EOBs show it reached, and is "at least" the running total before then. Each term says whether it is known (at least 3 claims agree within $1.00, and they are at least 80% of the claims that show it), a lower bound, conflicting or unknown, with the claims behind it. Claims that don't fit a known term are listed as outliers. Coverage shows the terms beside the ones the member entered, and the member may use one to fill an empty field; nothing is written to the plan without the member. An entered term that differs from a known one by more than $1.00 is a flag, not a discrepancy. Only primary-plan, in-network, non-denied, current EOB versions count. Nothing leaves the household (ADR-056) | P2 |
 
 ## Charge allocation across parties
 
@@ -174,6 +176,7 @@ Priority two reuses what reconciliation already collects (plan terms, accumulato
 | PRE-05 | Generate a checklist of questions to ask the provider (in network? cost estimate? itemized bill?) | P2 |
 | PRE-06 | Store a provider's good faith estimate and compare the final bill against it | P2 |
 | PRE-07 | Recommend the payment account for the planned visit using the TAX rules | P2 |
+| PRE-08 | Compare next year's plans: a step-by-step wizard where the member picks which of this year's care to carry forward (all of it, chosen visits, or adjusted counts), loads the plans offered where they live (the HealthCare.gov Marketplace API, or a plan entered by hand from an employer's options), and sees each plan's expected yearly cost (premiums plus what the same care would cost under its deductible, copays, coinsurance and out-of-pocket maximum), with the math and a best and worst case. An estimate, never advice (CMP-04) | P2 |
 
 ## Disputes and follow-up
 
@@ -205,6 +208,7 @@ The visit card list from the original plan stays the home screen. The rest of th
 | UX-08 | Export a visit or a year as PDF and CSV (for taxes, a dispute or an advisor) | P2 |
 | UX-09 | Guided onboarding: add household, add plans and accounts, upload the first visit, see the first reconciliation | P2 |
 | UX-10 | Work well on a phone for capture and review, and on a desktop for detailed reconciliation: no horizontal scroll at 375px wide, capture and review possible one-handed, full detail at 1280px or wider | P1 |
+| UX-11 | Chart provider charges over time, with the service date across and the amount up. A switch changes the amount between billed (the default) and the member's share, and the chart and the table's amount follow it. One dot for each bill (one person, one provider, one service date), covering every provider in the household. Each household member has their own dot color, the same across providers, with a legend. Hovering over a dot, focusing it or tapping it shows the provider, member, service date, amount billed, the member's share and the visit's status. The chart opens on the current plan year. When the filtered providers have bills in the prior plan year, a hint says so ("4 earlier bills in 2025") and a control extends the chart and table to include them; with none, neither appears. Nothing older than the prior plan year is shown. Filter by provider and by member, alone or together, with the chart, table and hint following the filters. Below the chart, a table has one row per dot with provider, member, service date and amount; expanding a row shows the bill's line items (code, description, billed, allowed, member's share), or says the bill shows totals only. A bill with no amount for the chosen view (no billed amount, or no member's share yet) isn't plotted: it's listed in the table and counted in a note under the chart | P2 |
 
 ## Privacy, security and pseudonymization
 
@@ -222,7 +226,8 @@ The visit card list from the original plan stays the home screen. The rest of th
 | PRV-08 | Never send data to advertising pixels or third-party analytics; product analytics events are limited to an allow-list (event name, pseudonymous install ID, timestamp, app version) with no amounts, providers, codes or identifiers | P1 |
 | PRV-09 | Let the member export all their data and delete their account and data, with a deletion confirmation. Deletion removes records, originals and vault entries at once and backups on their normal rotation within 35 days; only security and access logs without health content are kept, for one year | P2 |
 | PRV-10 | Keep an access log of who and what touched each record, viewable by the member | P2 |
-| PRV-11 | Authenticate every member with multi-factor sign-in, and isolate each household's data so no query can return another household's records | P1 |
+| PRV-11 | Authenticate every member, with a multi-factor sign-in the owner can require or turn off for the whole service (PLT-09, ADR-049; required unless the owner turns it off, and always for owners), and isolate each household's data so no query can return another household's records | P1 |
+| PRV-12 | Let a member sign in with a Google, Microsoft or Apple account in place of a password, linked to their existing membership. The second factor (PRV-11) still applies, household isolation is unchanged, and a social account with no link to a member gets no access and no new account | P2 |
 
 ## Regulatory and compliance
 
@@ -251,6 +256,7 @@ Accuracy and explainability matter more than speed: one wrong "you were overchar
 | PLT-06 | A test library of real-world scenarios (redacted) covering each REC rule, run on every change | P1 |
 | PLT-07 | An API and import layer designed for payer FHIR, HSA administrator and clearinghouse feeds | P2 |
 | PLT-08 | Measure first-pass match rate, findings per visit, dollars recovered and time to resolution as product KPIs | P2 |
+| PLT-09 | An owner-only admin screen to manage features and feature toggles, starting with whether the authenticator code is required and which social sign-in providers are on. It shows no household's health data, and every change is logged | P2 |
 
 ## Priorities and open questions
 
@@ -259,7 +265,7 @@ Release 1 was cut to a lean core on Oct 15, 2026 (owner decision): 49 of the 100
 | Priority | Count | Meaning |
 | --- | --- | --- |
 | P1 | 49 | Release 1: server-side post-visit reconciliation in a responsive web app, with the household |
-| P2 | 47 | Release 2: claim versions, cost-sharing checks, tolerance, tax, disputes, dashboards, compliance for other users, pre-visit, payer APIs |
+| P2 | 49 | Release 2: claim versions, cost-sharing checks, tolerance, tax, disputes, dashboards, compliance for other users, pre-visit, payer APIs |
 | P3 | 4 | Later: price transparency data, FSA expiry alerts, charity care, provider-facing |
 
 ### Release 1 scope

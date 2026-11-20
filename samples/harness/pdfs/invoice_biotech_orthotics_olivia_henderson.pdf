@@ -1,0 +1,57 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 823 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+40 760 Td
+(BioTech Orthotics & Prosthetics) Tj T*
+(PATIENT STATEMENT) Tj T*
+(BioTech Custom Labs) Tj T*
+(Statement date: 04/05/2026) Tj T*
+(Account number: 1092102) Tj T*
+(Patient: Henderson, Olivia) Tj T*
+(Guarantor: David Henderson) Tj T*
+(Date of service: 03/15/2026) Tj T*
+(Primary insurance: Aegis Health Plans) Tj T*
+(Claim number: EOB-HEN-2017) Tj T*
+(Due date: 05/05/2026) Tj T*
+() Tj T*
+(Date Code Description Charges Insurance Adjustments Payments Balance) Tj T*
+(03/15/2026 L1005 Thoracic-Lumbar-Sacral Orthosis \(TLSO\) $2,200.00 $0.00 $750.00 $0.00 $1,450.00) Tj T*
+() Tj T*
+(Total charges: $2,200.00) Tj T*
+(Contractual adjustments: $750.00) Tj T*
+(Allowed amount: $1,450.00) Tj T*
+(Insurance payments: $0.00) Tj T*
+(Patient responsibility: $1,450.00) Tj T*
+(Amount due: $1,450.00) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000001059 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1185
+%%EOF
