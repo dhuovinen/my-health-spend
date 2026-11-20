@@ -52,14 +52,21 @@ Each feature is off until it's configured. Set it up locally first, then on stag
 
 What it gives you: members sign in with a Google, Microsoft or Apple account instead of a password. The authenticator code still applies while it's required.
 
-- [ ] **Google:** console.cloud.google.com > APIs & Services.
-  1. Configure the OAuth consent screen: External, app name "My Health Spend", your support email, scopes `openid` and `email` only.
-  2. Credentials > Create credentials > OAuth client ID > Web application.
-  3. Authorized redirect URIs: `http://localhost:3063/signin/with/google/callback` for local, and `<staging app address>/signin/with/google/callback` for staging (a separate client per environment is cleaner).
-  4. Copy the client ID and secret.
+- [ ] **Google:** console.cloud.google.com, project `mhs-staging`, > Google Auth Platform (older consoles: APIs & Services > OAuth consent screen).
+  1. Get started (Project configuration): App Information (name "My Health Spend", support email), Audience **External**, Contact Information, Finish, Create. The first Create can fail with "create failed"; running it again worked (2026-11-19).
+  2. Branding > Authorized domains: `myhealthspend.com` (verified in Search Console, GCP_SETUP.md Part F).
+  3. Audience: leave it in **Testing** and add your Google account under Test users. Only test users can sign in until the app is published, and nothing needs Google's review until then.
+  4. Data Access: nothing to add; the app asks only for `openid` and `email`, which need no review.
+  5. Clients > Create client > Web application. Authorized redirect URIs: `https://app.myhealthspend.com/signin/with/google/callback` and `https://myhealthspend.com/signin/with/google/callback` (both, so moving the main address later needs no change here), plus `http://localhost:3063/signin/with/google/callback` on a separate local client if you want it. No JavaScript origins.
+  6. Copy the client ID and secret into Secret Manager (below).
+  - **Still to do on Google's branding page before publishing** (Testing mode works without them):
+    - [ ] **Contact addresses.** The support email and developer contact email are set to a personal address for now. Change both to a `myhealthspend.com` address. The support email must be your Google account's address or a Google Group you manage, so it needs a group (or Google Workspace) for `myhealthspend.com`; the developer contact can be any address.
+    - [ ] **Logo.** A square image, 120 × 120 px, PNG or JPG, under 1 MB. Uploading one means Google must verify the brand before members see it, so add it when you're ready to publish. The brand mark exists only as the website's PNG and the app's `favicon.svg` (UI_GUIDE.md); a 120 px export is needed.
+    - [ ] **App domain.** Application home page `https://myhealthspend.com`; privacy policy `https://myhealthspend.com/privacy-notice` (the app's page; it is still a draft for the attorney, Stage 5); terms of service: the app has no terms page yet, so one has to be written before this field can be filled. Use these once `myhealthspend.com` is served by the app (the switch after sign-in works); until then they point at the old Hostinger site.
+    - [ ] Then publish (Audience > Publish app) and ask for brand verification (Verification Center). This is the "Google OAuth app verification" in Stage 5.
 - [ ] **Microsoft:** entra.microsoft.com > App registrations > New registration.
   1. Supported accounts: accounts in any organizational directory and personal Microsoft accounts.
-  2. Redirect URI: Web, `http://localhost:3063/signin/with/microsoft/callback` (Microsoft accepts plain `http` only for `localhost`) and the staging address.
+  2. Redirect URI: Web, `https://app.myhealthspend.com/signin/with/microsoft/callback`; then under Authentication add `https://myhealthspend.com/signin/with/microsoft/callback`. For local use, `http://localhost:3063/signin/with/microsoft/callback` (Microsoft accepts plain `http` only for `localhost`). If Entra says your account can't register apps, it has no directory: a free Azure account creates one.
   3. Certificates & secrets > New client secret. Copy the Application (client) ID and the secret's value.
 - [ ] **Apple** (ADR-057; needs the paid Apple Developer Program, and a real HTTPS domain, so staging only: do Stage 4 first): developer.apple.com > Certificates, Identifiers & Profiles.
   1. Identifiers > App IDs: register one (for example `com.myhealthspend.app`) with "Sign in with Apple" ticked.
