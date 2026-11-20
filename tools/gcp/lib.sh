@@ -94,11 +94,12 @@ exists() {
 }
 
 # Print a command's output, or <PLACEHOLDER> under --dry-run. A test can give a dry run's answer instead, in
-# DRY_<PLACEHOLDER> (spaces as underscores).
+# DRY_<PLACEHOLDER> with every character that can't be in a variable name as an underscore (bash 4 and later refuse
+# such a name; macOS's bash 3.2 lets it through).
 lookup() {
   local placeholder="$1"; shift
   if [[ "$DRY_RUN" == 1 ]]; then
-    local answer="DRY_${placeholder// /_}"
+    local answer="DRY_${placeholder//[^A-Za-z0-9_]/_}"
     printf '%s' "${!answer:-<$placeholder>}"
   else
     "$@"
