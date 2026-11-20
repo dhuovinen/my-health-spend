@@ -1,16 +1,19 @@
 """Records database and job queue on Postgres: migrations, roles, row-level security, the worker."""
 
+import secrets
 import threading
 import uuid
 
 import psycopg
 import pytest
+from psycopg import sql
 
-from mhs.data.migrate import MIGRATIONS, migrate
+from mhs.data.migrate import MIGRATIONS, RoleError, Roles, migrate
 from mhs.data.queue import JobQueue
 from mhs.data.records import HouseholdRecords
 from mhs.ingest.worker import run_once
 from tests.conftest import admin_sql
+from tests.pg import with_db
 
 pytestmark = pytest.mark.postgres
 
@@ -26,6 +29,30 @@ def test_migrations_are_applied_once(pgdb, clean_db):
     names = [r[0] for r in admin_sql(pgdb, "SELECT name FROM public.schema_migrations")]
     assert names == sorted(p.stem for p in MIGRATIONS.glob("*.sql"))
     assert names[:2] == ["001_foundation", "002_release0_port"]
+
+
+def test_migrations_rerun_as_an_admin_that_is_not_superuser(pg_server):
+    """Cloud SQL's `postgres` has CREATEROLE and CREATEDB but isn't a superuser: a second run must still work, and a
+    tier role that gained rights stops it rather than being silently trusted."""
+    admin, password = "t" + secrets.token_hex(4) + "_admin", secrets.token_urlsafe(16)
+    db = "mhs_test_" + secrets.token_hex(4)
+    roles = Roles(app=f"{admin}_app", worker=f"{admin}_worker", vault=f"{admin}_vault")
+    passwords = {k: secrets.token_urlsafe(16) for k in ("app", "worker", "vault")}
+    with psycopg.connect(pg_server.server_url, autocommit=True) as c:
+        c.execute(sql.SQL("CREATE ROLE {} LOGIN CREATEROLE CREATEDB PASSWORD {}").format(
+            sql.Identifier(admin), sql.Literal(password)))
+        c.execute(sql.SQL("CREATE DATABASE {} OWNER {}").format(sql.Identifier(db), sql.Identifier(admin)))
+    pg_server.databases.append(db)
+    url = with_db(pg_server.server_url, db, admin, password)
+    assert migrate(url, roles, passwords)  # first run: creates the roles and applies everything
+    passwords["app"] = secrets.token_urlsafe(16)
+    assert migrate(url, roles, passwords) == []  # second run: only sets the passwords
+    with psycopg.connect(with_db(pg_server.server_url, db, roles.app, passwords["app"])) as c:
+        assert c.execute("SELECT current_user").fetchone()[0] == roles.app
+    with psycopg.connect(pg_server.server_url, autocommit=True) as c:
+        c.execute(sql.SQL("ALTER ROLE {} BYPASSRLS").format(sql.Identifier(roles.worker)))
+    with pytest.raises(RoleError, match=roles.worker):
+        migrate(url, roles, passwords)
 
 
 def test_records_crud_scoped_to_household(pgdb, app_db):

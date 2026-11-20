@@ -189,6 +189,6 @@ Shuts down the whole project (undo within 30 days with `gcloud projects undelete
 6. **AI worker egress proxy:** Cloud Run can't allow just one domain; `worker-ai` needs a proxy (for example Secure Web Proxy or a small Squid VM) that only lets `api.anthropic.com` through. Until then `deploy.sh` won't deploy it.
 7. **Inbound email (ADR-039):** `mhs-mail` speaks SMTP, which Cloud Run can't receive. It needs an inbound-mail provider posting to an HTTP endpoint the app doesn't have yet, plus a domain with MX records.
 8. **Corpus through Document AI:** `tools/extraction_accuracy.py` has no OCR option; scanned corpus documents need one to measure Document AI.
-9. **Cloud SQL's `postgres` user isn't a true superuser.** The migrations use nothing that needs one (no extensions, no `BYPASSRLS`), but the first real `migrate` run is the proof.
+9. **Cloud SQL's `postgres` user isn't a true superuser.** The first `migrate` run (2026-11-14) worked; the second (2026-11-19) failed restating `NOSUPERUSER` on the existing roles, which only a superuser may do. `ensure_role` now only sets an existing role's password, and stops if a tier role has superuser, BYPASSRLS, CREATEDB or CREATEROLE (`tests/test_r1_database.py` reruns the migrations as a non-superuser admin).
 10. **KMS key rotation** isn't set; old versions keep unwrapping, so turning it on later is safe.
 11. **The load balancer** for production (Part F) isn't scripted.
