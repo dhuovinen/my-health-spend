@@ -4,6 +4,7 @@ MAT-10, REC-11; ADR-011, ADR-035). Run against both apps through the `web` fixtu
 import copy
 import json
 import re
+from datetime import date
 
 import pytest
 
@@ -202,7 +203,20 @@ def test_mat_10_3_and_4_document_checklist(web, tmp_path):
     assert web.client.post("/visits/A/expected", data={"kind": "x", "state": "expected"}).status_code == 400
 
 
-def test_rec_11_dispute_lifecycle_and_findings_on_the_pages(web):
+@pytest.fixture
+def sample_day(monkeypatch):
+    """The pages see the day the sample was prepared. Its dermatology visit (2026-09-28) waits for an EOB for only 30
+    days, so a test that needs "Awaiting" on the real date stops passing once the sample ages past that."""
+
+    class SampleDay(date):
+        @classmethod
+        def today(cls):
+            return date(2026, 10, 9)
+
+    monkeypatch.setattr("mhs.web.pages.date", SampleDay)
+
+
+def test_rec_11_dispute_lifecycle_and_findings_on_the_pages(web, sample_day):
     """REC-11 In dispute and Resolved on the pages (a case, ADR-042); a finding the member deals with; status badges
     say the status in words (TC-REC-11-5)."""
     import_sample(web)
@@ -231,18 +245,19 @@ def test_rec_11_dispute_lifecycle_and_findings_on_the_pages(web):
         assert f'<span class="badge s-{status}">{STATUS_LABELS[status]}</span>' in listing
 
 
-def test_rec_11_4_waiting_threshold_setting(web):
+def test_rec_11_4_waiting_threshold_setting(web, sample_day):
     """TC-REC-11-4 (I): the threshold is a household setting; the derm visit waits or is missing its EOB."""
     import_sample(web)
-    assert "Awaiting EOB" in text_of(web.client.get("/visits/v-2026-09-28-derm").text)
+    # The badge, not the words: the sample's import note on this visit also says "Awaiting EOB".
+    assert '<span class="badge s-awaiting_eob">' in web.client.get("/visits/v-2026-09-28-derm").text
     assert web.client.post("/settings/reconciliation", data={"waiting_days": "5"},
                            follow_redirects=False).status_code == 303
-    assert "Missing documents" in text_of(web.client.get("/visits/v-2026-09-28-derm").text)
+    assert '<span class="badge s-missing_documents">' in web.client.get("/visits/v-2026-09-28-derm").text
     assert 'value="5"' in web.client.get("/settings").text
     assert web.client.post("/settings/reconciliation", data={"waiting_days": "0"}).status_code == 400
 
 
-def test_payment_path_and_home_year_buckets(web):
+def test_payment_path_and_home_year_buckets(web, sample_day):
     """A visit can be marked self-pay (REC-05): no EOB is expected. Home shows where the year's billed dollars went
     (ALC-01 per year)."""
     import_sample(web)
