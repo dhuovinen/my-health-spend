@@ -151,6 +151,22 @@ The domain's DNS is at Hostinger (nameservers `*.dns-parking.com`), with no CAA 
 8. **Point the sign-in providers at it.** Add `https://app.myhealthspend.com/signin/with/<provider>/callback` to the Google and Microsoft clients and to Apple's Services ID (Apple also wants `app.myhealthspend.com` under "Domains and Subdomains"), and `/connect/<payer>/callback` to each insurer registration. SETUP.md "Social sign-in" has the details, and OWNER_SETUP.md 3a the secrets `deploy.sh` reads. Remove the `run.app` URIs once the domain works.
 9. **Link to it from the landing page.** On the Hostinger site, "Sign in" goes to `https://app.myhealthspend.com/signin`. A short address such as `myhealthspend.com/login` can be a 301 redirect to the same place (hPanel's Redirects page for the website); that's a convenience only, the app itself is never framed or proxied.
 
+**As set up for staging (2026-11-19).** Project `mhs-staging-512010`. The domain was verified in Search Console and the mapping created on 2026-11-19; Google then reported the `app` record as correct and the certificate as pending. The DNS records at Hostinger afterwards ([screenshot](images/hostinger-dns-2026-11-19.png)):
+
+| Type | Name | Content | TTL | What it's for |
+| --- | --- | --- | --- | --- |
+| ALIAS | `@` | `myhealthspend.com.cdn.hstgr.net` | 300 | The landing page on Hostinger (Hostinger's own) |
+| CNAME | `www` | `www.myhealthspend.com.cdn.hstgr.net` | 300 | The landing page at `www` (Hostinger's own) |
+| A | `ftp` | `82.25.87.209` | 1800 | Hostinger file upload (Hostinger's own) |
+| TXT | `@` | `google-site-verification=c8DO_…9ACc` | 14400 | Step 1: proves to Google that you own the domain. Keep it: removing it can undo the verification |
+| CNAME | `app` | `ghs.googlehosted.com` | 300 | Step 4: the app on Cloud Run |
+
+![DNS records at Hostinger, 2026-11-19](images/hostinger-dns-2026-11-19.png)
+
+Two notes from doing it:
+- In hPanel's "Add record" form, the `TXT` record's Name is `@` and its value is the whole `google-site-verification=…` string, without quotation marks. `dig` shows TXT values in quotes; they aren't part of the value.
+- The first `gcloud beta` command asks to install the "gcloud Beta Commands" component; answer yes.
+
 **For production: a load balancer instead.** A global external Application Load Balancer with a serverless network endpoint group for `mhs-app` and a Google-managed certificate for `app.myhealthspend.com`. At Hostinger the `app` record becomes an `A` record to the load balancer's static IP. It costs about $18 a month or more, avoids the domain-mapping latency, and lets Cloud Armor add rate limits and a web firewall in front of sign-in. Turn the app's ingress to "internal and load balancing" afterwards, so the `run.app` address no longer reaches it. Not scripted yet (open items).
 
 Not for this app: **Firebase Hosting** in front of Cloud Run. It forwards only one cookie, named `__session`, so the session, flow and view cookies would never reach the app.
