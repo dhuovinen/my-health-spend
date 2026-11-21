@@ -27,7 +27,9 @@ Items deferred from the MVP. Newest decisions are in `docs/MVP_REQUIREMENTS.md` 
 | B-21 | Prior-year (2025) HSA history | Real data, 2026-10-09 | Needed to close 2025 Southeastern Retina payments; HSA export starts 2026-01-14. |
 | B-22 | Follow-up tracking on provider notes (open / resolved, follow-up date, reminders) | Owner, 2026-10-09 | MVP notes are a plain dated log. |
 | B-23 | Sign-in: tell a wrong password apart from a locked account | Owner, 2026-11-06 | Not built. One message covers two conditions, and the code step hides a lock completely. Needs an ADR. See [B-23 in detail](#b-23-in-detail). |
-| B-24 | Self-service sign-up | Owner, 2026-11-07 | Invitation only for now (ADR-048). The owner expects to open sign-up later, including through Google or Microsoft. It needs the launch gate in the Product Requirements first, a way to create a household on sign-up, and abuse limits. |
+| B-24 | Self-service sign-up | Owner, 2026-11-07 | Google and Microsoft sign-up specified 2026-11-21 as PRV-13 (docs/SIGN_UP_REQUIREMENTS.md, ADR-059), behind an owner toggle that stays off until the launch gate. |
+| B-25 | Sign-up with Apple | Owner, 2026-11-21 | Apple returns no email without a scope, and with one it answers with a cross-site POST the flow cookie doesn't survive (ADR-057). Needs that callback, or the email asked for and verified by the app. |
+| B-26 | Sign-up and sign-in with an email address, without Google or Microsoft | Owner, 2026-11-21 | Like Dropbox's email field. Needs outbound mail for a code or link, and abuse limits. Members created by invitation keep their password meanwhile. |
 
 ## B-23 in detail
 

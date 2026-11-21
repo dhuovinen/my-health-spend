@@ -603,3 +603,15 @@ form.inline.settings-row > .btn { margin-top: calc(26px + .2rem); }
 .review label.low .field-note { color: var(--warn); }
 form.inline.type-row { align-items: flex-end; gap: .6rem; }
 @media (min-width: 861px) { form.inline.type-row .btn { min-height: 2.5rem; padding-top: 0; padding-bottom: 0; } }
+
+/* log in or sign up (PRV-13, ADR-059) */
+.signin .social-signin .btn.provider { min-height: 44px; width: 100%; background: var(--surface); }
+.provider-logo { flex: none; }
+.or-divider { display: flex; align-items: center; gap: .75rem; margin: 1rem 0 .5rem; color: var(--muted); font-size: .85rem; }
+.or-divider::before, .or-divider::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
+.password-signin > summary { min-height: 44px; padding: .65rem 0; font-weight: 600; }
+.password-signin > form { margin-top: .5rem; }
+.signin .legal { margin-top: 1rem; }
+.signup-as { display: flex; align-items: center; gap: .5rem; overflow-wrap: anywhere; }
+label.agree { flex-direction: row; gap: .6rem; align-items: flex-start; min-height: 44px; font-size: .9rem; color: var(--text); }
+.agree input { width: 1.2rem; height: 1.2rem; margin-top: .15rem; flex: none; }

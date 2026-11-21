@@ -50,10 +50,28 @@ class Flow:
         return Flow(*parts) if len(parts) == 4 and all(parts) else None
 
 
+# Microsoft's consumer tenant: personal Microsoft accounts, whose email is the verified sign-in address.
+MICROSOFT_CONSUMERS = "9188040d-6c67-4c5b-b112-36a304b66dad"
+
+
 @dataclass(frozen=True)
 class Identity:
     subject: str
     email: str
+    email_verified: bool = False  # only a verified email may start a sign-up (PRV-13, ADR-059)
+
+
+def _true(value) -> bool:
+    return value is True or value in ("true", "1", 1)
+
+
+def email_verified(claims: dict, provider: SignInProvider) -> bool:
+    """Whether the provider vouches for the email. Google says so in `email_verified`. Microsoft's `email` isn't
+    verified for work and school tenants, so only a personal account, or a token with the `xms_edov` optional claim,
+    counts. Apple is asked for no email at all (ADR-057)."""
+    if provider.name == "microsoft":
+        return claims.get("tid") == MICROSOFT_CONSUMERS or _true(claims.get("xms_edov"))
+    return _true(claims.get("email_verified"))
 
 
 def _b64(data: bytes) -> str:
@@ -117,8 +135,8 @@ def check_claims(claims: dict, provider: SignInProvider, nonce: str, now: float 
         raise OidcError
     if not isinstance(subject, str) or not subject:
         raise OidcError
-    email = claims.get("email")
-    return Identity(subject, email if isinstance(email, str) else "")
+    email = claims.get("email") if isinstance(claims.get("email"), str) else ""
+    return Identity(subject, email, bool(email) and email_verified(claims, provider))
 
 
 def complete(provider: SignInProvider, flow: Flow, code: str, redirect_uri: str) -> Identity:

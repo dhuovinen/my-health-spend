@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from mhs.data.db import Database
 from mhs.stack import AppConfig
 from mhs.web.household.auth import Accounts, Session
-from mhs.web.household.features import REQUIRE_CODE, REQUIRE_CONSENT, Features, provider_setting
+from mhs.web.household.features import ALLOW_SIGNUP, REQUIRE_CODE, REQUIRE_CONSENT, Features, provider_setting
 
 KNOWN_PROVIDERS = {"google": "Google", "microsoft": "Microsoft", "apple": "Apple"}
 
@@ -31,8 +31,10 @@ def add_admin_screen(app: FastAPI, *, config: AppConfig, accounts: Accounts, fea
         settings = features.all()
         providers = [{"name": name, "label": label, "configured": name in configured,
                       "on": settings.get(provider_setting(name), True)} for name, label in KNOWN_PROVIDERS.items()]
+        signup_providers = [p["label"] for p in providers if p["configured"] and p["on"] and configured[p["name"]].signup]
         return page(request, "admin.html", status, require_code=settings[REQUIRE_CODE], providers=providers,
-                    require_consent=settings[REQUIRE_CONSENT],
+                    require_consent=settings[REQUIRE_CONSENT], allow_signup=settings[ALLOW_SIGNUP],
+                    signup_providers=signup_providers,
                     counts=features.counts(), changes=features.changes(), **ctx)
 
     @app.get("/admin", response_class=HTMLResponse)
@@ -61,7 +63,28 @@ def add_admin_screen(app: FastAPI, *, config: AppConfig, accounts: Accounts, fea
         check_csrf(session, csrf_token)
         if state not in ("on", "off"):
             raise HTTPException(400)
+        if state == "off" and features.allow_signup():
+            return screen(request, 409, error="Consent can't stop being required while sign-up is open. Close "
+                                              "sign-up first.")
         features.set(REQUIRE_CONSENT, state == "on", member_id=session.member_id, household_id=session.household_id)
+        return RedirectResponse("/admin", status_code=303)
+
+    @app.post("/admin/allow-signup", response_class=HTMLResponse)
+    def allow_signup(request: Request, state: str = Form(""), csrf_token: str = Form("")):
+        """PRV-13 (ADR-059): let new people create a household with Google or Microsoft. Only with consent required."""
+        session = owner(request)
+        check_csrf(session, csrf_token)
+        if state not in ("on", "off"):
+            raise HTTPException(400)
+        if state == "on":
+            settings = features.all()
+            if not settings[REQUIRE_CONSENT]:
+                return screen(request, 409, error="Require consent before collection first: everyone who signs up "
+                                                  "must agree before anything is collected from them.")
+            if not any(p.signup and settings.get(provider_setting(p.name), True) for p in configured.values()):
+                return screen(request, 409, error="Set up and turn on Google or Microsoft sign-in first: sign-up "
+                                                  "uses one of them.")
+        features.set(ALLOW_SIGNUP, state == "on", member_id=session.member_id, household_id=session.household_id)
         return RedirectResponse("/admin", status_code=303)
 
     @app.post("/admin/providers/{name}")

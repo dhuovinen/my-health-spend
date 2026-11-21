@@ -28,7 +28,7 @@ NOT_COMPLETED = "Sign-in was not completed. Please try again."
 
 def add_social_sign_in(app: FastAPI, *, config: AppConfig, accounts: Accounts, db: Database, page: Callable,
                        member: Callable, check_csrf: Callable, set_cookie: Callable, providers_on: Callable,
-                       needs_code: Callable, mfa_page: Callable) -> None:
+                       needs_code: Callable, mfa_page: Callable, sign_up: Callable) -> None:
 
     def provider_of(name: str) -> SignInProvider:
         """A configured provider the owner hasn't turned off (ADR-049); anything else is 404."""
@@ -90,6 +90,10 @@ def add_social_sign_in(app: FastAPI, *, config: AppConfig, accounts: Accounts, d
             return finish(page(request, "identity_linked.html", provider=provider))
 
         found = accounts.member_for_identity(provider.name, identity.subject)
+        if found is None and not accounts.identity_linked(provider.name, identity.subject):
+            started = sign_up(request, provider, identity)  # PRV-13: None while sign-up is closed
+            if started is not None:
+                return finish(started)
         if found is None:  # unlinked or locked, whatever the email says: the same answer either way (ADR-048)
             privacy.log_event(db, None, None, "social_signin_refused")
             return refused(f"That {provider.label} account can't sign in here. Sign in with your email and "
@@ -112,6 +116,8 @@ def add_social_sign_in(app: FastAPI, *, config: AppConfig, accounts: Accounts, d
         session = member(request)
         check_csrf(session, csrf_token)
         provider = provider_of(name)
+        if not session.has_password and set(accounts.identities_of(session.member_id)) <= {provider.name}:
+            raise HTTPException(409)  # their only way in (ADR-059); the Account page doesn't offer it
         if accounts.unlink_identity(session.member_id, provider.name):
             privacy.log_event(db, session.household_id, session.member_id, "identity_unlinked")
         return RedirectResponse("/account", status_code=303)

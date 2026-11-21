@@ -9,9 +9,11 @@ from mhs.web.household import privacy
 
 REQUIRE_CODE = "require_code"
 REQUIRE_CONSENT = "require_consent"
+ALLOW_SIGNUP = "allow_signup"
 # The code starts on: an upgrade never quietly removes protection (ADR-049). Consent before collection starts off for
-# the owner's own household and must be on before anyone else is invited (the launch gate, ADR-055).
-DEFAULTS = {REQUIRE_CODE: True, REQUIRE_CONSENT: False}
+# the owner's own household and must be on before anyone else is invited (the launch gate, ADR-055). Sign-up starts
+# off, so an upgrade never opens the service to strangers (ADR-059).
+DEFAULTS = {REQUIRE_CODE: True, REQUIRE_CONSENT: False, ALLOW_SIGNUP: False}
 
 
 def provider_setting(provider: str) -> str:
@@ -37,6 +39,9 @@ class Features:
 
     def require_consent(self) -> bool:
         return self.get(REQUIRE_CONSENT)
+
+    def allow_signup(self) -> bool:
+        return self.get(ALLOW_SIGNUP)
 
     def provider_on(self, provider: str) -> bool:
         return self.get(provider_setting(provider))
@@ -71,6 +76,7 @@ class Features:
                 "(SELECT count(*) FROM app.members) AS members, "
                 "(SELECT count(*) FROM app.members WHERE totp_confirmed) AS confirmed, "
                 "(SELECT count(*) FROM app.members WHERE signed_in_without_code AND NOT totp_confirmed) AS no_code, "
-                "(SELECT count(*) FROM app.members WHERE is_owner) AS owners").fetchone()
+                "(SELECT count(*) FROM app.members WHERE is_owner) AS owners, "
+                "(SELECT count(*) FROM app.members WHERE signed_up_with <> '') AS signed_up").fetchone()
             linked = c.execute("SELECT provider, count(*) AS n FROM app.member_identities GROUP BY provider").fetchall()
         return {**row, **{f"linked_{r['provider']}": r["n"] for r in linked}}

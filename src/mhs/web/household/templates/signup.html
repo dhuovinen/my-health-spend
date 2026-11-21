@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_provider_logo.html" import provider_logo %}
+{% block title %}Create your account{% endblock %}
+{% block content %}
+<section class="card auth signup">
+  <h1>Create your account</h1>
+  {% if gone %}
+  <p class="alert bad">This sign-up has expired or was already used. Start again.</p>
+  <p><a class="btn primary" href="/signin">Start again</a></p>
+  {% else %}
+  <p class="signup-as">{{ provider_logo(provider.name) }}<span>You're signing up with {{ provider.label }} as <strong>{{ email }}</strong>.</span></p>
+  {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
+  <form method="post" action="/signup" class="stack">
+    <input type="hidden" name="form_token" value="{{ form_token }}">
+    <label>Your name <input name="name" value="{{ entered or '' }}" autocomplete="name" maxlength="80" required autofocus></label>
+    <p class="small muted">As it should appear in your household. We'll create a household for you; you can add family members later.</p>
+    <label class="agree"><input type="checkbox" name="agree" required> <span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms of Service</a> and the <a href="/privacy-notice" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
+    <button class="btn primary" type="submit">Create account</button>
+  </form>
+  <p class="small muted">{{ provider.label }} will know you signed in here, but sees nothing of your records. You won't need a password: you'll sign in with {{ provider.label }}{% if code_required %}, then a code from an authenticator app, which you'll set up next{% endif %}.</p>
+  <p><a class="btn" href="/signin">Cancel</a></p>
+  {% endif %}
+</section>
+{% endblock %}

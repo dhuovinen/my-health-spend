@@ -672,6 +672,16 @@ All PRV cases use the identifier seed set (2.3). "Outbound capture" means routin
 | TC-PRV-12-5 | PRV-12 | Full sign-in in a real browser under the app's policy and SameSite=Strict session cookie | Reaches the provider and returns to the code step with the session intact; no policy violations | S | New |
 | TC-PRV-12-6 | PRV-12 | Delete the member; check the access log and what is requested from the provider | Links deleted with the member; sign-ins and link changes logged; only `openid` and `email` requested (Apple: nothing) | S | New |
 | TC-PRV-12-7 | PRV-12 | Link and sign in with Apple (ADR-057), against the fake provider in Apple's shape; then on staging against Apple itself | No scope, no PKCE and `response_mode=query` sent; the client secret is an ES256 token from the configured key, valid minutes only; linked with no email; code still asked for; another Apple subject gets no access; a bad key stops the app | S | New |
+| TC-PRV-13-1 | PRV-13 | Sign-up open; a new Google account signs up, agrees and enters its first code | Household, member (no password; Terms and notice versions and time kept) and link created; authenticator shown; recovery codes shown once after the code; no data before the code, Home after it | S | New |
+| TC-PRV-13-2 | PRV-13 | Sign-up closed (the default); an unlinked account comes back | The PRV-12 refusal, word for word; nothing created | S | New |
+| TC-PRV-13-3 | PRV-13 | The provider's verified email belongs to an existing member | "Already an account" answer; nothing created or linked | S | New |
+| TC-PRV-13-4 | PRV-13 | Unverified email (Google `email_verified` false; Microsoft work tenant without `xms_edov`); Apple | Refused with the reason; nothing created | S | New |
+| TC-PRV-13-5 | PRV-13 | Create account without agreeing; with an empty name; with a missing or wrong cookie or form token; expired; the same token twice | Refused; nothing created; no second account | S | New |
+| TC-PRV-13-6 | PRV-13 | Signed-up member: password form with their email; export, delete and new recovery codes; unlink their only provider | Password form refuses without counting toward the lock; the code confirms; unlink refused | S | New |
+| TC-PRV-13-7 | PRV-13 | Owner turns sign-up on without consent required, then with it; turns consent off while sign-up is on | Refused, allowed, refused; changes logged | S | New |
+| TC-PRV-13-8 | PRV-13 | Two signed-up households request each other's ids | Not found; nothing leaked (PRV-11) | S | New |
+| TC-PRV-13-9 | PRV-13 | Sign-in page with sign-up open and closed; landing page; `/terms` signed out | "Log in or sign up", provider buttons, Terms and Privacy Policy links; landing link and FAQ follow the setting; `/terms` public | S | New |
+| TC-PRV-13-10 | PRV-13 | Sign-in and Create account pages at 375 and 1280 px in a real browser | No overflow, 44px targets, no policy violations | E | New |
 
 ### 3.10 Regulatory and compliance (CMP)
 
@@ -812,6 +822,7 @@ One row per PRD requirement. **Blocked by** lists the conflicts or ambiguities t
 | PRV-10 | P2 | 1, 2 (2) | SU | — | — |
 | PRV-11 | P1 | 1, 2, 3 (3) | S | — | — |
 | PRV-12 | P2 | 1, 2, 3, 4, 5, 6, 7 (7) | S | — | — |
+| PRV-13 | P2 | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 (10) | ES | — | — |
 | CMP-01 | P2 | 1, 2, 3 (3) | MRS | — | — |
 | CMP-02 | P2 | 1, 2, 3 (3) | EI | — | — |
 | CMP-03 | P2 | 1, 2 (2) | R | — | — |
