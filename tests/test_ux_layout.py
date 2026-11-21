@@ -293,6 +293,49 @@ def test_tc_prv_12_5_social_sign_in_in_a_real_browser(browser, make_household):
         fake.stop()
 
 
+def test_tc_prv_13_10_sign_up_in_a_real_browser(browser, make_household, app_db):
+    """PRV-13 (ADR-059): "Log in or sign up" and "Create your account" at 375 and 1280 px, then a sign-up with the
+    provider on another site, through to the authenticator step, with the Strict cookies and the policy as deployed."""
+    from mhs.web.household.features import ALLOW_SIGNUP, REQUIRE_CONSENT, Features
+    from tests.fake_oidc import FakeProvider
+
+    fake = FakeProvider(host="localhost")
+    port = free_port()
+    household = make_household(sign_in_providers=(fake.as_provider(), fake.as_provider("microsoft", "Microsoft")),
+                               public_url=f"http://127.0.0.1:{port}")
+    Features(app_db).set(REQUIRE_CONSENT, True)
+    Features(app_db).set(ALLOW_SIGNUP, True)
+    server = Server(household.app, port)
+    try:
+        for device, label in ((PHONE, "375"), (DESKTOP, "1280")):
+            context, page = open_page(browser, server, [], device)
+            problems = []
+            page.on("console", lambda m: problems.append(m.text) if m.type == "error" else None)
+            page.goto(server.url + "/signin")
+            assert page.locator("h1").inner_text() == "Log in or sign up"
+            shot(page, f"r1-{label}-signin-signup.png")
+            small = (lambda: page.evaluate(SMALL_TARGETS)) if device is PHONE else list  # 44px is the phone rule
+            assert page.evaluate(SIDEWAYS) <= 0 and small() == [], label
+            page.locator("details.password-signin > summary").click()  # the password form opens for members
+            assert page.locator("input[name=password]").is_visible()
+            assert small() == [], label
+
+            fake.subject, fake.email = f"subject-{label}", f"person-{label}@example.test"
+            page.locator('a[href="/signin/with/google"]').click()
+            assert page.locator("h1").inner_text() == "Create your account"
+            shot(page, f"r1-{label}-signup.png")
+            assert page.evaluate(SIDEWAYS) <= 0 and small() == [], label
+            page.fill("input[name=name]", f"Pat {label}")
+            page.check("input[name=agree]")
+            page.locator("button[type=submit]").click()
+            assert page.url == server.url + "/signin/mfa" and "Add this account" in page.locator("main").inner_text()
+            assert problems == [], problems
+            context.close()
+    finally:
+        server.stop()
+        fake.stop()
+
+
 def test_tc_ux_10_2_desktop_release0(browser, release0):
     server, cookies = release0
     context, page = open_page(browser, server, cookies, DESKTOP)

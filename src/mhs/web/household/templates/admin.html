@@ -55,6 +55,17 @@
   <form method="post" action="/admin/require-consent">{{ csrf_input() }}<input type="hidden" name="state" value="on"><button class="btn primary" type="submit">Require consent</button></form>
   {% endif %}
 </section>
+<section class="card section" id="signup">
+  <h2>Sign-up</h2>
+  {% if allow_signup %}
+  <p><span class="chip warn">Open</span> Anyone with a {{ signup_providers | join(" or ") or "Google or Microsoft" }} account can create a household from the sign-in page. Each new member agrees to the <a href="/terms">Terms of Service</a> and the <a href="/privacy-notice">privacy notice</a>, and is asked for consent before anything is collected.</p>
+  <form method="post" action="/admin/allow-signup" data-confirm="Stop new people from signing up? Members who already did keep their accounts.">{{ csrf_input() }}<input type="hidden" name="state" value="off"><button class="btn" type="submit">Close sign-up</button></form>
+  {% else %}
+  <p><span class="chip idle">Closed</span> Only people you add with <code>mhs-admin</code> have accounts. Opening sign-up lets anyone with a Google or Microsoft account create their own household.</p>
+  <p class="alert warn small">Open it only where real people may store real health data: not on staging, which holds made-up data, and not before the launch gate (attorney review of the Terms and the privacy notice). Consent before collection must be required first.</p>
+  <form method="post" action="/admin/allow-signup" data-confirm="Let anyone with a Google or Microsoft account create a household?">{{ csrf_input() }}<input type="hidden" name="state" value="on"><button class="btn primary" type="submit">Open sign-up</button></form>
+  {% endif %}
+</section>
 <section class="card section">
   <h2>Members</h2>
   <div class="table-wrap">
@@ -65,6 +76,7 @@
         <tr><td>With an authenticator set up</td><td class="num">{{ counts.confirmed }}</td></tr>
         <tr><td>Signed in without a code and no authenticator yet</td><td class="num">{{ counts.no_code }}</td></tr>
         <tr><td>Owners</td><td class="num">{{ counts.owners }}</td></tr>
+        <tr><td>Signed up themselves</td><td class="num">{{ counts.signed_up }}</td></tr>
         <tr><td>Linked Google accounts</td><td class="num">{{ counts.linked_google or 0 }}</td></tr>
         <tr><td>Linked Microsoft accounts</td><td class="num">{{ counts.linked_microsoft or 0 }}</td></tr>
       </tbody>

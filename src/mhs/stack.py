@@ -58,6 +58,7 @@ class SignInProvider:
     pkce: bool = True
     response_mode: str = ""  # sent only when set
     key: "ClientKey | None" = field(default=None, repr=False)  # the client secret is a token signed with this key
+    signup: bool = True  # a new person may sign up with it (PRV-13, ADR-059); Apple sends no email, so it can't
 
 
 @dataclass(frozen=True)
@@ -98,7 +99,7 @@ def apple_provider() -> SignInProvider | None:
         raise ValueError("MHS_APPLE_PRIVATE_KEY isn't a P-256 private key (the .p8 file from Apple)")
     name, label, authorize, token, issuer = APPLE
     return SignInProvider(name, label, client_id, "", authorize, token, issuer, scopes="", pkce=False,
-                          response_mode="query", key=ClientKey(team_id, key_id, pem))
+                          response_mode="query", key=ClientKey(team_id, key_id, pem), signup=False)
 
 
 def fhir_payers() -> tuple:

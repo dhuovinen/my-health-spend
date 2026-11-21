@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}You're all set{% endblock %}
+{% block content %}
+<section class="card auth">
+  <h1>You're all set</h1>
+  <p class="alert good">Your authenticator is set up.</p>
+  {% include "_recovery_codes.html" %}
+  <p class="small">If you lose access to your phone or your sign-in account, one of these and your email let you back in and choose a password.</p>
+  {# A link the member follows: the session cookie set on this response is sent with it. #}
+  <p><a class="btn primary" href="/">Continue</a></p>
+</section>
+{% endblock %}

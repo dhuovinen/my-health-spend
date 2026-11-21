@@ -1,6 +1,6 @@
 # My Health Spend (MHS): Product Requirements
 
-Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026)); Nov 5, 2026 added REC-14; Nov 6, 2026 added UX-11; Nov 7, 2026 added PRV-12 and PLT-09, and made the authenticator code owner-controlled (PRV-11); Nov 19, 2026 added REC-15 and Apple to PRV-12
+Oct 15, 2026 · @Donald Huovinen · Revised Oct 15, 2026 with owner decisions (see [Decisions](#decisions-oct-15-2026)); Nov 5, 2026 added REC-14; Nov 6, 2026 added UX-11; Nov 7, 2026 added PRV-12 and PLT-09, and made the authenticator code owner-controlled (PRV-11); Nov 19, 2026 added REC-15 and Apple to PRV-12; Nov 21, 2026 added PRV-13 (sign-up)
 
 ## Scope and sizing
 
@@ -227,7 +227,8 @@ The visit card list from the original plan stays the home screen. The rest of th
 | PRV-09 | Let the member export all their data and delete their account and data, with a deletion confirmation. Deletion removes records, originals and vault entries at once and backups on their normal rotation within 35 days; only security and access logs without health content are kept, for one year | P2 |
 | PRV-10 | Keep an access log of who and what touched each record, viewable by the member | P2 |
 | PRV-11 | Authenticate every member, with a multi-factor sign-in the owner can require or turn off for the whole service (PLT-09, ADR-049; required unless the owner turns it off, and always for owners), and isolate each household's data so no query can return another household's records | P1 |
-| PRV-12 | Let a member sign in with a Google, Microsoft or Apple account in place of a password, linked to their existing membership. The second factor (PRV-11) still applies, household isolation is unchanged, and a social account with no link to a member gets no access and no new account | P2 |
+| PRV-12 | Let a member sign in with a Google, Microsoft or Apple account in place of a password, linked to their existing membership. The second factor (PRV-11) still applies, household isolation is unchanged, and a social account with no link to a member gets no access and no new account, unless sign-up is open (PRV-13) | P2 |
+| PRV-13 | Let a new person create their own account and household with a Google or Microsoft account, from one "Log in or sign up" page that links the Terms of Service and Privacy Policy. Verified emails only, linked by provider subject, explicit agreement recorded with its version, the code (PRV-11) and consent (CMP-02) still apply, and the owner opens or closes sign-up (PLT-09). Details: [SIGN_UP_REQUIREMENTS.md](SIGN_UP_REQUIREMENTS.md), ADR-059 | P2 |
 
 ## Regulatory and compliance
 

@@ -129,7 +129,7 @@
         <details><summary>Is this health insurance?{{ icon("plus") }}</summary><p>No. My Health $pend helps individuals understand their healthcare spending. It is not health insurance, a payment account or a replacement for your insurer.</p></details>
         <details><summary>Can it help with bills I’ve already paid?{{ icon("plus") }}</summary><p>Yes, that is where it starts. Looking back across bills, insurance decisions and payments may reveal discrepancies even after a bill has been paid. Any refund depends on review and resolution with the provider or insurer.</p></details>
         <details><summary>What about my next appointment?{{ icon("plus") }}</summary><p>The next step in our vision is helping you compare expected insurance costs with available self-pay prices before a visit. Deductibles, network status and whether a payment counts toward your plan limits all matter.</p></details>
-        <details><summary>Can I upload my medical bills today?{{ icon("plus") }}</summary><p>Only with an account. My Health $pend is in early access, and accounts are set up by invitation. The sample on this page uses fictional examples and collects nothing, so please don’t send personal health or financial information here.</p></details>
+        <details><summary>Can I upload my medical bills today?{{ icon("plus") }}</summary><p>Only with an account. {% if signup_open %}My Health $pend is in early access: sign up with your Google or Microsoft account.{% else %}My Health $pend is in early access, and accounts are set up by invitation.{% endif %} The sample on this page uses fictional examples and collects nothing, so please don’t send personal health or financial information here.</p></details>
       </div>
     </div>
   </section>
