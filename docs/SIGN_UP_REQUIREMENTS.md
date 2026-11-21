@@ -189,6 +189,8 @@ Added to TEST_PLAN.md as TC-PRV-13-1 to TC-PRV-13-10 and automated in `tests/tes
 
 ## 9. Open questions for the owner
 
+Tracked in BACKLOG.md as B-27 to B-30. The owner will open sign-up and limit who gets in by other means (2026-11-21).
+
 1. **Household name.** "<name>'s household" by default. Should the member be able to rename it? (No rename page exists today.)
 2. **Code for new members.** Recommended: keep the owner's setting (required by default), so a new member sets up an authenticator at sign-up. The alternative is to trust the provider's own second factor, which ADR-048 decided against.
 3. **Work and school Microsoft accounts.** Off unless `xms_edov` is set up (SU-31). Is that acceptable for early access?
