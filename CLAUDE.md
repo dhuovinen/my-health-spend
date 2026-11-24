@@ -104,6 +104,8 @@ uv run tools/build_ingest.py --settings data/settings.json --claims data/source/
 
 First-time setup and the converter's warnings are in `docs/SETUP.md`. Everything the owner sets up outside the code (Google Cloud, OAuth clients, Anthropic, insurer registrations, the BAA and the launch gate), in order, is the checklist in `docs/OWNER_SETUP.md`.
 
+- Insurance card scan (ING-11, ADR-059): the reader is `ingest/card.py` (pure rules on OCR text, insurer names in `data/reference/insurers.json`), plan merging `ingest/card_plan.py`, the flow `web/household/card_scan.py` (Release 1 only; `PagesHost.card_scan`, `reveal`, `cards_for`). Member IDs, group number, RxGroup and names are vault tokens in `app.card_scans` and on the plan (`group_number`, `member_numbers`, `rx.group`); only Coverage and letters re-identify them. A scan never sets `terms_confirmed` (it clears it if the card changes terms). Images live in `app.card_images` (migration 016), deleted on confirm, cancel or after 24 hours unless the owner's `keep_card_images` setting is on; the admin counts go through security-definer functions. `scrub.scrub_card` keeps the insurer's public contacts. Dental plans (`coverage_kind`) stay out of `plan_for`, the estimate and onboarding (`is_dental`). Claude fallback is a TODO in `scan_card`.
+
 ## Gotchas
 
 - Brand and UI standard: `docs/UI_GUIDE.md`. The app is on it, with Manrope and DM Sans self-hosted in `web/static/fonts/`; new visual work follows the guide. DM Sans has no tabular digits, so figures that must line up use `.num` (Manrope).

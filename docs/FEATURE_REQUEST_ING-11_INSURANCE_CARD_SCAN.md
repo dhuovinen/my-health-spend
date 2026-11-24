@@ -1,6 +1,6 @@
 # FEATURE REQUEST — ING-11: Scan an insurance card
 
-> **Status: APPROVED, P1. BUILD STARTED 2026-11-24 (not finished).**
+> **Status: APPROVED, P1. FIRST BUILD 2026-11-24 (ADR-059): reader, scan and review flow, create or update plan, `keep_card_images` toggle, Coverage contacts built and tested on synthetic cards (TC-1 to 8, 10, 11, 12; TC-5 at the scrubber level). Not yet built: Claude fallback (hook only), plan-ahead onboarding link, the insurer's claims address in dispute letters (TC-7 covers the member ID only), the layout run at 375 and 1280 px (page is in `PAGES`, Chromium wasn't available), TC-13 as a reported measurement (a regression test asserts every field on 3 synthetic cards).**
 > Label: `feature-request` · ID: **ING-11** · Area: Ingestion and document capture · Priority: **P1** (owner, 2026-11-24)
 > Requested 2026-11-24 by the owner. Write an ADR in `docs/DECISIONS.md` before building it: it adds a document type, new plan fields and identifiers that go through the vault.
 
