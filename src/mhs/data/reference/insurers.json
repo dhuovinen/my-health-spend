@@ -1,0 +1,27 @@
+{
+  "version": "2026-11-24",
+  "note": "Public names of health and dental insurers, used by the card reader (ING-11, ADR-059) to name the insurer from the top of a card. Add a name here in the yearly review; no code changes. A card from an insurer not listed is still read: the reader falls back to the first plausible line.",
+  "insurers": [
+    {"name": "Aetna", "aliases": ["Aetna"]},
+    {"name": "Anthem", "aliases": ["Anthem Blue Cross", "Anthem Blue Cross Blue Shield", "Anthem"]},
+    {"name": "Blue Cross Blue Shield", "aliases": ["Blue Cross Blue Shield", "Blue Cross and Blue Shield", "BlueCross BlueShield", "BCBS"]},
+    {"name": "Blue Shield of California", "aliases": ["Blue Shield of California", "Blue Shield"]},
+    {"name": "Cigna", "aliases": ["Cigna", "Cigna Healthcare"]},
+    {"name": "Humana", "aliases": ["Humana"]},
+    {"name": "Kaiser Permanente", "aliases": ["Kaiser Permanente", "Kaiser"]},
+    {"name": "UnitedHealthcare", "aliases": ["UnitedHealthcare", "United Healthcare", "UnitedHealthcare Choice Plus"]},
+    {"name": "Oscar Health", "aliases": ["Oscar Health", "Oscar"]},
+    {"name": "Molina Healthcare", "aliases": ["Molina Healthcare", "Molina"]},
+    {"name": "Centene", "aliases": ["Ambetter", "Centene"]},
+    {"name": "Highmark", "aliases": ["Highmark"]},
+    {"name": "Health Net", "aliases": ["Health Net"]},
+    {"name": "Harvard Pilgrim", "aliases": ["Harvard Pilgrim"]},
+    {"name": "Premera", "aliases": ["Premera Blue Cross", "Premera"]},
+    {"name": "Regence", "aliases": ["Regence"]},
+    {"name": "Delta Dental", "aliases": ["Delta Dental"]},
+    {"name": "MetLife", "aliases": ["MetLife"]},
+    {"name": "Guardian", "aliases": ["Guardian"]},
+    {"name": "Principal", "aliases": ["Principal"]},
+    {"name": "Sun Life", "aliases": ["Sun Life"]}
+  ]
+}
