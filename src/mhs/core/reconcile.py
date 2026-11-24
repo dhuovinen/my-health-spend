@@ -548,6 +548,12 @@ def is_secondary(plan: dict | None) -> bool:
     return (plan or {}).get("coverage_order") in ("secondary", "tertiary")
 
 
+def is_dental(plan: dict | None) -> bool:
+    """A dental plan, made from a dental card (ING-11, ADR-059). Dental claims aren't reconciled, so a dental plan is
+    listed on Coverage and left out of the medical plan choices, REC-06, REC-15 and the estimate."""
+    return (plan or {}).get("coverage_kind") == "dental"
+
+
 def _covered_by_secondary(visit: dict, plans: list[dict]) -> bool:
     """ALC-05: the visit's member is on a secondary plan in force on the visit's date (TC-ALC-05-3)."""
     member, day = visit.get("member_id"), visit["date"]

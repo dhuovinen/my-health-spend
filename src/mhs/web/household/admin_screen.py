@@ -10,15 +10,17 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from mhs.data.db import Database
+from mhs.data.objects import ObjectStore
 from mhs.stack import AppConfig
+from mhs.web.household import privacy
 from mhs.web.household.auth import Accounts, Session
-from mhs.web.household.features import REQUIRE_CODE, REQUIRE_CONSENT, Features, provider_setting
+from mhs.web.household.features import KEEP_CARD_IMAGES, REQUIRE_CODE, REQUIRE_CONSENT, Features, provider_setting
 
 KNOWN_PROVIDERS = {"google": "Google", "microsoft": "Microsoft", "apple": "Apple"}
 
 
 def add_admin_screen(app: FastAPI, *, config: AppConfig, accounts: Accounts, features: Features, db: Database,
-                     page: Callable, member: Callable, check_csrf: Callable) -> None:
+                     page: Callable, member: Callable, check_csrf: Callable, objects: ObjectStore | None = None) -> None:
     configured = {p.name: p for p in config.sign_in_providers}
 
     def owner(request: Request) -> Session:
@@ -32,7 +34,8 @@ def add_admin_screen(app: FastAPI, *, config: AppConfig, accounts: Accounts, fea
         providers = [{"name": name, "label": label, "configured": name in configured,
                       "on": settings.get(provider_setting(name), True)} for name, label in KNOWN_PROVIDERS.items()]
         return page(request, "admin.html", status, require_code=settings[REQUIRE_CODE], providers=providers,
-                    require_consent=settings[REQUIRE_CONSENT],
+                    require_consent=settings[REQUIRE_CONSENT], keep_card_images=settings[KEEP_CARD_IMAGES],
+                    card_images=features.card_image_counts(),
                     counts=features.counts(), changes=features.changes(), **ctx)
 
     @app.get("/admin", response_class=HTMLResponse)
@@ -63,6 +66,29 @@ def add_admin_screen(app: FastAPI, *, config: AppConfig, accounts: Accounts, fea
             raise HTTPException(400)
         features.set(REQUIRE_CONSENT, state == "on", member_id=session.member_id, household_id=session.household_id)
         return RedirectResponse("/admin", status_code=303)
+
+    @app.post("/admin/keep-card-images")
+    def keep_card_images(request: Request, state: str = Form(""), csrf_token: str = Form("")):
+        """ING-11 (ADR-059): keep insurance card images after a scan is confirmed (staging, validation, troubleshooting)."""
+        session = owner(request)
+        check_csrf(session, csrf_token)
+        if state not in ("on", "off"):
+            raise HTTPException(400)
+        features.set(KEEP_CARD_IMAGES, state == "on", member_id=session.member_id, household_id=session.household_id)
+        return RedirectResponse("/admin#card-images", status_code=303)
+
+    @app.post("/admin/delete-kept-card-images")
+    def delete_kept_card_images(request: Request, csrf_token: str = Form("")):
+        """Remove every kept card image, in every household (a count is shown; the images never are)."""
+        session = owner(request)
+        check_csrf(session, csrf_token)
+        with db.tx() as c:
+            keys = [r["object_key"] for r in c.execute("SELECT object_key FROM app.delete_kept_card_images()")]
+        for key in keys:
+            if objects is not None:
+                objects.delete(key)
+        privacy.log_event(db, session.household_id, session.member_id, "kept_card_images_deleted")
+        return RedirectResponse("/admin#card-images", status_code=303)
 
     @app.post("/admin/providers/{name}")
     def provider(request: Request, name: str, state: str = Form(""), csrf_token: str = Form("")):

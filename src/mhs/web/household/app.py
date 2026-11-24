@@ -7,6 +7,7 @@ The Release 0 pages (web/pages.py) are mounted over the household's store (ADR-0
 """
 
 import json
+import logging
 import re
 import secrets
 from datetime import datetime, timezone
@@ -32,6 +33,7 @@ from mhs.stack import AppConfig, load_app_config
 from mhs.vault.client import VaultClient, VaultError
 from mhs.web.household import privacy, security
 from mhs.web.household.admin_screen import add_admin_screen
+from mhs.web.household.card_scan import add_card_scan
 from mhs.web.household.auth import AccountError, Accounts, Member, Session
 from mhs.web.household.features import Features
 from mhs.web.household.files import EncryptedFiles
@@ -44,6 +46,7 @@ from mhs.web.household.social import add_social_sign_in
 from mhs.web.pages import VIEW_COOKIE, WEB, add_pages, make_templates
 
 HERE = Path(__file__).parent
+log = logging.getLogger("mhs.app")
 COOKIE = "mhs_session"
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 PREVIEW_MINUTES = 60  # an import preview must be confirmed within an hour
@@ -63,6 +66,8 @@ class HouseholdHost:
     """PagesHost for Release 1: the signed-in member's household, behind MFA, with CSRF on every post."""
 
     path_import = False
+    card_scan = True  # ING-11: the application tier reads insurance cards
+    card_store = None
 
     def __init__(self, app_state, db: Database, keyring: Keyring, objects: ObjectStore, cookie_secure: bool,
                  vault: VaultClient):
@@ -93,7 +98,27 @@ class HouseholdHost:
                     real = TOKEN.sub(lambda m: self._detokenize(store.household_id, m.group(0)), value).strip()
                     if real:
                         out[name] = real
+        if "member_number" not in out:  # ING-11: the member ID on the insurance card, when no upload had one
+            plan = next((store.get("plan", c["plan_id"]) for c in visit.claims if c.get("plan_id")), None) \
+                or store.get("plan", visit.visit.get("plan_id") or "")
+            numbers = (plan or {}).get("member_numbers") or {}
+            entry = numbers.get(visit.visit.get("member_id") or "") \
+                or next((n for n in numbers.values() if n.get("subscriber")), None)
+            real = self.reveal(request, store, (entry or {}).get("member_number") or "")
+            if real:
+                out["member_number"] = real
         return out
+
+    def reveal(self, request: Request, store: HouseholdStore, value):
+        """A value that may hold vault tokens, as the member's own page shows it (ADR-022); identifiers from an
+        insurance card (group number, member IDs) come back here and nowhere else."""
+        if isinstance(value, str) and "tok_" in value:
+            return TOKEN.sub(lambda m: self._detokenize(store.household_id, m.group(0)), value).strip()
+        return value
+
+    def cards_for(self, request: Request, store: HouseholdStore, plan_ids: list[str]) -> dict[str, list[dict]]:
+        """Kept card images by plan (only when the owner's keep_card_images setting kept them, ADR-059)."""
+        return self.card_store.kept(store.household_id, plan_ids) if self.card_store else {}
 
     def _detokenize(self, household_id: str, token: str) -> str:
         try:
@@ -393,7 +418,7 @@ def create_app(
     add_social_sign_in(app, config=config, accounts=accounts, db=db, page=page, member=member, check_csrf=check_csrf,
                        set_cookie=set_cookie, providers_on=providers_on, needs_code=needs_code, mfa_page=mfa_page)
     add_admin_screen(app, config=config, accounts=accounts, features=features, db=db, page=page, member=member,
-                     check_csrf=check_csrf)
+                     check_csrf=check_csrf, objects=objects)
 
     @app.get("/account", response_class=HTMLResponse)
     def account(request: Request):
@@ -523,6 +548,15 @@ def create_app(
                     accounts.ai_extraction)
     intake.collect_for = collect_for
     add_intake(app, templates, intake)
+    app.state.intake = intake
+    app.state.db = db
+    host.card_store = app.state.card_store = add_card_scan(app, templates, db=db, keyring=keyring, objects=objects, vault=vault,
+                                    ocr=lambda: intake.ocr, features=features, member=member, check_csrf=check_csrf,
+                                    collect_for=collect_for, ai_extraction=accounts.ai_extraction)
+    try:  # scans left open past 24 hours go at start-up too (ADR-059)
+        host.card_store.expire()
+    except Exception:  # noqa: BLE001 - a clean-up that fails must not stop the app; the next scan page retries it
+        log.warning("card scan clean-up failed at start-up")
     add_insurer_connection(app, config=config, accounts=accounts, db=db, page=page, member=member, host=host,
                            preview_import=preview_import, consented=consented)
     return app

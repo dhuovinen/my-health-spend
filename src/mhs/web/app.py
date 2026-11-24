@@ -23,6 +23,7 @@ class LocalHost:
 
     path_import = True
     cookie_secure = False  # loopback http
+    card_scan = False  # insurance cards are read in the Release 1 application tier (ING-11)
 
     def __init__(self, config: Config):
         self.config = config
@@ -56,6 +57,12 @@ class LocalHost:
 
     def record_view(self, request: Request, kind: str, record_id: str, action: str = "view") -> None:
         pass  # one owner on their own laptop: no access log
+
+    def reveal(self, request: Request, store: Store, value):
+        return value
+
+    def cards_for(self, request: Request, store: Store, plan_ids: list[str]) -> dict[str, list[dict]]:
+        return {}
 
     def identifiers(self, request: Request, store: Store, visit) -> dict[str, str]:
         return {}  # no uploads or vault in Release 0: letters leave the account number blank

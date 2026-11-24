@@ -603,3 +603,13 @@ form.inline.settings-row > .btn { margin-top: calc(26px + .2rem); }
 .review label.low .field-note { color: var(--warn); }
 form.inline.type-row { align-items: flex-end; gap: .6rem; }
 @media (min-width: 861px) { form.inline.type-row .btn { min-height: 2.5rem; padding-top: 0; padding-bottom: 0; } }
+
+/* Insurance card scan and the card's contacts on Coverage (ING-11, ADR-059) */
+.card-shots { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
+.card-shots figure { margin: 0; flex: 1 1 260px; max-width: 480px; }
+.card-shots img { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); border: 1px solid var(--line, #d5dbe5); }
+.card-shots .full { flex-basis: 100%; margin: 0; }
+.card-scan .stack { display: grid; gap: 1rem; max-width: 520px; }
+.contact-list { list-style: none; margin: 0 0 .75rem; padding: 0; display: grid; gap: .5rem; }
+.contact-list li { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .9rem; }
+.contact-label { font-weight: 600; min-width: 9rem; }

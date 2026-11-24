@@ -456,3 +456,28 @@ def public_contact_lines(text: str) -> set[int]:
                 if re.search(r"\b[A-Z]{2}\s+\d{5}", lines[j]) or re.search(PHONE, lines[j]):
                     break
     return keep
+
+
+def reading_dict(reading: CardReading, tokenize) -> dict:
+    """The reading as a JSON-safe dict for the scan record, with every identifier (member IDs, group number,
+    pharmacy group, people's names) replaced by `tokenize(kind, value)`: only tokens are stored (ADR-059)."""
+    def fld(f: Field, kind: str | None = None) -> dict:
+        value = f.value
+        if kind and isinstance(value, str):
+            value = tokenize(kind, value)
+        return {"value": value, "confidence": f.confidence, "side": f.side}
+
+    kinds = {"group_number": "group_number", "member_number": "member_id", "rx_group": "group_number"}
+    return {
+        "kind": reading.kind, "looks_like_card": reading.looks_like_card, "has_back": reading.has_back,
+        "refusal": reading.refusal,
+        "fields": {k: fld(f, kinds.get(k)) for k, f in reading.fields.items()},
+        "copays": {k: fld(f) for k, f in reading.copays.items()},
+        "limits": list(reading.limits),
+        "people": [{"name": tokenize("name", p.name), "role": p.role, "subscriber": p.subscriber,
+                    "confidence": p.confidence,
+                    "member_number": fld(p.member_number, "member_id") if p.member_number else None}
+                   for p in reading.people],
+        "contacts": [{"label": c.label, "phone": c.phone, "address": c.address, "url": c.url,
+                      "confidence": c.confidence} for c in reading.contacts],
+    }

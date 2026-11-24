@@ -81,6 +81,20 @@ def export_household(db: Database, keyring: Keyring, objects: ObjectStore, vault
                                             "extraction": store.get("extraction", rec["id"])})
         manifest["records"]["original"] = len(uploads)
         add("uploads.json", json.dumps(uploads, indent=2).encode())
+        with db.tx(household_id) as c:  # insurance card images the owner's setting kept (ADR-059)
+            kept = c.execute("SELECT id, side, plan_id, content_type, object_key, sha256 FROM app.card_images "
+                             "WHERE household_id = %s AND state = 'kept' ORDER BY created_at, side",
+                             (household_id,)).fetchall()
+        card_files = []
+        for row in kept:
+            data = keyring.decrypt(household_id, objects.get(row["object_key"]), f"card:{row['id']}")
+            ext = {"image/jpeg": "jpg", "image/png": "png", "application/pdf": "pdf"}.get(row["content_type"], "bin")
+            path = f"files/cards/{_safe(row['plan_id'] or 'plan')}-{row['side']}-{_safe(row['id'])}.{ext}"
+            add(path, data)
+            card_files.append({"id": row["id"], "side": row["side"], "plan_id": row["plan_id"], "file": path})
+        if card_files:
+            manifest["records"]["card_image"] = len(card_files)
+            add("cards.json", json.dumps(card_files, indent=2).encode())
         identifiers = vault.entries(household_id)
         manifest["records"]["vault_entry"] = len(identifiers)
         add("identifiers.json", json.dumps(identifiers, indent=2).encode())
@@ -88,7 +102,8 @@ def export_household(db: Database, keyring: Keyring, objects: ObjectStore, vault
             "My Health Spend export\n\n"
             "ingest.json      your records (plans, members, providers, visits, documents, notes); import it again\n"
             "                 with the files folder beside it\n"
-            "files/           the statements, EOBs and uploads you stored, unchanged\n"
+            "files/           the statements, EOBs and uploads you stored, unchanged, and any insurance card\n"
+            "                 images kept for you (cards.json says which plan each is for)\n"
             "uploads.json     your uploads and what was read from them, with your corrections\n"
             "identifiers.json names and numbers that appear in your records as tokens (tok_...)\n"
             "manifest.json    counts and a SHA-256 for every file\n"))
@@ -113,6 +128,9 @@ def delete_household(db: Database, objects: ObjectStore, vault: VaultClient, hou
     store = HouseholdStore(db, household_id)
     keys = [k for r in store.all("original") for k in [r["object_key"], *r.get("scrubbed_keys", [])]]
     keys += [d["stored_file"] for d in store.all("document") if d.get("stored_file")]
+    with db.tx(household_id) as c:  # insurance card images, in review or kept (ADR-059)
+        keys += [r["object_key"] for r in c.execute("SELECT object_key FROM app.card_images WHERE household_id = %s",
+                                                    (household_id,))]
     vault.delete_household(household_id)
     for key in keys:
         objects.delete(key)

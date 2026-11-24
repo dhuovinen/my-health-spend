@@ -3,7 +3,7 @@ resumes where the records say (TC-UX-09-2). Pure: no database or web imports."""
 
 from dataclasses import dataclass
 
-from mhs.core.reconcile import Dataset, is_secondary
+from mhs.core.reconcile import Dataset, is_dental, is_secondary
 
 
 @dataclass
@@ -17,7 +17,7 @@ class Step:
 
 
 def steps(ds: Dataset, year: int, add_url: str, first_visit: str | None) -> list[Step]:
-    plans = [p for p in ds.plans if p.get("plan_year") == year and not is_secondary(p)]
+    plans = [p for p in ds.plans if p.get("plan_year") == year and not is_secondary(p) and not is_dental(p)]
     limits = any(l.get("type") == "deductible" for p in plans for l in p.get("limits") or [])
     terms = any(p.get("terms_confirmed") for p in plans)
     accounts = [a for a in ds.accounts if a.get("type") in ("hsa", "fsa", "lpfsa", "hra")] or ds.accounts

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Check your card{% endblock %}
+{% block content %}
+{% macro chk(key) %}{% if mark(key) %}<span class="chip warn">check</span>{% endif %}{% endmacro %}
+{% macro opt(values, selected, blank=None, human=True) %}{% if blank is not none %}<option value="">{{ blank }}</option>{% endif %}{% for o in values %}<option value="{{ o }}" {{ 'selected' if o == selected }}>{{ o|humanize if human else o }}</option>{% endfor %}{% endmacro %}
+{% set f = form %}
+<div class="page-head">
+  <div>
+    <h1>Check your card</h1>
+    <div class="muted">Read from your card, <strong>not saved yet</strong>. Fix anything that's wrong or empty, then confirm.</div>
+  </div>
+  <a class="back" href="/coverage">Back to Coverage</a>
+</div>
+{% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
+
+<section class="card section card-shots" aria-label="The card">
+  {% for img in images %}
+  <figure><img src="/coverage/card/{{ scan.id }}/{{ img.side }}" alt="The {{ img.side }} of your insurance card" loading="lazy"><figcaption class="small muted">{{ img.side|capitalize }}</figcaption></figure>
+  {% endfor %}
+  <p class="small muted full">{% if keep %}These images are kept, encrypted, once you confirm (the service owner has turned that on). {% else %}These images are shown for this review only and deleted when you confirm or cancel, or after 24 hours.{% endif %}</p>
+</section>
+
+<section class="card section">
+  {% if back_only %}
+  <p>This adds the back of the card to <strong>{{ target.insurer }}{% if target.plan_name %}, {{ target.plan_name }}{% endif %}</strong> ({{ target.plan_year }}).</p>
+  {% elif this_year %}
+  <p><span class="chip idle">Update</span> You already have this plan for {{ year }}: <strong>{{ this_year.insurer }}{% if this_year.plan_name %}, {{ this_year.plan_name }}{% endif %}</strong>. Confirming updates it, no duplicate.</p>
+  {% elif other_year %}
+  <p><span class="chip good">New plan year</span> You have this plan for {{ other_year.plan_year }}. This card makes the {{ year }} plan.</p>
+  {% else %}
+  <p><span class="chip good">New plan</span> You don't have this {{ 'dental ' if kind == 'dental' }}plan yet. Confirming adds it{% if kind == 'dental' %} as a separate dental plan; your medical plan is not changed{% endif %}.</p>
+  {% endif %}
+  {% if (this_year or other_year or target) %}
+    {% if what %}<p class="small flush">What the card changes:</p><ul class="small">{% for w in what %}<li>{{ w }}</li>{% endfor %}</ul>
+    {% else %}<p class="small muted">Nothing on the card is new: it's already on file.</p>{% endif %}
+  {% endif %}
+  <p class="small muted flush">A card is a summary, not your plan's terms. This does not mark the terms as matching your plan documents, and if the card changes terms you had confirmed, you'll be asked to confirm them again.</p>
+</section>
+
+<form method="post" action="/coverage/card/{{ scan.id }}/confirm" class="plan-form">{{ csrf_input() }}
+  {% if back_only %}
+  <input type="hidden" name="insurer" value="{{ target.insurer }}"><input type="hidden" name="plan_year" value="{{ target.plan_year }}">
+  <section class="card section">
+    <h2>From the back</h2>
+    <div class="form-grid cols-4">
+      <label>Payer ID {{ chk('payer_id') }}<input name="payer_id" value="{{ f.get('payer_id', payer_id) }}"></label>
+      <label>RxBIN {{ chk('rx_bin') }}<input name="rx_bin" value="{{ f.get('rx_bin', rx.bin) }}" inputmode="numeric"></label>
+      <label>RxPCN {{ chk('rx_pcn') }}<input name="rx_pcn" value="{{ f.get('rx_pcn', rx.pcn) }}"></label>
+      <label>RxGroup {{ chk('rx_group') }}<input name="rx_group" value="{{ f.get('rx_group', rx.group) }}" autocomplete="off"></label>
+    </div>
+  </section>
+  {% else %}
+  <section class="card section">
+    <h2>Plan</h2>
+    <div class="form-grid cols-4">
+      <label>Insurer {{ chk('insurer') }}<input name="insurer" value="{{ f.get('insurer', insurer) }}" required></label>
+      <label>Plan name {{ chk('plan_name') }}<input name="plan_name" value="{{ f.get('plan_name', plan_name) }}"></label>
+      <label>Plan year<input name="plan_year" type="number" value="{{ f.get('plan_year', year) }}" required></label>
+      <label>Plan type {{ chk('plan_type') }}<select name="plan_type">{{ opt(['PPO', 'HMO', 'EPO', 'POS', 'HDHP'], f.get('plan_type', plan_type), '—', false) }}</select></label>
+      <label>Coverage start {{ chk('effective_date') }}<input name="coverage_start" type="date" value="{{ f.get('coverage_start', start) }}"></label>
+      <label>Coverage order<select name="coverage_order">{{ opt(['primary', 'secondary', 'tertiary'], f.get('coverage_order', order), '—') }}</select></label>
+      <label>Group number {{ chk('group_number') }}<input name="group_number" value="{{ f.get('group_number', group) }}" autocomplete="off"></label>
+      <label>Payer ID {{ chk('payer_id') }}<input name="payer_id" value="{{ f.get('payer_id', payer_id) }}"></label>
+      <label>Coinsurance %<input name="coinsurance_pct" type="number" step="0.1" min="0" max="100" value="{{ f.get('coinsurance_pct', coinsurance) }}"></label>
+      <fieldset class="checks"><legend>Plan type</legend>
+        <label class="check-label"><input type="checkbox" name="hsa_eligible_plan" {{ 'checked' if (f.get('hsa_eligible_plan') or (not f and hsa)) }}> HSA-eligible (high-deductible) plan</label>
+      </fieldset>
+    </div>
+    <div class="form-grid cols-4 section">
+      <label>RxBIN {{ chk('rx_bin') }}<input name="rx_bin" value="{{ f.get('rx_bin', rx.bin) }}" inputmode="numeric"></label>
+      <label>RxPCN {{ chk('rx_pcn') }}<input name="rx_pcn" value="{{ f.get('rx_pcn', rx.pcn) }}"></label>
+      <label>RxGroup {{ chk('rx_group') }}<input name="rx_group" value="{{ f.get('rx_group', rx.group) }}" autocomplete="off"></label>
+    </div>
+  </section>
+
+  <section class="card section">
+    <h2>Who is on the card</h2>
+    {% if people %}
+    <div class="table-wrap"><table>
+      <tr><th>Name on the card</th><th>Household member</th><th>Member ID</th><th>Subscriber</th></tr>
+      {% for p in people %}
+      <tr>
+        <td>{{ p.name }}{% if p.low %} <span class="chip warn">check</span>{% endif %}<input type="hidden" name="person_{{ p.i }}_name" value="{{ p.name }}"></td>
+        <td><select name="person_{{ p.i }}" aria-label="Who {{ p.name }} is">
+          <option value="" {{ 'selected' if not f.get('person_' ~ p.i, p.match) }}>Choose…</option>
+          {% for m in members %}<option value="{{ m.id }}" {{ 'selected' if m.id == f.get('person_' ~ p.i, p.match) }}>{{ m.name }}</option>{% endfor %}
+          <option value="add" {{ 'selected' if f.get('person_' ~ p.i) == 'add' }}>Add as a household member</option>
+          <option value="none" {{ 'selected' if f.get('person_' ~ p.i) == 'none' }}>Not in this household</option>
+        </select></td>
+        <td><input name="person_{{ p.i }}_number" value="{{ f.get('person_' ~ p.i ~ '_number', p.number) }}" autocomplete="off" aria-label="Member ID for {{ p.name }}"></td>
+        <td><label class="check-label"><input type="checkbox" name="person_{{ p.i }}_subscriber" {{ 'checked' if (f.get('person_' ~ p.i ~ '_subscriber') or (not f and p.subscriber)) }}> Subscriber</label></td>
+      </tr>
+      {% endfor %}
+    </table></div>
+    <p class="small muted flush">Nobody is added to your household unless you choose "Add as a household member".</p>
+    {% else %}<p class="muted small">No names were read from the card. You can tick the members this plan covers on Coverage afterwards.</p>{% endif %}
+  </section>
+
+  <section class="card section">
+    <h2>What you pay</h2>
+    <div class="form-grid cols-4">
+      <label class="span-2">Copays<textarea name="copays" rows="4" placeholder="specialist: 60">{{ f.get('copays', copay_lines) }}</textarea><span class="hint">One per line. Names MHS checks: preventive, primary_care, specialist, urgent_care, emergency.</span></label>
+    </div>
+    {% if limits %}
+    <h3 class="section">Deductibles and out-of-pocket maximums printed on the card</h3>
+    <div class="table-wrap"><table>
+      <tr><th>Add</th><th>Type</th><th>Level</th><th class="num">Amount</th></tr>
+      {% for l in limits %}
+      <tr><td><label class="check-label"><input type="checkbox" name="limit_{{ loop.index0 }}" checked> Add</label></td>
+        <td>{{ l.type|humanize }}</td><td>{{ l.level|humanize }}</td>
+        <td class="num"><input name="limit_{{ loop.index0 }}_amount" value="{{ '%.2f'|format(l.amount / 100) }}" inputmode="decimal" class="w-8" aria-label="Amount"></td></tr>
+      {% endfor %}
+    </table></div>
+    {% endif %}
+  </section>
+
+  {% endif %}
+  <section class="card section">
+    <h2>Phone numbers and addresses</h2>
+    {% if contacts %}
+    <div class="table-wrap"><table>
+      <tr><th>Keep</th><th>What</th><th>Phone</th><th>Address or website</th></tr>
+      {% for c in contacts %}
+      <tr><td><label class="check-label"><input type="checkbox" name="contact_{{ loop.index0 }}" checked> Keep</label></td>
+        <td><input name="contact_{{ loop.index0 }}_label" value="{{ c.label }}" aria-label="What it is"></td>
+        <td><input name="contact_{{ loop.index0 }}_phone" value="{{ c.phone }}" inputmode="tel" aria-label="Phone"></td>
+        <td><input name="contact_{{ loop.index0 }}_address" value="{{ c.address or c.url }}" aria-label="Address or website"></td></tr>
+      {% endfor %}
+    </table></div>
+    {% else %}<p class="muted small">No phone numbers or addresses were read{% if not scan.has_back %}: the back of the card wasn't scanned. You can add it later from Coverage{% endif %}.</p>{% endif %}
+  </section>
+
+  <div class="form-actions"><button class="btn primary" type="submit">Confirm and save</button></div>
+</form>
+<form method="post" action="/coverage/card/{{ scan.id }}/cancel" class="section">{{ csrf_input() }}<button class="btn" type="submit">Cancel and delete the scan</button></form>
+{% endblock %}

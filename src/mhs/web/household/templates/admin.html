@@ -55,6 +55,22 @@
   <form method="post" action="/admin/require-consent">{{ csrf_input() }}<input type="hidden" name="state" value="on"><button class="btn primary" type="submit">Require consent</button></form>
   {% endif %}
 </section>
+<section class="card section" id="card-images">
+  <h2>Insurance card images</h2>
+  <p class="small muted">A member can scan an insurance card to fill in a plan. The images are held only while they review the scan and deleted when they confirm, cancel or after 24 hours.</p>
+  {% if keep_card_images %}
+  <p><span class="chip warn">Keeping</span> Confirmed scans keep both images, encrypted like uploads, linked to the plan, in the member's export and removed when they delete their data. Meant for staging, validation and troubleshooting.</p>
+  <form method="post" action="/admin/keep-card-images">{{ csrf_input() }}<input type="hidden" name="state" value="off"><button class="btn" type="submit">Stop keeping card images</button></form>
+  <p class="small muted">Turning it off keeps the images already kept.</p>
+  {% else %}
+  <p><span class="chip good">Not kept</span> Card images are deleted after each scan. Only the fields the member confirms are saved.</p>
+  <form method="post" action="/admin/keep-card-images">{{ csrf_input() }}<input type="hidden" name="state" value="on"><button class="btn" type="submit">Keep card images</button></form>
+  {% endif %}
+  <p class="small">In review now: <strong>{{ card_images.in_review }}</strong> · Kept: <strong>{{ card_images.kept }}</strong></p>
+  {% if card_images.kept %}
+  <form method="post" action="/admin/delete-kept-card-images" data-confirm="Delete every kept card image, in every household?">{{ csrf_input() }}<button class="btn danger" type="submit">Delete kept card images</button></form>
+  {% endif %}
+</section>
 <section class="card section">
   <h2>Members</h2>
   <div class="table-wrap">

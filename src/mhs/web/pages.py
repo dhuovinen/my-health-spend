@@ -124,6 +124,16 @@ class PagesHost(Protocol):
         """Note that the request's member looked at a record (Release 1's access log, PRV-10)."""
         ...
 
+    card_scan: bool  # offer to scan an insurance card (Release 1: OCR and the vault are in the application tier)
+
+    def reveal(self, request: Request, store: Store, value):
+        """A stored value that may be a vault token, as the signed-in member's own page shows it."""
+        ...
+
+    def cards_for(self, request: Request, store: Store, plan_ids: list[str]) -> dict[str, list[dict]]:
+        """Kept insurance card images by plan id (only where the owner keeps them)."""
+        ...
+
     def identifiers(self, request: Request, store: Store, visit: VisitResult) -> dict[str, str]:
         """The member's real identifiers for a visit's letters (DSP-02), such as the account number on its statement:
         Release 1 re-identifies them from vault tokens here in the application tier (ADR-022); Release 0 has none."""
@@ -1178,7 +1188,7 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                           "amount": f"{f.value / 100:.2f}"}}
 
     def coverage_page(request: Request, store: Store, year: int | None = None, edit: str = "", saved: str = "",
-                      error: str = "", status_code: int = 200, use: str = "") -> HTMLResponse:
+                      error: str = "", status_code: int = 200, use: str = "", card: str = "") -> HTMLResponse:
         """The household's insurance plans in one place: what each covers, the year's progress toward its limits,
         the claims behind that progress, and the plan's terms to edit (REC-06, ADR-050)."""
         all_plans = store.all("plan")
@@ -1199,7 +1209,17 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                     if p.get("coverage_order") not in ("secondary", "tertiary")}
         prefill = {edit: prefill_for(next(p for p in plans if p["id"] == edit), report.plan_terms.get(edit), use)} \
             if use and any(p["id"] == edit for p in plans) else {}
+        card_ids = {}
+        for p in plans:  # ING-11: the identifiers the card gave, back from the vault for the member's own page
+            numbers = {mid: {"number": host.reveal(request, store, n.get("member_number") or ""),
+                             "subscriber": bool(n.get("subscriber"))}
+                       for mid, n in (p.get("member_numbers") or {}).items()}
+            card_ids[p["id"]] = {"group": host.reveal(request, store, p.get("group_number") or ""),
+                                 "rx_group": host.reveal(request, store, (p.get("rx") or {}).get("group") or ""),
+                                 "numbers": numbers}
         return render(request, "coverage.html", status_code=status_code, report=report, plans=plans, years=years,
+                      card_scan=host.card_scan, card_ids=card_ids, kept_cards=host.cards_for(
+                          request, store, [p["id"] for p in plans]), card=card,
                       inferred=inferred, claim_rows=claim_rows, prefill=prefill,
                       limits={p["id"]: [l for l in report.limits if l.plan["id"] == p["id"]] for p in plans},
                       claims=claims, edit=edit, saved=saved, error=error, members=store.all("member"),
@@ -1208,8 +1228,9 @@ def add_pages(app: FastAPI, templates: Jinja2Templates, host: PagesHost) -> Call
                       opts={"limit_types": LIMIT_TYPES, "limit_networks": LIMIT_NETWORKS})
 
     @app.get("/coverage", response_class=HTMLResponse)
-    def coverage(request: Request, year: int | None = None, edit: str = "", saved: str = "", use: str = ""):
-        return coverage_page(request, host.store(request), year, edit, saved, use=use)
+    def coverage(request: Request, year: int | None = None, edit: str = "", saved: str = "", use: str = "",
+                 card: str = ""):
+        return coverage_page(request, host.store(request), year, edit, saved, use=use, card=card)
 
     def plan_or_404(store: Store, plan_id: str) -> dict:
         plan = store.get("plan", plan_id)

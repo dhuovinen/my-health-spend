@@ -9,7 +9,7 @@ from datetime import date
 
 from mhs.core import costshare, tax
 from mhs.core.lines import fmt
-from mhs.core.reconcile import Dataset, current_claims, is_secondary
+from mhs.core.reconcile import Dataset, current_claims, is_dental, is_secondary
 
 
 def has_documents(visit_id: str, documents: list[dict]) -> bool:
@@ -117,7 +117,7 @@ def estimate(visit: dict, ds: Dataset, today: date, tables: tax.TaxTables, strat
     plans = {p["id"]: p for p in ds.plans}
     plan = plans.get(visit.get("plan_id") or "")
     if plan is None or is_secondary(plan):
-        plan = next((p for p in ds.plans if p.get("plan_year") == int(visit["date"][:4]) and not is_secondary(p)
+        plan = next((p for p in ds.plans if p.get("plan_year") == int(visit["date"][:4]) and not is_secondary(p) and not is_dental(p)
                      and (not p.get("member_ids") or visit.get("member_id") in p["member_ids"])), plan)
     provider = next((p for p in ds.providers if p["id"] == visit["provider_id"]), {})
     member_id = visit.get("member_id") or ""
