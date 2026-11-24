@@ -1,7 +1,7 @@
 # FEATURE REQUEST — ING-11: Scan an insurance card
 
-> **Status: REQUESTED. NOT BUILT. NOT SCHEDULED.**
-> Label: `feature-request` · ID: **ING-11** · Area: Ingestion and document capture · Proposed priority: P2
+> **Status: APPROVED, P1. BUILD STARTED 2026-11-24 (not finished).**
+> Label: `feature-request` · ID: **ING-11** · Area: Ingestion and document capture · Priority: **P1** (owner, 2026-11-24)
 > Requested 2026-11-24 by the owner. Write an ADR in `docs/DECISIONS.md` before building it: it adds a document type, new plan fields and identifiers that go through the vault.
 
 ## The request
@@ -13,7 +13,8 @@ Let a member scan their health insurance card, front and back, and have MHS read
 1. **Populate automatically, member confirms.** Everything read from the card, copays included, fills the plan form. The member checks it and confirms; nothing is saved before that.
 2. **Basic OCR and pattern recognition first.** Cards use standard labels in standard places ("Member ID", "Group", "RxBIN", "Copay", "Subscriber"), so layout rules on Tesseract output do most of the work. Claude extraction is optional and only where the household has it on.
 3. **Card images are not kept in normal operation.** An admin toggle (the admin screen, ADR-049) turns keeping them on, for staging, validation and troubleshooting. Off by default.
-4. **Dental cards make a separate dental plan.** Vision rarely has a card, so vision cards are not handled; a vision plan is typed in.
+4. **Priority P1.**
+5. **Dental cards make a separate dental plan.** Vision rarely has a card, so vision cards are not handled; a vision plan is typed in.
 
 ## Why
 
@@ -111,5 +112,4 @@ A card is mostly identifiers, so it is handled more strictly than a bill:
 
 ## Open questions for the owner
 
-1. Priority: P2 (proposed), or move it into onboarding work ahead of other Release 2 items?
-2. The accuracy target for the layout rules on cards, once TC-ING-11-13 has a first measurement.
+1. The accuracy target for the layout rules on cards, once TC-ING-11-13 has a first measurement.
