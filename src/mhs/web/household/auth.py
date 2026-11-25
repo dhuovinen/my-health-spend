@@ -13,6 +13,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
+import psycopg
 import pyotp
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
@@ -27,6 +28,9 @@ TOTP_ISSUER = "My Health Spend"
 ENROLMENT_LINK_MINUTES = 15
 RECOVERY_CODES = 10
 RECOVERY_LINK_MINUTES = 15
+SIGNUP_MINUTES = 15
+MAX_NAME = 80
+EMAIL_TAKEN = "There's already an account for {email}."
 
 _hasher = PasswordHasher()
 # Verified against when the email is unknown, so a wrong email takes as long as a wrong password.
@@ -44,10 +48,12 @@ class Member:
     email: str
     display_name: str
     is_owner: bool = False
+    has_password: bool = True
 
 
 def _member(row: dict) -> Member:
-    return Member(str(row["id"]), str(row["household_id"]), row["email"], row["display_name"], row["is_owner"])
+    return Member(str(row["id"]), str(row["household_id"]), row["email"], row["display_name"], row["is_owner"],
+                  row["password_hash"] is not None)
 
 
 @dataclass(frozen=True)
@@ -60,6 +66,8 @@ class Session:
     display_name: str
     code_passed: bool = False
     is_owner: bool = False
+    has_password: bool = True
+    started_at: datetime | None = None  # when the sign-in was completed (or begun, before the code)
 
 
 def _now() -> datetime:
@@ -186,11 +194,12 @@ class Accounts:
 
     def code_setup_secret(self, member_id: str) -> str | None:
         """The authenticator secret to show at sign-in, for a member who has signed in without a code and never
-        confirmed one (ADR-049): once the code is back on, they set it up here rather than being locked out. None
-        for everyone else; a member who never signed in uses the enrolment link instead."""
+        confirmed one (ADR-049): once the code is back on, they set it up here rather than being locked out. Also for
+        a member who signed up with a provider and hasn't entered a first code yet (PRV-13, ADR-059). None for
+        everyone else; a member who never signed in uses the enrolment link instead."""
         with self.db.tx() as c:
             row = c.execute("SELECT * FROM app.members WHERE id = %s", (member_id,)).fetchone()
-        if row is None or row["totp_confirmed"] or not row["signed_in_without_code"]:
+        if row is None or row["totp_confirmed"] or not (row["signed_in_without_code"] or row["signed_up_with"]):
             return None
         return self.keyring.decrypt(str(row["household_id"]), bytes(row["totp_secret"]), f"totp:{member_id}").decode()
 
@@ -330,6 +339,12 @@ class Accounts:
             except VerificationError:
                 pass
             return None
+        if row["password_hash"] is None:  # signed up with a provider (ADR-059): nothing to guess, so no lock
+            try:
+                _hasher.verify(_DUMMY_HASH, password)
+            except VerificationError:
+                pass
+            return None
         if self._locked(row):
             return None
         try:
@@ -379,6 +394,13 @@ class Accounts:
         if row is None or self._locked(row):
             return None
         return _member(row)
+
+    def identity_linked(self, provider: str, subject: str) -> bool:
+        """Whether this provider account is linked to anyone, locked or not: a locked member's account mustn't be
+        offered sign-up as if it were new."""
+        with self.db.tx() as c:
+            return c.execute("SELECT 1 FROM app.member_identities WHERE provider = %s AND subject = %s",
+                             (provider, subject)).fetchone() is not None
 
     def start_identity_link(self, member_id: str, state: str, minutes: int) -> None:
         """Remember who is linking an account, against the flow's state, until the provider sends them back."""
@@ -436,6 +458,75 @@ class Accounts:
                              (member_id,)).fetchall()
         return {r["provider"]: r["email"] for r in rows}
 
+    def has_password(self, member_id: str) -> bool:
+        with self.db.tx() as c:
+            row = c.execute("SELECT password_hash IS NOT NULL AS has FROM app.members WHERE id = %s",
+                            (member_id,)).fetchone()
+        return bool(row and row["has"])
+
+    # --- self-service sign-up (PRV-13, ADR-059) ---
+
+    def email_taken(self, email: str) -> bool:
+        return self._member_row(email) is not None
+
+    def start_signup(self, provider: str, subject: str, email: str, minutes: int = SIGNUP_MINUTES) -> tuple[str, str]:
+        """Hold who came back from the provider until they create the account. Returns the cookie token and the form
+        token; only a hash of the first is stored."""
+        token, form_token = secrets.token_urlsafe(32), secrets.token_urlsafe(24)
+        with self.db.tx() as c:
+            c.execute("DELETE FROM app.pending_signups WHERE expires_at <= now()")
+            c.execute("INSERT INTO app.pending_signups (token_hash, provider, subject, email, form_token, expires_at) "
+                      "VALUES (%s, %s, %s, %s, %s, now() + make_interval(mins => %s))",
+                      (_hash_token(token), provider, subject, email.strip().lower(), form_token, minutes))
+        return token, form_token
+
+    def pending_signup(self, token: str | None) -> dict | None:
+        """The pending sign-up under this cookie token, if it hasn't expired. Not used up."""
+        if not token:
+            return None
+        with self.db.tx() as c:
+            row = c.execute("SELECT provider, subject, email, form_token FROM app.pending_signups "
+                            "WHERE token_hash = %s AND expires_at > now()", (_hash_token(token),)).fetchone()
+        return dict(row) if row else None
+
+    def end_signup(self, token: str | None) -> bool:
+        """Use up a pending sign-up. Returns whether this call was the one that used it, so two posts racing with
+        the same token make one account."""
+        if not token:
+            return False
+        with self.db.tx() as c:
+            return c.execute("DELETE FROM app.pending_signups WHERE token_hash = %s",
+                             (_hash_token(token),)).rowcount == 1
+
+    def sign_up(self, provider: str, subject: str, email: str, display_name: str, terms_version: str,
+                privacy_version: str) -> Member:
+        """A new household with this person as its first member, no password, and the provider account linked, all
+        or nothing. Raises AccountError if the email or the provider account is already in use."""
+        email, name = email.strip().lower(), " ".join(display_name.split())
+        if not name or len(name) > MAX_NAME:
+            raise AccountError(f"Enter your name (up to {MAX_NAME} characters).")
+        if "@" not in email:
+            raise AccountError("The provider didn't give an email address.")
+        household_id = self.create_household(f"{name}'s household")
+        member_id = str(uuid.uuid4())
+        sealed = self.keyring.encrypt(household_id, pyotp.random_base32().encode(), f"totp:{member_id}")
+        try:
+            with self.db.tx() as c:
+                c.execute(
+                    "INSERT INTO app.members (id, household_id, email, display_name, password_hash, totp_secret, "
+                    "signed_up_with, terms_version, privacy_version, terms_accepted_at) "
+                    "VALUES (%s, %s, %s, %s, NULL, %s, %s, %s, %s, now())",
+                    (member_id, household_id, email, name, sealed, provider, terms_version, privacy_version))
+                c.execute("INSERT INTO app.member_identities (provider, subject, member_id, email) "
+                          "VALUES (%s, %s, %s, %s)", (provider, subject, member_id, email))
+        except BaseException as e:
+            with self.db.tx() as c:  # nothing else is in a household this new
+                c.execute("DELETE FROM app.households WHERE id = %s", (household_id,))
+            if isinstance(e, psycopg.errors.UniqueViolation):
+                raise AccountError(EMAIL_TAKEN.format(email=email)) from None
+            raise
+        return Member(member_id, household_id, email, name, False, False)
+
     # --- sessions ---
 
     def start_session(self, member: Member, without_code: bool = False) -> str:
@@ -460,7 +551,8 @@ class Accounts:
         h = _hash_token(token)
         with self.db.tx() as c:
             row = c.execute(
-                "SELECT s.*, m.display_name, m.is_owner FROM app.sessions s JOIN app.members m ON m.id = s.member_id "
+                "SELECT s.*, m.display_name, m.is_owner, m.password_hash IS NOT NULL AS has_password "
+                "FROM app.sessions s JOIN app.members m ON m.id = s.member_id "
                 "WHERE s.token_hash = %s",
                 (h,),
             ).fetchone()
@@ -472,7 +564,7 @@ class Accounts:
                 return None
             c.execute("UPDATE app.sessions SET last_seen_at = now() WHERE token_hash = %s", (h,))
         return Session(h, str(row["member_id"]), str(row["household_id"]), row["mfa_passed"], row["csrf_token"],
-                       row["display_name"], row["code_passed"], row["is_owner"])
+                       row["display_name"], row["code_passed"], row["is_owner"], row["has_password"], row["created_at"])
 
     def pass_mfa(self, session: Session, code_passed: bool = True) -> str:
         """Mark MFA passed under a fresh token (the pre-MFA token stops working). Returns the new cookie value.
