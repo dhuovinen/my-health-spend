@@ -294,7 +294,7 @@ def to_ingest(eobs: list[dict], payer: Payer, member_id: str | None, providers: 
         if d.get("type") == "eob" and d.get("claim_number"):
             existing.setdefault(_norm(d["claim_number"]), []).append(d)
     known_visits = list(visits)
-    out = {"schema_version": "0.1", "source": {"prepared_by": f"MHS insurer connection: {payer.label}"},
+    out = {"schema_version": "0.1", "source": {"prepared_by": f"CareBack insurer connection: {payer.label}"},
            "visits": [], "documents": []}
     res = Result(out)
     for raw in eobs:

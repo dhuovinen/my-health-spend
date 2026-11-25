@@ -1,6 +1,6 @@
 # Demo: Release 1 on a laptop
 
-For the whole app, including the Release 2 features and staging, see [USER_TEST_GUIDE.md](USER_TEST_GUIDE.md). A ten-minute walkthrough of My Health Spend on the local Docker Compose stack, with made-up documents in [`samples/demo/`](../samples/demo/). Every name, number and address in them is synthetic; never demo with the real `data/` folder.
+For the whole app, including the Release 2 features and staging, see [USER_TEST_GUIDE.md](USER_TEST_GUIDE.md). A ten-minute walkthrough of CareBack on the local Docker Compose stack, with made-up documents in [`samples/demo/`](../samples/demo/). Every name, number and address in them is synthetic; never demo with the real `data/` folder.
 
 ## The story
 
@@ -78,7 +78,7 @@ To run the story again from an empty household, delete the stack's data and star
 docker compose --profile test down -v
 ```
 
-Then `docker compose up -d` and `mhs-admin demo-setup` again, and remove the old "My Health Spend" entry from the authenticator app.
+Then `docker compose up -d` and `mhs-admin demo-setup` again, and remove the old "CareBack" entry from the authenticator app (one made before the rename says "My Health Spend").
 
 ## If something goes wrong
 

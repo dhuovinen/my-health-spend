@@ -84,7 +84,7 @@ def test_empty_home_has_hero_help_and_settings(web):
     client = web.client
     page = client.get("/")
     assert page.status_code == 200
-    assert "My Health Spend" in page.text and "No visits yet" in page.text
+    assert "<h1>Care<b>Back</b></h1>" in page.text and "No visits yet" in page.text
     assert 'href="/help"' in page.text and 'href="/settings"' in page.text
     assert client.get("/help").status_code == 200
     assert client.get("/health").json() == {"ok": True}

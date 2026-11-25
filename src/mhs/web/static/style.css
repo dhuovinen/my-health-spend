@@ -41,7 +41,7 @@ h3 { font-size: 1rem; }
 .topbar .inner { max-width: 1180px; margin: 0 auto; padding: .6rem 16px; display: flex; align-items: center; gap: 1.25rem; }
 .brand { display: flex; align-items: center; gap: .5rem; font-family: var(--font-display); font-weight: 750; color: var(--text); font-size: 1.05rem; }
 .brand img { width: 28px; height: 28px; }
-.dollar { color: var(--accent); }
+.brand b { font-weight: inherit; color: var(--accent); }
 .nav { display: flex; gap: .25rem; flex-wrap: wrap; }
 .nav a { color: var(--muted); padding: .35rem .65rem; border-radius: var(--radius-sm); font-weight: 500; }
 .nav a.active, .nav a:hover { color: var(--text); background: var(--surface-2); text-decoration: none; }
@@ -57,7 +57,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 1.5rem 16px 4rem; }
 /* hero */
 .hero { background: var(--dark-surface); color: #f6f9fc; border-radius: var(--radius);
   padding: 2rem; display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; align-items: end; margin-bottom: 1.5rem; }
-.hero .dollar { color: #7ea8ff; }
+.hero h1 b { font-weight: inherit; color: #7ea8ff; }
 .hero p { margin: 0; opacity: .92; max-width: 620px; }
 .hero .actions { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; }
 .hero label { color: rgba(255,255,255,.85); }

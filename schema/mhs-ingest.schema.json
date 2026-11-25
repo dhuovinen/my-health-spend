@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://my-health-spend.local/schema/mhs-ingest-0.1.json",
-  "title": "My Health Spend ingest file",
+  "title": "CareBack ingest file",
   "description": "One ingest batch. Every section is optional, so a file can carry only settings (plans, accounts, providers), only visits and documents, or both. Records are upserted by id: re-importing a file with the same id replaces that record. Money is in dollars and is converted to integer cents on import. Cross-references (provider_id, visit_id and so on) are checked by the importer, not by this schema.",
   "type": "object",
   "required": [

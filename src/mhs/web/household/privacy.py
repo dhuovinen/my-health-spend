@@ -55,7 +55,7 @@ def export_household(db: Database, keyring: Keyring, objects: ObjectStore, vault
 
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         ingest: dict = {"schema_version": "0.1",
-                        "source": {"prepared_by": "My Health Spend export", "prepared_on": manifest["exported_at"][:10]}}
+                        "source": {"prepared_by": "CareBack export", "prepared_on": manifest["exported_at"][:10]}}
         for section, kind in SECTIONS.items():
             records = []
             for rec in store.all(kind):
@@ -85,7 +85,7 @@ def export_household(db: Database, keyring: Keyring, objects: ObjectStore, vault
         manifest["records"]["vault_entry"] = len(identifiers)
         add("identifiers.json", json.dumps(identifiers, indent=2).encode())
         z.writestr("README.txt", (
-            "My Health Spend export\n\n"
+            "CareBack export\n\n"
             "ingest.json      your records (plans, members, providers, visits, documents, notes); import it again\n"
             "                 with the files folder beside it\n"
             "files/           the statements, EOBs and uploads you stored, unchanged\n"

@@ -1,4 +1,4 @@
-# My Health Spend (MHS)
+# CareBack (code name MHS; formerly My Health Spend, ADR-060)
 
 Reconciles provider bills, insurer EOBs and HSA payments per visit to find billing errors and overpayment. **Durable tier** (docs/DECISIONS.md ADR-020): read `docs/VISION.md`, `docs/ARCHITECTURE.md` and `docs/ROADMAP.md` before structural work, and record irreversible choices as an ADR in `docs/DECISIONS.md` first.
 
@@ -106,6 +106,7 @@ First-time setup and the converter's warnings are in `docs/SETUP.md`. Everything
 
 ## Gotchas
 
+- The product is CareBack (ADR-060); code, package and infrastructure names stay `mhs`. `tests/test_brand_name.py` fails if "My Health $pend" or "My Health Spend" appears anywhere under `src/`.
 - Brand and UI standard: `docs/UI_GUIDE.md`. The app is on it, with Manrope and DM Sans self-hosted in `web/static/fonts/`; new visual work follows the guide. DM Sans has no tabular digits, so figures that must line up use `.num` (Manrope).
 - `data/` holds the owner's real health data and is git-ignored. Never import test files into it, never commit it, and don't read the source PDFs or statements unless the owner asks. To try the app, point `MHS_DATA_DIR` at a scratch folder and import `samples/example-ingest.json`.
 - Money is integer cents everywhere inside the app (`src/mhs/data/money.py`); ingest files use dollars.

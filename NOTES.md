@@ -2,7 +2,7 @@
 
 ## What this is
 
-My Health Spend (MH$): a personal app that reconciles provider bills, insurer EOBs and payment
+CareBack (formerly My Health Spend; code name `mhs`, ADR-060): a personal app that reconciles provider bills, insurer EOBs and payment
 records (HSA/FSA/card) per visit to find billing errors and overpayment. Release 0 (built) is
 single-user and local; Release 1 is a server-side web app for the household. The project is now
 durable tier: see `CLAUDE.md` (runbook, gotchas) and `docs/` (VISION, ARCHITECTURE, ROADMAP,

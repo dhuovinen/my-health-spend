@@ -39,7 +39,7 @@ def test_page_is_careback_and_never_names_the_old_brand(release0):
     """ADR-060 and the owner's call of 2026-11-25: the page doesn't mention My Health Spend at all, and "Back" never
     promises money back."""
     text = release0.get("/welcome").text
-    assert not re.search(r"Health \$?[Ss]pend|MyHealthSpend|MH\$", text)
+    assert not re.search(r"Health\s+(?:\$|[Ss])pend|MyHealthSpend|MH\$", text)
     assert "<title>CareBack" in text and 'aria-label="CareBack home"' in text
     assert "It can’t promise that" in text
     assert not re.search(r"(get|win) (your|you) money back|guarantee|save you", text, re.I)

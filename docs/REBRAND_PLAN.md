@@ -182,7 +182,7 @@ Code work can start now; these gate step 6.3 (making CareBack the public address
 | --- | --- | --- | --- |
 | 1 | Owner picks the mark (done: B) and the line; mark gets its final 16 px version | | §8 gates 4 and 5 |
 | 2 | Produce the asset files (§2.3); update UI_GUIDE.md and its artifacts. **Done 2026-11-25** (`tools/make_brand_assets.py`), except the two style-guide artifacts linked from UI_GUIDE.md | `feat/careback-rebrand` | 1 |
-| 3 | App text, templates, tests and the no-old-name test (§3) | `feat/careback-rebrand` | 2 |
+| 3 | App text, templates, tests and the no-old-name test (§3). **Done 2026-11-25** (`tests/test_brand_name.py`). Still open: send the renamed terms and privacy notice to the attorney; the domain rows wait for step 6 | `feat/careback-rebrand` | 2 |
 | 4 | Landing page: approach 2 (§5) was chosen over approach 1. **Built 2026-11-25** | `feat/careback-rebrand` | 2 |
 | 5 | Verify: `uv run pytest`, `tests/test_ux_layout.py` at 375 and 1280 px, both themes, then merge | | 3, 4 |
 | 6 | Domains, OAuth, main address, email (§6) | ops | 5 and the §8 gates |

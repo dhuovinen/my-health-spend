@@ -193,7 +193,7 @@ def create_app(
 
     templates = make_templates([HERE / "templates"], context)
 
-    app = FastAPI(title="My Health Spend", docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(title="CareBack", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.accounts = accounts
     app.state.vault = vault
     app.mount("/static", StaticFiles(directory=WEB / "static"), name="static")
