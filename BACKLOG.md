@@ -27,7 +27,13 @@ Items deferred from the MVP. Newest decisions are in `docs/MVP_REQUIREMENTS.md` 
 | B-21 | Prior-year (2025) HSA history | Real data, 2026-10-09 | Needed to close 2025 Southeastern Retina payments; HSA export starts 2026-01-14. |
 | B-22 | Follow-up tracking on provider notes (open / resolved, follow-up date, reminders) | Owner, 2026-10-09 | MVP notes are a plain dated log. |
 | B-23 | Sign-in: tell a wrong password apart from a locked account | Owner, 2026-11-06 | Not built. One message covers two conditions, and the code step hides a lock completely. Needs an ADR. See [B-23 in detail](#b-23-in-detail). |
-| B-24 | Self-service sign-up | Owner, 2026-11-07 | Invitation only for now (ADR-048). The owner expects to open sign-up later, including through Google or Microsoft. It needs the launch gate in the Product Requirements first, a way to create a household on sign-up, and abuse limits. |
+| B-24 | Self-service sign-up | Owner, 2026-11-07 | Google and Microsoft sign-up specified 2026-11-21 as PRV-13 (docs/SIGN_UP_REQUIREMENTS.md, ADR-059), behind an owner toggle. Built on `feat/social-signup`; the owner will open sign-up and limit who gets in by other means (2026-11-21). Its open decisions are B-27 to B-30. |
+| B-25 | Sign-up with Apple | Owner, 2026-11-21 | Apple returns no email without a scope, and with one it answers with a cross-site POST the flow cookie doesn't survive (ADR-057). Needs that callback, or the email asked for and verified by the app. |
+| B-26 | Sign-up and sign-in with an email address, without Google or Microsoft | Owner, 2026-11-21 | Like Dropbox's email field. Needs outbound mail for a code or link, and abuse limits. Members created by invitation keep their password meanwhile. |
+| B-27 | Decide: can a member rename their household? | Owner, 2026-11-21 | Open decision from sign-up (SIGN_UP_REQUIREMENTS §9.1). A sign-up gets "<name>'s household" and no page renames it. Building a rename on Settings is small. |
+| B-28 | Decide: do new members set up an authenticator code? | Owner, 2026-11-21 | Open decision from sign-up (§9.2). Built as recommended: new members follow the owner's code setting (required by default). The alternative, trusting the provider's own second factor, goes against ADR-048. |
+| B-29 | Decide: allow Microsoft work and school accounts to sign up? | Owner, 2026-11-21 | Open decision from sign-up (§9.3). Only personal Microsoft accounts have a verified email today; work and school accounts need the optional `xms_edov` claim set up in Entra (OWNER_SETUP.md). |
+| B-30 | Decide: who drafts the final Terms of Service? | Owner, 2026-11-21 | Open decision from sign-up (§9.4). `/terms` has a draft written in the build session, marked for the attorney's review with the privacy notice. A new version needs `TERMS_VERSION` in `web/household/signup.py` changed. |
 
 ## B-23 in detail
 

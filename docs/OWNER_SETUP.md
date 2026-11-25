@@ -62,12 +62,13 @@ What it gives you: members sign in with a Google, Microsoft or Apple account ins
   - **Still to do on Google's branding page before publishing** (Testing mode works without them):
     - [ ] **Contact addresses.** The support email and developer contact email are set to a personal address for now. Change both to a `myhealthspend.com` address. The support email must be your Google account's address or a Google Group you manage, so it needs a group (or Google Workspace) for `myhealthspend.com`; the developer contact can be any address.
     - [ ] **Logo.** A square image, 120 × 120 px, PNG or JPG, under 1 MB. Uploading one means Google must verify the brand before members see it, so add it when you're ready to publish. The brand mark exists only as the website's PNG and the app's `favicon.svg` (UI_GUIDE.md); a 120 px export is needed.
-    - [ ] **App domain.** Application home page `https://myhealthspend.com`; privacy policy `https://myhealthspend.com/privacy-notice` (the app's page; it is still a draft for the attorney, Stage 5); terms of service: the app has no terms page yet, so one has to be written before this field can be filled. Use these once `myhealthspend.com` is served by the app (the switch after sign-in works); until then they point at the old Hostinger site.
+    - [ ] **App domain.** Application home page `https://myhealthspend.com`; privacy policy `https://myhealthspend.com/privacy-notice` (the app's page; it is still a draft for the attorney, Stage 5); terms of service `https://myhealthspend.com/terms` (the app's page since PRV-13; a draft for the attorney too). Use these once `myhealthspend.com` is served by the app (the switch after sign-in works); until then they point at the old Hostinger site.
     - [ ] Then publish (Audience > Publish app) and ask for brand verification (Verification Center). This is the "Google OAuth app verification" in Stage 5.
 - [ ] **Microsoft:** entra.microsoft.com > App registrations > New registration.
   1. Supported accounts: accounts in any organizational directory and personal Microsoft accounts.
   2. Redirect URI: Web, `https://app.myhealthspend.com/signin/with/microsoft/callback`; then under Authentication add `https://myhealthspend.com/signin/with/microsoft/callback`. For local use, `http://localhost:3063/signin/with/microsoft/callback` (Microsoft accepts plain `http` only for `localhost`). If Entra says your account can't register apps, it has no directory: a free Azure account creates one.
   3. Certificates & secrets > New client secret. Copy the Application (client) ID and the secret's value.
+  4. Only if work and school accounts should be able to **sign up** (PRV-13): Token configuration > Add optional claim > ID > `xms_edov`. Without it only personal Microsoft accounts can sign up, because Microsoft doesn't vouch for a work account's email (ADR-059). Linking and signing in work either way.
 - [ ] **Apple** (ADR-057; needs the paid Apple Developer Program, and a real HTTPS domain, so staging only: do Stage 4 first): developer.apple.com > Certificates, Identifiers & Profiles.
   1. Identifiers > App IDs: register one (for example `com.myhealthspend.app`) with "Sign in with Apple" ticked.
   2. Identifiers > Services IDs: register one (for example `com.myhealthspend.web`). This is the client ID. Tick "Sign in with Apple", Configure: primary App ID from step 1, "Domains and Subdomains" `app.myhealthspend.com`, "Return URLs" `https://app.myhealthspend.com/signin/with/apple/callback`. Apple accepts neither `localhost` nor plain `http`.
@@ -105,6 +106,7 @@ What it gives you: members sign in with a Google, Microsoft or Apple account ins
   ```
   To change a value later, add a version (`gcloud secrets versions add <name> --data-file=-`) and deploy the app again.
 - [ ] On the admin screen, check that the provider shows as on.
+- [ ] **Sign-up (PRV-13, ADR-059), only once the launch gate below is passed:** the Google consent screen must be published (Audience > Publish app), or only test users get through. Then on the admin screen turn on "Consent before collection", then "Open sign-up". Keep sign-up closed on staging except to try it: staging holds made-up data only.
 
 ### 3b. AI reading with Claude (about 30 minutes, plus the agreement)
 
@@ -163,7 +165,7 @@ What it gives you: a stable address instead of the `run.app` one. That address g
 
 **Inviting anyone outside your household also needs** (the launch gate, ROADMAP.md):
 
-- [ ] A **healthcare privacy attorney** reviews the privacy notice (`/privacy-notice`), the consent page (`/consent`) and `docs/BREACH_RESPONSE.md`, and confirms what the FTC Health Breach Notification Rule and Washington's My Health My Data Act require of you. Update all three with their changes, then remove "draft".
+- [ ] A **healthcare privacy attorney** reviews the privacy notice (`/privacy-notice`), the Terms of Service (`/terms`), the consent page (`/consent`) and `docs/BREACH_RESPONSE.md`, and confirms what the FTC Health Breach Notification Rule and Washington's My Health My Data Act require of you. Update all three with their changes, then remove "draft".
 - [ ] A **tabletop exercise** of the breach plan (TC-CMP-01-2).
 - [ ] **Turn on "Consent before collection"** on the admin screen.
 - [ ] Decide whether the authenticator code must stay on for other households (ADR-049); the recommendation is yes.

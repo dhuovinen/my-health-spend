@@ -41,7 +41,7 @@ h3 { font-size: 1rem; }
 .topbar .inner { max-width: 1180px; margin: 0 auto; padding: .6rem 16px; display: flex; align-items: center; gap: 1.25rem; }
 .brand { display: flex; align-items: center; gap: .5rem; font-family: var(--font-display); font-weight: 750; color: var(--text); font-size: 1.05rem; }
 .brand img { width: 28px; height: 28px; }
-.dollar { color: var(--accent); }
+.brand b { font-weight: inherit; color: var(--accent); }
 .nav { display: flex; gap: .25rem; flex-wrap: wrap; }
 .nav a { color: var(--muted); padding: .35rem .65rem; border-radius: var(--radius-sm); font-weight: 500; }
 .nav a.active, .nav a:hover { color: var(--text); background: var(--surface-2); text-decoration: none; }
@@ -57,7 +57,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 1.5rem 16px 4rem; }
 /* hero */
 .hero { background: var(--dark-surface); color: #f6f9fc; border-radius: var(--radius);
   padding: 2rem; display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; align-items: end; margin-bottom: 1.5rem; }
-.hero .dollar { color: #7ea8ff; }
+.hero h1 b { font-weight: inherit; color: #7ea8ff; }
 .hero p { margin: 0; opacity: .92; max-width: 620px; }
 .hero .actions { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; }
 .hero label { color: rgba(255,255,255,.85); }
@@ -604,7 +604,19 @@ form.inline.settings-row > .btn { margin-top: calc(26px + .2rem); }
 form.inline.type-row { align-items: flex-end; gap: .6rem; }
 @media (min-width: 861px) { form.inline.type-row .btn { min-height: 2.5rem; padding-top: 0; padding-bottom: 0; } }
 
-/* Insurance card scan and the card's contacts on Coverage (ING-11, ADR-059) */
+/* log in or sign up (PRV-13, ADR-059) */
+.signin .social-signin .btn.provider { min-height: 44px; width: 100%; background: var(--surface); }
+.provider-logo { flex: none; }
+.or-divider { display: flex; align-items: center; gap: .75rem; margin: 1rem 0 .5rem; color: var(--muted); font-size: .85rem; }
+.or-divider::before, .or-divider::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
+.password-signin > summary { min-height: 44px; padding: .65rem 0; font-weight: 600; }
+.password-signin > form { margin-top: .5rem; }
+.signin .legal { margin-top: 1rem; }
+.signup-as { display: flex; align-items: center; gap: .5rem; overflow-wrap: anywhere; }
+label.agree { flex-direction: row; gap: .6rem; align-items: flex-start; min-height: 44px; font-size: .9rem; color: var(--text); }
+.agree input { width: 1.2rem; height: 1.2rem; margin-top: .15rem; flex: none; }
+
+/* Insurance card scan and the card's contacts on Coverage (ING-11, ADR-061) */
 .card-shots { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
 .card-shots figure { margin: 0; flex: 1 1 260px; max-width: 480px; }
 .card-shots img { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); border: 1px solid var(--line, #d5dbe5); }

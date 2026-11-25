@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from markupsafe import Markup
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -35,13 +35,14 @@ from mhs.web.household import privacy, security
 from mhs.web.household.admin_screen import add_admin_screen
 from mhs.web.household.card_scan import add_card_scan
 from mhs.web.household.auth import AccountError, Accounts, Member, Session
-from mhs.web.household.features import Features
+from mhs.web.household.features import ALLOW_SIGNUP, REQUIRE_CODE, Features
 from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.intake import TOKEN, Intake, add_intake
 from mhs.web.household.qr import qr_svg
 from mhs.web.household import consent
 from mhs.web.household.connect import add_insurer_connection
 from mhs.web.household.consent import add_consent
+from mhs.web.household.signup import add_signup
 from mhs.web.household.social import add_social_sign_in
 from mhs.web.pages import VIEW_COOKIE, WEB, add_pages, make_templates
 
@@ -51,6 +52,7 @@ COOKIE = "mhs_session"
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 PREVIEW_MINUTES = 60  # an import preview must be confirmed within an hour
 LINK_PATTERN = re.compile(r"^[A-Za-z0-9_-]{20,100}$")
+RECENT_SIGNIN_MINUTES = 10  # a member without a password or code confirms risky steps by having just signed in
 
 
 class SignInRequired(Exception):
@@ -117,7 +119,7 @@ class HouseholdHost:
         return value
 
     def cards_for(self, request: Request, store: HouseholdStore, plan_ids: list[str]) -> dict[str, list[dict]]:
-        """Kept card images by plan (only when the owner's keep_card_images setting kept them, ADR-059)."""
+        """Kept card images by plan (only when the owner's keep_card_images setting kept them, ADR-061)."""
         return self.card_store.kept(store.household_id, plan_ids) if self.card_store else {}
 
     def _detokenize(self, household_id: str, token: str) -> str:
@@ -189,28 +191,41 @@ def create_app(
     features = Features(db)
     queue = JobQueue(db)
 
-    def providers_on() -> tuple:
+    def providers_on(settings: dict | None = None) -> tuple:
         """The configured providers the owner hasn't turned off (ADR-049)."""
         if not config.sign_in_providers:
             return ()
-        settings = features.all()
+        settings = settings if settings is not None else features.all()
         return tuple(p for p in config.sign_in_providers if settings.get(f"signin_{p.name}", True))
+
+    def signup_open(settings: dict | None = None) -> bool:
+        """The owner has opened sign-up and a provider that allows it is on (PRV-13, ADR-059)."""
+        settings = settings if settings is not None else features.all()
+        return bool(settings[ALLOW_SIGNUP]) and any(p.signup for p in providers_on(settings))
 
     def context(request: Request) -> dict:
         session = getattr(request.state, "session", None)
         signed_in = session is not None and session.mfa_passed
+        settings = features.all()
+        signup = signup_open(settings)
         return {"session": session if signed_in else None, "csrf": session.csrf_token if session else "",
                 "show_nav": signed_in, "path_import": False,
-                "landing_link": {"href": "/signin", "label": "Sign in"},
-                "sign_in_providers": providers_on(),
-                "code_required": bool(session and session.is_owner) or features.require_code()}
+                "landing_link": {"href": "/signin", "label": "Sign in or sign up" if signup else "Sign in"},
+                "public_url": config.public_url,
+                "sign_in_providers": providers_on(settings), "signup_open": signup,
+                "has_password": session.has_password if session else True,
+                "code_required": bool(session and session.is_owner) or settings[REQUIRE_CODE]}
 
     templates = make_templates([HERE / "templates"], context)
 
-    app = FastAPI(title="My Health Spend", docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(title="CareBack", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.accounts = accounts
     app.state.vault = vault
     app.mount("/static", StaticFiles(directory=WEB / "static"), name="static")
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    def favicon():
+        return FileResponse(WEB / "static" / "favicon.ico", media_type="image/x-icon")
 
     main_host = urlsplit(config.public_url).netloc.lower()
 
@@ -280,6 +295,26 @@ def create_app(
     def check_csrf(session: Session, token: str | None) -> None:
         if not token or not secrets.compare_digest(str(token), session.csrf_token):
             raise HTTPException(403)
+
+    def confirmed(session: Session, password: str, code: str, *, with_password: bool, with_code: bool) -> bool:
+        """The member is who the session says, before a step that exports, deletes or replaces recovery codes. A
+        member who signed up with a provider has no password (ADR-059): the code stands in for it, or, while the
+        owner has the code off, a sign-in within the last few minutes."""
+        if session.has_password:
+            if with_password and accounts.check_password(accounts.email_of(session.member_id), password) is None:
+                return False
+            return not (with_code and needs_code(session)) or accounts.check_totp(session.member_id, code)
+        if needs_code(session):
+            return accounts.check_totp(session.member_id, code)
+        started = session.started_at
+        return started is not None and \
+            (datetime.now(timezone.utc) - started).total_seconds() < RECENT_SIGNIN_MINUTES * 60
+
+    def not_confirmed(session: Session, what: str) -> str:
+        if session.has_password or needs_code(session):
+            return f"That {what} didn't work."
+        return (f"For your safety, sign out and sign in again, then try this within {RECENT_SIGNIN_MINUTES} "
+                "minutes.")
 
     app.state.member = member
     app.state.check_csrf = check_csrf
@@ -352,11 +387,18 @@ def create_app(
         if session is None:
             return RedirectResponse("/signin", status_code=303)
         check_csrf(session, csrf_token)
+        setting_up = accounts.code_setup_secret(session.member_id) is not None
         if not accounts.check_totp(session.member_id, code):
             return mfa_page(request, session, 401,
                             error="That code didn't work. Use the current code from your authenticator app.")
-        response = RedirectResponse("/", status_code=303)
-        set_cookie(response, accounts.pass_mfa(session))
+        token = accounts.pass_mfa(session)
+        if setting_up and not session.has_password and accounts.recovery_codes_left(session.member_id) == 0:
+            # A member who signed up (ADR-059) has never been given recovery codes: shown once, then Home.
+            response = page(request, "welcome.html", codes=accounts.new_recovery_codes(
+                accounts.email_of(session.member_id)))
+        else:
+            response = RedirectResponse("/", status_code=303)
+        set_cookie(response, token)
         return response
 
     # Enrolment links (mhs-admin prints them): the authenticator QR code, shown once. Opening the link only
@@ -415,8 +457,11 @@ def create_app(
         ctx.setdefault("left", accounts.recovery_codes_left(session.member_id))
         return page(request, "account.html", status, identities=accounts.identities_of(session.member_id), **ctx)
 
+    begin_signup = add_signup(app, config=config, accounts=accounts, db=db, page=page, set_cookie=set_cookie,
+                              needs_code=needs_code, signup_open=signup_open, providers_on=providers_on)
     add_social_sign_in(app, config=config, accounts=accounts, db=db, page=page, member=member, check_csrf=check_csrf,
-                       set_cookie=set_cookie, providers_on=providers_on, needs_code=needs_code, mfa_page=mfa_page)
+                       set_cookie=set_cookie, providers_on=providers_on, needs_code=needs_code, mfa_page=mfa_page,
+                       sign_up=begin_signup)
     add_admin_screen(app, config=config, accounts=accounts, features=features, db=db, page=page, member=member,
                      check_csrf=check_csrf, objects=objects)
 
@@ -431,12 +476,10 @@ def create_app(
         owner has the code off and so the member may never have set one up)."""
         session = member(request)
         check_csrf(session, csrf_token)
-        if needs_code(session):
-            if not accounts.check_totp(session.member_id, code):
-                return account_page(request, session, 401,
-                                    error="That code didn't work. Use the current code from your authenticator app.")
-        elif accounts.check_password(accounts.email_of(session.member_id), password) is None:
-            return account_page(request, session, 401, error="That password didn't work.")
+        if not confirmed(session, password, code, with_password=not needs_code(session), with_code=True):
+            error = "That code didn't work. Use the current code from your authenticator app." if needs_code(session) \
+                else not_confirmed(session, "password")
+            return account_page(request, session, 401, error=error)
         codes = accounts.new_recovery_codes(accounts.email_of(session.member_id))
         return account_page(request, session, left=len(codes), codes=codes)
 
@@ -452,11 +495,12 @@ def create_app(
         return data_page(request, member(request))
 
     @app.post("/data/export")
-    def export(request: Request, password: str = Form(""), csrf_token: str = Form("")):
+    def export(request: Request, password: str = Form(""), code: str = Form(""), csrf_token: str = Form("")):
         session = member(request)
         check_csrf(session, csrf_token)
-        if accounts.check_password(privacy.member_email(db, session.member_id), password) is None:
-            return data_page(request, session, 401, error="That password didn't work.")
+        if not confirmed(session, password, code, with_password=True, with_code=False):
+            return data_page(request, session, 401, error=not_confirmed(
+                session, "password" if session.has_password else "code"))
         privacy.log_event(db, session.household_id, session.member_id, "data_exported")
         HouseholdStore(db, session.household_id, actor=session.member_id).log("export", "household", session.household_id)
         data = privacy.export_household(db, keyring, objects, vault, session.household_id,
@@ -472,9 +516,9 @@ def create_app(
         check_csrf(session, csrf_token)
         if confirm.strip() != "DELETE":
             return data_page(request, session, 400, error="Type DELETE to confirm.")
-        if accounts.check_password(privacy.member_email(db, session.member_id), password) is None \
-                or (needs_code(session) and not accounts.check_totp(session.member_id, code)):
-            return data_page(request, session, 401, error="That password or authenticator code didn't work.")
+        if not confirmed(session, password, code, with_password=True, with_code=True):
+            return data_page(request, session, 401, error=not_confirmed(
+                session, "password or authenticator code" if session.has_password else "code"))
         last = privacy.member_count(db, session.household_id) == 1
         if last:
             reference = privacy.delete_household(db, objects, vault, session.household_id, session.member_id)
@@ -553,7 +597,7 @@ def create_app(
     host.card_store = app.state.card_store = add_card_scan(app, templates, db=db, keyring=keyring, objects=objects, vault=vault,
                                     ocr=lambda: intake.ocr, features=features, member=member, check_csrf=check_csrf,
                                     collect_for=collect_for, ai_extraction=accounts.ai_extraction)
-    try:  # scans left open past 24 hours go at start-up too (ADR-059)
+    try:  # scans left open past 24 hours go at start-up too (ADR-061)
         host.card_store.expire()
     except Exception:  # noqa: BLE001 - a clean-up that fails must not stop the app; the next scan page retries it
         log.warning("card scan clean-up failed at start-up")

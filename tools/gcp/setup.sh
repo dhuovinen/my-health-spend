@@ -171,7 +171,7 @@ registry() {
   step "Artifact Registry repository for the image"
   exists gcloud artifacts repositories describe "$REPO" --location="$REGION" "${P[@]}" \
     || run gcloud artifacts repositories create "$REPO" --repository-format=docker --location="$REGION" \
-         --description="My Health Spend images" "${P[@]}"
+         --description="CareBack images" "${P[@]}"
 }
 
 docai() {

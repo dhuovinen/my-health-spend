@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <h1>{{ 'Add the back of your card' if plan else 'Scan your insurance card' }}</h1>
-    <div class="muted">{% if plan %}The back has the phone numbers and the claims address for {{ plan.insurer }}{% if plan.plan_name %}, {{ plan.plan_name }}{% endif %}.{% else %}Take or choose a photo of the front, then the back. MHS reads what is printed on it and fills in your plan for you to check. Nothing is saved until you confirm.{% endif %}</div>
+    <div class="muted">{% if plan %}The back has the phone numbers and the claims address for {{ plan.insurer }}{% if plan.plan_name %}, {{ plan.plan_name }}{% endif %}.{% else %}Take or choose a photo of the front, then the back. CareBack reads what is printed on it and fills in your plan for you to check. Nothing is saved until you confirm.{% endif %}</div>
   </div>
   <a class="back" href="/coverage">Back to Coverage</a>
 </div>

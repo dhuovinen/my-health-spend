@@ -1,4 +1,4 @@
-# My Health Spend, Release 1 local stack (ARCHITECTURE.md "Environments", ADR-030, ADR-031).
+# CareBack (code name mhs), Release 1 local stack (ARCHITECTURE.md "Environments", ADR-030, ADR-031).
 #
 #   docker compose up --build                        app on http://127.0.0.1:3063
 #   docker compose --profile test run --rm tests     full suite against the stack, through `capture`

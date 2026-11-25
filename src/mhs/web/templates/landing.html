@@ -1,112 +1,189 @@
-{# The public landing page (ADR-047). Stands alone: it doesn't extend base.html, reads no household data and is
-   served to people who aren't signed in. Follows docs/UI_GUIDE.md: no unverified statistics, no promised savings,
-   samples labelled as fictional. #}
+{# The public landing page (ADR-047), CareBack's "In your corner" design (ADR-060, REBRAND_PLAN.md §5). Stands alone:
+   it doesn't extend base.html, reads no household data and is served to people who aren't signed in. Follows
+   docs/UI_GUIDE.md: no unverified statistics, no promised savings or money back, samples labelled as fictional.
+   It reads complete without landing.js, which only plays the red pen and the documents lining up. #}
 {% from "_icons.html" import icon %}
-{% macro wordmark() %}<a class="wordmark" href="/welcome" aria-label="My Health Spend home"><img src="/static/landing/mark.png" alt="" width="53" height="53"><span>My Health <span class="dollar">$</span>pend</span></a>{% endmacro %}
+{% macro wordmark() %}<a class="wordmark" href="/welcome" aria-label="CareBack home"><img src="/static/landing/mark.svg" alt="" width="40" height="40"><span>Care<b>Back</b></span></a>{% endmacro %}
+{% macro loop() %}<svg class="pen" aria-hidden="true" preserveAspectRatio="none"><use href="#loop"/></svg>{% endmacro %}
+{% if signup_open %}{% set start = {"href": landing_link.href, "label": "Get started"} %}{% else %}{% set start = landing_link %}{% endif %}
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>My Health $pend | From medical billing chaos to clarity</title>
-  <meta name="description" content="Connect the dots between medical bills, insurance claims and your payments. Explore a clearer picture of your healthcare spending with My Health $pend.">
-  <meta property="og:title" content="My Health $pend | From chaos to clarity">
-  <meta property="og:description" content="Three separate stories. One clear picture of your health spend.">
+  <title>CareBack | In your corner on every medical bill</title>
+  <meta name="description" content="CareBack lines up your provider’s bill, your insurer’s explanation of benefits and what you paid, circles where they don’t agree, and helps you ask about it.">
+  <meta property="og:title" content="CareBack | In your corner on every medical bill">
+  <meta property="og:description" content="Your bill, your insurer’s EOB and what you paid. Side by side.">
   <meta property="og:type" content="website">
-  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  {% set site = public_url or (request.base_url | string).rstrip("/") %}
+  <meta property="og:image" content="{{ site }}/static/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+{% include "_brand_head.html" %}
   <link rel="stylesheet" href="/static/landing.css">
   <script src="/static/landing.js" defer></script>
 </head>
 <body>
+<svg class="defs" width="0" height="0" aria-hidden="true">
+  <symbol id="loop" viewBox="0 0 120 60" preserveAspectRatio="none"><path pathLength="1" d="M8 34C4 16 46 4 84 7c30 3 38 22 26 36-14 15-62 15-88 6C6 43 2 33 12 24c6-5 15-9 26-11"/></symbol>
+</svg>
+
 <header class="wide navbar">
   {{ wordmark() }}
   <nav class="nav-links" aria-label="Main navigation">
-    <a href="#how-it-works">How it works</a>
-    <a href="#why-it-matters">Why it matters</a>
-    <a href="#questions">FAQs</a>
+    <a href="#visit">How it works</a>
+    <a href="#does">What it does</a>
+    <a href="#fair">How we fight fair</a>
+    <a href="#faq">FAQs</a>
   </nav>
-  <div class="navbar-actions">
-    <a class="btn quiet" href="{{ landing_link.href }}">{{ landing_link.label }}</a>
-    <button class="btn brand" type="button" data-open-sample>Explore My Health $pend {{ icon("arrow_up_right") }}</button>
+  <div class="nav-actions">
+    <a class="signin" href="{{ landing_link.href }}">{{ landing_link.label }}</a>
+    {% if signup_open %}<a class="btn brand" href="{{ start.href }}">{{ start.label }}</a>{% endif %}
   </div>
 </header>
 
 <main>
   <section class="hero">
-    <img class="hero-photo" src="/static/landing/billing-chaos.jpg" alt="Fictional medical bills, insurance explanations and receipts marked with red circles and questions about confusing charges." width="1920" height="1024" fetchpriority="high">
     <div class="wide hero-inner">
       <div class="hero-copy">
-        <span class="eyebrow"><span class="eyebrow-dot"></span>Your health. Your money. Your clarity.</span>
-        <h1>Medical bills.<br>Insurance claims.<br><em>Let’s make sense<br>of it all.</em></h1>
-        <p class="hero-description">Your provider, your insurance and your payments don’t always tell the same story. My Health $pend helps connect the dots, so you can see where they disagree.</p>
+        <span class="eyebrow">In your corner on every medical bill</span>
+        <h1>Somebody should check your medical bills. <em>Now somebody does.</em></h1>
+        <p class="hero-lede">CareBack lines up your provider’s bill, your insurer’s explanation of benefits and what you paid, circles where they don’t agree, and helps you ask about it.</p>
         <div class="hero-actions">
-          <button class="btn brand" type="button" data-open-sample>See the clearer picture {{ icon("arrow_right") }}</button>
-          <a class="btn quiet" href="#how-it-works">{{ icon("circle_play") }} How it works</a>
+          <a class="btn brand" href="#visit">See a sample visit {{ icon("arrow_right") }}</a>
+          <a class="btn quiet" href="#does">What CareBack does</a>
         </div>
-        <p class="hero-note">{{ icon("lock") }} No account needed. Explore a sample, not your personal data.</p>
+        <p class="hero-note">{{ icon("lock") }}The sample is fictional. No account needed to look.</p>
       </div>
-      <div class="review-floats">
-        <div class="review-float"><span class="float-icon">{{ icon("file_search") }}</span><div class="float-text"><strong>Understand the bill.</strong><span>Know what you’re being charged for.</span></div><span class="float-check">{{ icon("check") }}</span></div>
-        <div class="review-float"><span class="float-icon">{{ icon("shield") }}</span><div class="float-text"><strong>Check the coverage.</strong><span>See if your insurance lines up.</span></div><span class="float-check">{{ icon("check") }}</span></div>
-        <div class="review-float"><span class="float-icon">{{ icon("wallet") }}</span><div class="float-text"><strong>Follow the money.</strong><span>Match payments. Spot what’s off.</span></div><span class="float-check">{{ icon("check") }}</span></div>
-      </div>
-      <span class="hero-caption">Fictional documents. Very real confusion.</span>
-    </div>
-  </section>
-
-  <section class="reconciliation" aria-label="Three parts of your healthcare spending">
-    <div class="wide reconciliation-inner">
-      <p class="reconcile-label">Three separate stories. <br><strong>Finally, one clear picture.</strong></p>
-      <div class="reconcile-flow">
-        <div class="flow-item">{{ icon("receipt") }}Your provider bill</div>
-        <span class="flow-plus" aria-hidden="true">+</span>
-        <div class="flow-item">{{ icon("shield") }}Your insurance</div>
-        <span class="flow-plus" aria-hidden="true">+</span>
-        <div class="flow-item">{{ icon("credit_card") }}Your payments</div>
-        <span class="flow-plus" aria-hidden="true">=</span>
-        <div class="flow-item flow-total">{{ icon("circle_check") }}Your health spend, understood.</div>
+      <div class="hero-visual">
+        <img class="hero-photo" src="/static/landing/billing-chaos.jpg" alt="Fictional medical bills, insurance explanations and receipts marked with red circles and questions." width="1920" height="1024" fetchpriority="high">
+        <div class="found" data-draw>
+          <span class="found-label"><img src="/static/landing/mark.svg" alt="" width="22" height="22">CareBack found</span>
+          <div class="found-amount"><span class="circled num">$150.00{{ loop() }}</span></div>
+          <strong>Worth a closer look</strong>
+          <p>The bill asks for more than your insurer says you owe. A potential discrepancy, not a confirmed error.</p>
+          <button class="pen-toggle" type="button" hidden>Pause the red pen</button>
+        </div>
+        <span class="hero-caption">Fictional documents. Very real confusion.</span>
       </div>
     </div>
   </section>
 
-  <section class="section" id="how-it-works">
+  <section class="section" id="visit">
     <div class="wide">
-      <div class="section-heading">
-        <div>
-          <span class="eyebrow">Connect the dots. See the gap.</span>
-          <h2>Healthcare is complicated. <br>Your next step shouldn’t be.</h2>
-        </div>
-        <p class="section-intro">From the visit you’ve already paid for to the one you’re planning next, see where your health dollars really go.</p>
+      <div class="section-head">
+        <span class="eyebrow">One visit. Three stories.</span>
+        <h2>Here’s what CareBack sees that nobody else checks.</h2>
+        <p>Your provider, your insurer and your payment account each keep their own record of the same visit. CareBack puts them side by side.</p>
       </div>
-      <div class="steps">
-        <article class="step">
-          <div class="step-top"><span class="step-icon">{{ icon("files") }}</span><span class="step-number">01 / Bring it together</span></div>
-          <h3>One visit. The whole story.</h3>
-          <p>Bring your provider bill, insurance explanation of benefits and payment records into the same conversation.</p>
-          <span class="step-tag">Bills + benefits + payments</span>
+      <div data-draw>
+        <div class="docs">
+          <article class="doc">
+            <span class="doc-kind">{{ icon("receipt") }}Provider bill</span>
+            <h3>Riverview Medical Center</h3>
+            <span class="doc-from">Office visit · March 14 · fictional</span>
+            <div class="doc-line"><span>You owe</span><span class="circled num">$348.00{{ loop() }}</span></div>
+          </article>
+          <article class="doc">
+            <span class="doc-kind">{{ icon("shield") }}Insurer’s EOB</span>
+            <h3>ClearView Health</h3>
+            <span class="doc-from">Claim processed March 28 · fictional</span>
+            <div class="doc-line"><span>You owe</span><span class="num">$198.00</span></div>
+          </article>
+          <article class="doc">
+            <span class="doc-kind">{{ icon("credit_card") }}Your payments</span>
+            <h3>HSA card</h3>
+            <span class="doc-from">Paid March 20 · fictional</span>
+            <div class="doc-line"><span>Paid</span><span class="num">$198.00</span></div>
+          </article>
+        </div>
+        <div class="verdict">
+          <div class="verdict-box">
+            <div class="equation"><span class="num">$348.00</span><span class="op">billed −</span><span class="num">$198.00</span><span class="op">per your EOB =</span><span class="num gap-amount">$150.00</span></div>
+            <p>The provider’s balance is higher than what your insurer says you owe. That’s worth a closer look: it may be a network discount the bill didn’t apply, or a payment it hasn’t counted.</p>
+          </div>
+          <div class="verdict-box">
+            <ul class="verdict-list">
+              <li>Bill matches the EOB <span class="pill look">$150.00 apart</span></li>
+              <li>HSA payment credited on the bill <span class="pill look">Not shown</span></li>
+              <li>EOB matches your plan’s cost sharing <span class="pill ok">Lines up</span></li>
+            </ul>
+            <p class="fineprint">Illustrative example, not a real claim or savings result.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section does" id="does">
+    <div class="wide">
+      <div class="section-head">
+        <span class="eyebrow">What CareBack does for you</span>
+        <h2>Four things, for every visit.</h2>
+        <p>Upload or forward your bills, EOBs and HSA exports. CareBack reads them, you confirm what it read, and it gets to work. (The screens below show fictional examples.)</p>
+      </div>
+      <div class="verbs">
+        <article class="verb">
+          <div class="verb-head"><span class="verb-icon">{{ icon("circle_check") }}</span><h3>Check</h3></div>
+          <p>Every bill, EOB and payment matched line by line, so each visit gets one plain status.</p>
+          <div class="slice">
+            <div class="slice-row"><span>Office visit · Mar 14<small>Riverview Medical Center</small></span><span class="pill look">Worth a look</span></div>
+            <div class="slice-row"><span>Lab work · Mar 14<small>Summit Pathology</small></span><span class="pill ok">Settled</span></div>
+            <div class="slice-row"><span>MRI · Apr 2<small>Valley Radiology</small></span><span class="pill info">Waiting for EOB</span></div>
+          </div>
         </article>
-        <article class="step">
-          <div class="step-top"><span class="step-icon">{{ icon("scan") }}</span><span class="step-number">02 / Look a little closer</span></div>
-          <h3>Find what doesn’t add up.</h3>
-          <p>Look back for duplicate charges, incorrect rates, coverage mismatches and payments that haven’t been counted.</p>
-          <span class="step-tag">Start with past visits</span>
+        <article class="verb">
+          <div class="verb-head"><span class="verb-icon">{{ icon("flag") }}</span><h3>Flag</h3></div>
+          <p>Duplicate charges, wrong rates, misapplied copays, payments that weren’t credited and cost sharing that doesn’t match your plan, each with its numbers and documents.</p>
+          <div class="slice">
+            <div class="slice-row"><span>Billed twice: specimen processing<small>Summit Pathology · two lines on one bill</small></span><span class="num">$95.00</span></div>
+            <div class="slice-row"><span>Coinsurance above your plan’s 20%<small>Valley Radiology · from your EOB</small></span><span class="num">$62.40</span></div>
+          </div>
         </article>
-        <article class="step">
-          <div class="step-top"><span class="step-icon">{{ icon("layers") }}</span><span class="step-number">03 / Move forward smarter</span></div>
-          <h3>Know your next best move.</h3>
-          <p>Understand what needs a follow-up. Next on our roadmap: compare insurance and self-pay options before your next visit.</p>
-          <span class="step-tag">Clarity today. Better decisions tomorrow.</span>
+        <article class="verb">
+          <div class="verb-head"><span class="verb-icon">{{ icon("file_text") }}</span><h3>Back you up</h3></div>
+          <p>A case for each question you raise, a letter drafted from the evidence for you to edit, and a log of every call. You decide what is sent.</p>
+          <div class="slice">
+            <p class="letter"><b>Re: statement of April 2, visit of March 14</b><br>I’m writing about the $348.00 balance. My insurer’s explanation of benefits shows I owe $198.00, which I paid on March 20…</p>
+            <div class="slice-row"><span class="tag">Drafted when you ask · never stored</span><span class="faux-btn">Copy letter</span></div>
+          </div>
+        </article>
+        <article class="verb">
+          <div class="verb-head"><span class="verb-icon">{{ icon("calendar") }}</span><h3>Plan ahead</h3></div>
+          <p>Estimate your share before you book, from your deductible, coinsurance and what you’ve paid so far, and see what your HSA can cover.</p>
+          <div class="slice">
+            <div class="slice-row"><span>Knee MRI, in network<small>Deductible left: $400.00 · then 20%</small></span><span class="num">≈ $520.00</span></div>
+            <div class="slice-row"><span>HSA balance available<small>Eligible expense, Publication 502</small></span><span class="num">$1,240.00</span></div>
+          </div>
         </article>
       </div>
     </div>
   </section>
 
-  <section class="questions-band" id="why-it-matters">
-    <div class="wide questions-inner">
-      <div class="questions-intro">
+  <section class="section fair" id="fair">
+    <div class="wide">
+      <div class="section-head">
+        <span class="eyebrow">How we fight fair</span>
+        <h2>On your side. Careful with the facts.</h2>
+        <p>Standing up to a billing office only works if you’re right. So CareBack shows its work.</p>
+      </div>
+      <ul class="promises">
+        <li>{{ icon("search") }}<strong>Every finding shows its evidence.</strong><p>The amounts, the lines and the documents they came from, side by side.</p></li>
+        <li>{{ icon("circle_help") }}<strong>A question until it’s confirmed.</strong><p>“Potential discrepancy”, never “error”, until the provider or insurer agrees.</p></li>
+        <li>{{ icon("lock") }}<strong>Your identity stays out of it.</strong><p>Names, member numbers and dates are removed or shifted before any document is read by AI.</p></li>
+        <li>{{ icon("download") }}<strong>Your data leaves with you.</strong><p>Export everything or delete it, any time, from your account.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wide questions">
+      <div class="section-head">
         <span class="eyebrow">Three parties. No one reconciles them.</span>
-        <h2>You shouldn’t have to be <br>a billing expert to pay fairly.</h2>
-        <p>One visit produces a bill, an insurance decision and a payment, often weeks apart and in different formats. So these questions go unanswered:</p>
+        <h2>Questions you shouldn’t have to answer alone.</h2>
+        <p>One visit produces a bill, an insurance decision and a payment, weeks apart and in different formats.</p>
       </div>
       <ul class="question-list">
         <li>Was the provider in network, and was I billed that way?</li>
@@ -117,68 +194,38 @@
     </div>
   </section>
 
-  <section class="section" id="questions">
-    <div class="wide faq-section">
-      <div class="faq-heading">
-        <span class="eyebrow">Good questions. Clear answers.</span>
-        <h2>A little less unknown.</h2>
-        <p>Because understanding your healthcare spending shouldn’t come with more question marks.</p>
+  <section class="section does" id="faq">
+    <div class="wide faq">
+      <div class="section-head">
+        <span class="eyebrow">Good questions</span>
+        <h2>Straight answers.</h2>
       </div>
       <div class="faq-list">
-        <details><summary>What does My Health $pend look for?{{ icon("plus") }}</summary><p>It compares your provider bill, insurance explanation of benefits (EOB) and payment records for the same visit. That can help surface duplicate charges, mismatched patient balances, network-rate questions and payments that haven’t been credited.</p></details>
-        <details><summary>Is this health insurance?{{ icon("plus") }}</summary><p>No. My Health $pend helps individuals understand their healthcare spending. It is not health insurance, a payment account or a replacement for your insurer.</p></details>
-        <details><summary>Can it help with bills I’ve already paid?{{ icon("plus") }}</summary><p>Yes, that is where it starts. Looking back across bills, insurance decisions and payments may reveal discrepancies even after a bill has been paid. Any refund depends on review and resolution with the provider or insurer.</p></details>
-        <details><summary>What about my next appointment?{{ icon("plus") }}</summary><p>The next step in our vision is helping you compare expected insurance costs with available self-pay prices before a visit. Deductibles, network status and whether a payment counts toward your plan limits all matter.</p></details>
-        <details><summary>Can I upload my medical bills today?{{ icon("plus") }}</summary><p>Only with an account. My Health $pend is in early access, and accounts are set up by invitation. The sample on this page uses fictional examples and collects nothing, so please don’t send personal health or financial information here.</p></details>
+        <details open><summary>Will CareBack get my money back?{{ icon("plus") }}</summary><p>It can’t promise that, and no one honest can. It finds where your bill, your EOB and your payments disagree, shows you the evidence, and helps you ask the provider or insurer about it. Whether money comes back is up to their review.</p></details>
+        <details><summary>Is this health insurance?{{ icon("plus") }}</summary><p>No. CareBack helps individuals and their households understand their health spending. It isn’t insurance, a payment account or a replacement for your insurer.</p></details>
+        <details><summary>Can it help with bills I’ve already paid?{{ icon("plus") }}</summary><p>Yes, that’s where it starts. Discrepancies can show up even after a bill has been paid.</p></details>
+        <details><summary>Can I upload my medical bills today?{{ icon("plus") }}</summary><p>Only with an account. {% if signup_open %}CareBack is in early access: sign up with your Google or Microsoft account.{% else %}CareBack is in early access, and accounts are set up by invitation.{% endif %} The sample on this page uses fictional examples and collects nothing, so please don’t send personal health or financial information here.</p></details>
       </div>
     </div>
   </section>
 
-  <section class="closing">
+  <section class="closing" id="start">
     <div class="wide closing-inner">
       <div>
-        <h2>Your health deserves your attention. <br>Your bills shouldn’t take all of it.</h2>
-        <p>Meet a clearer way to understand your health spend.</p>
+        <h2>Bring us one visit.</h2>
+        <p>We’ll show you what lines up, what doesn’t, and what to ask.</p>
       </div>
-      <button class="btn brand" type="button" data-open-sample>Explore a sample review {{ icon("arrow_right") }}</button>
+      <div class="closing-actions">
+        <a class="btn brand" href="{{ start.href }}">{{ start.label }}</a>
+        <a class="btn quiet" href="#visit">See a sample visit</a>
+      </div>
     </div>
   </section>
 </main>
 
-<footer>
-  <div class="wide footer-inner">
-    {{ wordmark() }}
-    <p class="footer-note">© {{ year }} My Health $pend. Your health. Your money.<br>Early access. Not insurance, medical, legal or financial advice.</p>
-  </div>
+<footer class="wide footer">
+  {{ wordmark() }}
+  <p>© {{ year }} CareBack. In your corner.<br>Early access. Not insurance, medical, legal or financial advice.</p>
 </footer>
-
-<dialog class="sample" id="sample" aria-labelledby="sample-title" aria-describedby="sample-intro">
-  <button class="close" type="button" data-close-sample aria-label="Close">{{ icon("close") }}</button>
-  <span class="sample-label">A clearer picture · fictional example</span>
-  <h2 id="sample-title">Your visit. All three sides.</h2>
-  <p class="sample-intro" id="sample-intro">See how a bill, an insurance decision and a payment can tell different stories.</p>
-  <div class="sample-tabs" role="tablist" aria-label="Sample review views">
-    <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true">Visit overview</button>
-    <button type="button" role="tab" id="tab-finding" aria-controls="panel-finding" aria-selected="false" tabindex="-1">What we found</button>
-    <button type="button" role="tab" id="tab-next" aria-controls="panel-next" aria-selected="false" tabindex="-1">Next steps</button>
-  </div>
-  <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview">
-    <div class="sample-row"><span>Visit</span><strong>March 14 · Office visit</strong></div>
-    <div class="sample-row"><span>Provider bill</span><strong class="figure">$348.00</strong></div>
-    <div class="sample-row"><span>Insurer says you owe</span><strong class="figure">$198.00</strong></div>
-    <div class="sample-row"><span>Already paid from HSA</span><strong class="figure">$198.00</strong></div>
-    <div class="sample-finding"><strong>$150.00 worth a closer look</strong><p>The provider’s balance is higher than the insurer’s patient responsibility. Your HSA payment also needs to be confirmed against the bill.</p></div>
-  </div>
-  <div role="tabpanel" id="panel-finding" aria-labelledby="tab-finding" hidden>
-    <div class="sample-finding"><strong>A balance that doesn’t line up</strong><p>The provider bill is $150.00 higher than the insurer’s explanation of benefits. This is a potential discrepancy, not a confirmed error. The $198.00 HSA payment may also be missing from the provider’s records.</p></div>
-  </div>
-  <div role="tabpanel" id="panel-next" aria-labelledby="tab-next" hidden>
-    <div class="sample-row"><span>01</span><strong>Ask for an itemized provider statement.</strong></div>
-    <div class="sample-row"><span>02</span><strong>Compare it with the final insurance EOB.</strong></div>
-    <div class="sample-row"><span>03</span><strong>Confirm the $198.00 HSA payment was credited.</strong></div>
-    <div class="sample-row"><span>04</span><strong>Request an explanation of the $150.00 difference.</strong></div>
-  </div>
-  <p class="sample-disclaimer">Illustrative example only, not a real claim or savings result. No health or financial information is collected here.</p>
-</dialog>
 </body>
 </html>

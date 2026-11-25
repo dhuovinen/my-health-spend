@@ -200,7 +200,7 @@ def check_landing(browser, server, path: str, device: dict, label: str):
     violations = []
     page.on("console", lambda m: violations.append(m.text) if m.type == "error" else None)
     assert page.goto(server.url + path).status == 200
-    assert page.locator("h1").inner_text().startswith("Medical bills.")
+    assert page.locator("h1").inner_text().startswith("Somebody should check your medical bills.")
     assert page.evaluate("() => document.querySelector('.hero-photo').naturalWidth") == 1920
     assert page.evaluate("() => document.fonts.check('16px \"DM Sans\"')")
     assert page.evaluate(SIDEWAYS) <= 0
@@ -211,19 +211,29 @@ def check_landing(browser, server, path: str, device: dict, label: str):
         .filter(e => parseFloat(getComputedStyle(e).fontSize) < 12).map(e => e.textContent.slice(0, 40))""")
     assert small == []
     shot(page, f"{label}-landing.png")
-    # the sample review opens, its tabs switch and it closes
-    dialog = page.locator("dialog#sample")
-    assert not dialog.is_visible()
-    page.locator("[data-open-sample]").first.click()
-    assert dialog.is_visible() and page.locator("#panel-overview").is_visible()
-    assert page.evaluate(SMALL_TARGETS) == []
-    shot(page, f"{label}-landing-sample.png")
-    page.locator("#tab-finding").click()
-    assert page.locator("#panel-finding").is_visible() and not page.locator("#panel-overview").is_visible()
-    page.keyboard.press("ArrowRight")
-    assert page.locator("#panel-next").is_visible()
-    page.locator("[data-close-sample]").click()
-    assert not dialog.is_visible()
+    # the red pen (REBRAND_PLAN.md §5): it loops while the block is on screen, and the visitor can pause it
+    assert page.evaluate("() => document.documentElement.classList.contains('motion')")
+    hero = page.locator(".found")
+    hero.scroll_into_view_if_needed()  # on a phone it sits below the photo
+    page.wait_for_function("() => document.querySelector('.found').classList.contains('drawn')")
+    assert page.evaluate("() => getComputedStyle(document.querySelector('.found .pen')).animationName") == "pen"
+    toggle = page.locator(".pen-toggle")
+    assert toggle.is_visible() and toggle.inner_text() == "Pause the red pen"
+    toggle.click()
+    assert toggle.inner_text() == "Play the red pen"
+    assert page.evaluate("() => getComputedStyle(document.querySelector('.found .pen')).animationName") == "none"
+    toggle.click()
+    assert hero.is_visible()
+    # the documents line up once they scroll into view
+    page.locator("#visit .docs").scroll_into_view_if_needed()
+    page.wait_for_function("() => document.querySelector('#visit [data-draw]').classList.contains('drawn')")
+    shot(page, f"{label}-landing-visit.png")
+    # reduced motion: no animation at all, the loops simply drawn, and nothing to pause
+    page.emulate_media(reduced_motion="reduce")
+    page.reload()
+    assert not page.evaluate("() => document.documentElement.classList.contains('motion')")
+    assert not page.locator(".pen-toggle").is_visible()
+    assert page.evaluate("() => getComputedStyle(document.querySelector('.found .pen')).strokeDashoffset") in ("0", "0px")
     assert violations == []
     context.close()
 
@@ -288,6 +298,49 @@ def test_tc_prv_12_5_social_sign_in_in_a_real_browser(browser, make_household):
         assert page.locator("nav.nav").is_visible()  # signed in: the cookie set on the callback is in use
         assert problems == []
         context.close()
+    finally:
+        server.stop()
+        fake.stop()
+
+
+def test_tc_prv_13_10_sign_up_in_a_real_browser(browser, make_household, app_db):
+    """PRV-13 (ADR-059): "Log in or sign up" and "Create your account" at 375 and 1280 px, then a sign-up with the
+    provider on another site, through to the authenticator step, with the Strict cookies and the policy as deployed."""
+    from mhs.web.household.features import ALLOW_SIGNUP, REQUIRE_CONSENT, Features
+    from tests.fake_oidc import FakeProvider
+
+    fake = FakeProvider(host="localhost")
+    port = free_port()
+    household = make_household(sign_in_providers=(fake.as_provider(), fake.as_provider("microsoft", "Microsoft")),
+                               public_url=f"http://127.0.0.1:{port}")
+    Features(app_db).set(REQUIRE_CONSENT, True)
+    Features(app_db).set(ALLOW_SIGNUP, True)
+    server = Server(household.app, port)
+    try:
+        for device, label in ((PHONE, "375"), (DESKTOP, "1280")):
+            context, page = open_page(browser, server, [], device)
+            problems = []
+            page.on("console", lambda m: problems.append(m.text) if m.type == "error" else None)
+            page.goto(server.url + "/signin")
+            assert page.locator("h1").inner_text() == "Log in or sign up"
+            shot(page, f"r1-{label}-signin-signup.png")
+            small = (lambda: page.evaluate(SMALL_TARGETS)) if device is PHONE else list  # 44px is the phone rule
+            assert page.evaluate(SIDEWAYS) <= 0 and small() == [], label
+            page.locator("details.password-signin > summary").click()  # the password form opens for members
+            assert page.locator("input[name=password]").is_visible()
+            assert small() == [], label
+
+            fake.subject, fake.email = f"subject-{label}", f"person-{label}@example.test"
+            page.locator('a[href="/signin/with/google"]').click()
+            assert page.locator("h1").inner_text() == "Create your account"
+            shot(page, f"r1-{label}-signup.png")
+            assert page.evaluate(SIDEWAYS) <= 0 and small() == [], label
+            page.fill("input[name=name]", f"Pat {label}")
+            page.check("input[name=agree]")
+            page.locator("button[type=submit]").click()
+            assert page.url == server.url + "/signin/mfa" and "Add this account" in page.locator("main").inner_text()
+            assert problems == [], problems
+            context.close()
     finally:
         server.stop()
         fake.stop()

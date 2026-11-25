@@ -1,6 +1,6 @@
 # UI guide
 
-The brand standard for the app, the website, decks and marketing. It was built from myhealthspend.com and `src/mhs/web/static/style.css` on 2026-11-05.
+The brand standard for the app, the website, decks and marketing. It was built from myhealthspend.com and `src/mhs/web/static/style.css` on 2026-11-05. On 2026-11-25 the brand became **CareBack** (ADR-060); the colors, type and shape below didn't change, and the plan for the rename is [REBRAND_PLAN.md](REBRAND_PLAN.md).
 
 - Full style guide with live components: https://claude.ai/artifact/93oE8yMM7LQcxzXn5FwZcU
 - Scorecard and competitor benchmark: https://claude.ai/artifact/FK7DcQbdRJGYUy1GH4Xgq3
@@ -10,9 +10,10 @@ The app is on this standard, with Manrope and DM Sans self-hosted in `src/mhs/we
 ## Brand rules
 
 - **Idea:** three separate stories, one clear picture. Show the three sides of a visit, where they disagree, and the dollar gap.
-- **Traits:** clear, on your side, careful.
-- **Name:** "My Health $pend" in anything people see. "My Health Spend" in alt text, `aria-label`, file names and code.
+- **Traits:** clear, in your corner, careful. The tone is a fighter and advocate for the member; the findings stay careful.
+- **Name:** "CareBack" everywhere people see it, alt text and `aria-label` included: one word, capital B. Never "Care Back", "Careback" or "CAREBACK" in running text. "CareBack Health" only where a longer legal or domain form is needed. Code, file names and infrastructure keep `mhs` (ADR-060). "My Health $pend" appears only where we explain the change of name.
 - **Findings language:** "potential discrepancy" and "worth a closer look" until confirmed. Always name the amount. Promise no savings.
+- **"Back" never promises money back.** The name invites "get your money back"; don't say it. Allowed: "we've got your back", "help you ask for it back", "find what may be owed to you". Not allowed: "get your money back", "recover $X", savings totals or counters.
 - **Statistics:** every figure needs a source. `$500B+` and `$25-50B` are unverified, so keep them off new material.
 - **Samples:** only fictional documents, labeled as fictional where they appear.
 
@@ -57,7 +58,30 @@ Status colors keep the current app values in `style.css` (`--warn`, `--info`, `-
 | Button and input radius | 8px | 5px |
 | Body | System stack, 15px | DM Sans, 16px |
 | `.hero` | Teal gradient | Flat `dark-surface` (`hero-surface` is too close to the app ground) |
-| `.brand` | Plain name | Wordmark with `$` in `primary` |
-| `favicon.svg` | Teal heart | The blue mark |
+| `.brand` | Plain name | Wordmark with `$` in `primary`, then **Care**Back with "Back" in `primary` (ADR-060) |
+| `favicon.svg` | Teal heart | The blue heart mark, then the C-loop (ADR-060) |
 
-Dark theme values are in the table above. In the app, dark `--bg` is `background`, `--surface` is `hero-surface` and `--surface-2` is `accent`, so cards sit lighter than the page. The favicon is the old heart recolored: the website's mark is a PNG, and a vector master is still needed.
+Dark theme values are in the table above. In the app, dark `--bg` is `background`, `--surface` is `hero-surface` and `--surface-2` is `accent`, so cards sit lighter than the page. 
+## Mark and wordmark
+
+**The mark** is the C-loop (chosen 2026-11-25): the letter C drawn as an arrow that turns back on itself, closing on a check, white on a `primary` tile with a 14/64 corner radius. It means CareBack's initial, "back" and "settled". Below 32 px use `favicon.svg`, which draws the same shapes with heavier strokes. Don't recolor it, outline it, add a shadow or put it on a photo without its tile.
+
+**The wordmark** is Manrope 750: "Care" in `foreground`, "Back" in `primary` (on dark: `foreground` dark and #7EA8FF). The split is color only. Where two colors can't be shown (OAuth screens, authenticator apps, email), use the one-color version. In HTML the wordmark is live text (`.brand`, `.wordmark`); elsewhere use the outlined SVGs, which render the same without the font. Outlines look a little lighter than live text at the same weight; that's expected.
+
+The lockup puts the mark at 1.47x the font size, 0.4x the font size from the name.
+
+**Files**, all written by `uv run tools/make_brand_assets.py` from one definition of the mark (rerun it after any change; don't edit the outputs):
+
+| File | Use |
+| --- | --- |
+| `static/brand/mark.svg` | The master mark |
+| `static/favicon.svg`, `static/favicon.ico` (16, 32, 48) | Browser tabs; `/favicon.ico` on both apps |
+| `static/apple-touch-icon.png` (180) | iPhone home screen (square and opaque; iOS rounds it) |
+| `static/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `site.webmanifest` | Android home screen |
+| `static/brand/wordmark.svg`, `wordmark-dark.svg`, `wordmark-mono.svg` | The name alone |
+| `static/brand/lockup.svg`, `lockup-dark.svg` | Mark and name together, for decks and email |
+| `static/landing/mark.svg` | The landing page's navbar and footer |
+| `static/og-image.png` (1200x630) | Link previews of the landing page |
+| `docs/brand/oauth-logo-120.png` | Google's consent screen (not served) |
+
+Every page head includes `templates/_brand_head.html`, which links the icons and the manifest.

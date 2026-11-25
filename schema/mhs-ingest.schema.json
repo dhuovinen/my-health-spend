@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://my-health-spend.local/schema/mhs-ingest-0.1.json",
-  "title": "My Health Spend ingest file",
+  "title": "CareBack ingest file",
   "description": "One ingest batch. Every section is optional, so a file can carry only settings (plans, accounts, providers), only visits and documents, or both. Records are upserted by id: re-importing a file with the same id replaces that record. Money is in dollars and is converted to integer cents on import. Cross-references (provider_id, visit_id and so on) are checked by the importer, not by this schema.",
   "type": "object",
   "required": [
@@ -241,18 +241,18 @@
             "POS",
             "HDHP"
           ],
-          "description": "Network type as printed on the insurance card (ING-11, ADR-059)."
+          "description": "Network type as printed on the insurance card (ING-11, ADR-061)."
         },
         "coverage_kind": {
           "enum": [
             "medical",
             "dental"
           ],
-          "description": "Medical (the default) or dental. A dental plan comes from a dental card, is never merged into a medical plan, and is left out of reconciliation (ADR-059)."
+          "description": "Medical (the default) or dental. A dental plan comes from a dental card, is never merged into a medical plan, and is left out of reconciliation (ADR-061)."
         },
         "group_number": {
           "type": "string",
-          "description": "The plan's group number. A vault token in Release 1 (ADR-059); plain text in an ingest file."
+          "description": "The plan's group number. A vault token in Release 1 (ADR-061); plain text in an ingest file."
         },
         "payer_id": {
           "type": "string",
@@ -320,7 +320,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Ids of kept insurance card images; present only while the owner's keep_card_images setting was on at confirmation (ADR-059)."
+          "description": "Ids of kept insurance card images; present only while the owner's keep_card_images setting was on at confirmation (ADR-061)."
         },
         "card_back_missing": {
           "type": "boolean",

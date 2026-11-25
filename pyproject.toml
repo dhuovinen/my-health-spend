@@ -1,7 +1,7 @@
 [project]
 name = "mhs"
 version = "0.1.0"
-description = "My Health Spend: reconcile insurer claims, provider statements and HSA payments."
+description = "CareBack: reconcile insurer claims, provider statements and HSA payments."
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115",

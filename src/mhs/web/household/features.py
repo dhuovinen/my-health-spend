@@ -9,10 +9,12 @@ from mhs.web.household import privacy
 
 REQUIRE_CODE = "require_code"
 REQUIRE_CONSENT = "require_consent"
-KEEP_CARD_IMAGES = "keep_card_images"  # ING-11, ADR-059: keep insurance card images after a scan is confirmed
+ALLOW_SIGNUP = "allow_signup"
+KEEP_CARD_IMAGES = "keep_card_images"  # ING-11, ADR-061: keep insurance card images after a scan is confirmed
 # The code starts on: an upgrade never quietly removes protection (ADR-049). Consent before collection starts off for
-# the owner's own household and must be on before anyone else is invited (the launch gate, ADR-055).
-DEFAULTS = {REQUIRE_CODE: True, REQUIRE_CONSENT: False, KEEP_CARD_IMAGES: False}
+# the owner's own household and must be on before anyone else is invited (the launch gate, ADR-055). Sign-up starts
+# off, so an upgrade never opens the service to strangers (ADR-059).
+DEFAULTS = {REQUIRE_CODE: True, REQUIRE_CONSENT: False, ALLOW_SIGNUP: False, KEEP_CARD_IMAGES: False}
 
 
 def provider_setting(provider: str) -> str:
@@ -39,11 +41,14 @@ class Features:
     def require_consent(self) -> bool:
         return self.get(REQUIRE_CONSENT)
 
+    def allow_signup(self) -> bool:
+        return self.get(ALLOW_SIGNUP)
+
     def keep_card_images(self) -> bool:
         return self.get(KEEP_CARD_IMAGES)
 
     def card_image_counts(self) -> dict[str, int]:
-        """Card images held for a review, and kept ones, over every household: counts only (ADR-059)."""
+        """Card images held for a review, and kept ones, over every household: counts only (ADR-061)."""
         with self.db.tx() as c:
             row = c.execute("SELECT in_review, kept FROM app.card_image_counts()").fetchone()
         return {"in_review": row["in_review"], "kept": row["kept"]}
@@ -81,6 +86,7 @@ class Features:
                 "(SELECT count(*) FROM app.members) AS members, "
                 "(SELECT count(*) FROM app.members WHERE totp_confirmed) AS confirmed, "
                 "(SELECT count(*) FROM app.members WHERE signed_in_without_code AND NOT totp_confirmed) AS no_code, "
-                "(SELECT count(*) FROM app.members WHERE is_owner) AS owners").fetchone()
+                "(SELECT count(*) FROM app.members WHERE is_owner) AS owners, "
+                "(SELECT count(*) FROM app.members WHERE signed_up_with <> '') AS signed_up").fetchone()
             linked = c.execute("SELECT provider, count(*) AS n FROM app.member_identities GROUP BY provider").fetchall()
         return {**row, **{f"linked_{r['provider']}": r["n"] for r in linked}}

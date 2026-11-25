@@ -55,7 +55,7 @@ def export_household(db: Database, keyring: Keyring, objects: ObjectStore, vault
 
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         ingest: dict = {"schema_version": "0.1",
-                        "source": {"prepared_by": "My Health Spend export", "prepared_on": manifest["exported_at"][:10]}}
+                        "source": {"prepared_by": "CareBack export", "prepared_on": manifest["exported_at"][:10]}}
         for section, kind in SECTIONS.items():
             records = []
             for rec in store.all(kind):
@@ -81,7 +81,7 @@ def export_household(db: Database, keyring: Keyring, objects: ObjectStore, vault
                                             "extraction": store.get("extraction", rec["id"])})
         manifest["records"]["original"] = len(uploads)
         add("uploads.json", json.dumps(uploads, indent=2).encode())
-        with db.tx(household_id) as c:  # insurance card images the owner's setting kept (ADR-059)
+        with db.tx(household_id) as c:  # insurance card images the owner's setting kept (ADR-061)
             kept = c.execute("SELECT id, side, plan_id, content_type, object_key, sha256 FROM app.card_images "
                              "WHERE household_id = %s AND state = 'kept' ORDER BY created_at, side",
                              (household_id,)).fetchall()
@@ -99,7 +99,7 @@ def export_household(db: Database, keyring: Keyring, objects: ObjectStore, vault
         manifest["records"]["vault_entry"] = len(identifiers)
         add("identifiers.json", json.dumps(identifiers, indent=2).encode())
         z.writestr("README.txt", (
-            "My Health Spend export\n\n"
+            "CareBack export\n\n"
             "ingest.json      your records (plans, members, providers, visits, documents, notes); import it again\n"
             "                 with the files folder beside it\n"
             "files/           the statements, EOBs and uploads you stored, unchanged, and any insurance card\n"
@@ -128,7 +128,7 @@ def delete_household(db: Database, objects: ObjectStore, vault: VaultClient, hou
     store = HouseholdStore(db, household_id)
     keys = [k for r in store.all("original") for k in [r["object_key"], *r.get("scrubbed_keys", [])]]
     keys += [d["stored_file"] for d in store.all("document") if d.get("stored_file")]
-    with db.tx(household_id) as c:  # insurance card images, in review or kept (ADR-059)
+    with db.tx(household_id) as c:  # insurance card images, in review or kept (ADR-061)
         keys += [r["object_key"] for r in c.execute("SELECT object_key FROM app.card_images WHERE household_id = %s",
                                                     (household_id,))]
     vault.delete_household(household_id)

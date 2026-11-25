@@ -1,21 +1,47 @@
 {% extends "base.html" %}
-{% block title %}Sign in{% endblock %}
+{% from "_provider_logo.html" import provider_logo %}
+{% block title %}{{ 'Log in or sign up' if signup_open else 'Sign in' }}{% endblock %}
 {% block content %}
-<section class="card auth">
-  <h1>Sign in</h1>
-  {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
+{% set labels = sign_in_providers | map(attribute="label") | list %}
+{% macro provider_buttons() %}
+    {% for p in sign_in_providers %}<a class="btn provider" href="/signin/with/{{ p.name }}">{{ provider_logo(p.name) }}<span>Continue with {{ p.label }}</span></a>{% endfor %}
+{% endmacro %}
+{% macro provider_note() %}
+    <p class="muted small">{{ labels[:-1] | join(", ") ~ " or " ~ labels[-1] if labels | length > 1 else labels[0] }} will know you signed in here, but sees nothing of your records.{% if code_required %} You'll still enter your authenticator code.{% endif %}</p>
+{% endmacro %}
+{% macro password_form() %}
   <form method="post" action="/signin" class="stack">
-    <label>Email <input type="email" name="email" value="{{ email or '' }}" autocomplete="username" required autofocus></label>
+    <label>Email <input type="email" name="email" value="{{ email or '' }}" autocomplete="username" required{% if not signup_open %} autofocus{% endif %}></label>
     <label>Password <input type="password" name="password" autocomplete="current-password" required></label>
     <button class="btn primary" type="submit">Continue</button>
   </form>
-  <p class="small"><a href="/recover">Forgot your password or lost your phone?</a></p>
+  <p class="small">Forgot your password or lost your phone? <a href="/recover">Use a recovery code</a>.</p>
+{% endmacro %}
+<section class="card auth signin">
+  {% if signup_open %}
+  {# PRV-13 (ADR-059): one page for members and new people. Providers first; the password is for invited members. #}
+  <h1>Log in or sign up</h1>
+  {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
+  <div class="social-signin">{{ provider_buttons() }}</div>
+  <div class="or-divider" role="separator"><span>or</span></div>
+  <details class="password-signin"{% if email %} open{% endif %}>
+    <summary>Sign in with email and password</summary>
+    {{ password_form() }}
+  </details>
+  <p class="small legal">By continuing, you agree to the <a href="/terms">Terms of Service</a> and acknowledge the <a href="/privacy-notice">Privacy Policy</a>.</p>
+  {{ provider_note() }}
+  {% else %}
+  <h1>Sign in</h1>
+  {% if error %}<p class="alert bad">{{ error }}</p>{% endif %}
+  {{ password_form() }}
   {% if sign_in_providers %}
   <div class="social-signin section">
     <p class="muted small">Or, if you've linked an account:</p>
-    {% for p in sign_in_providers %}<a class="btn" href="/signin/with/{{ p.name }}">Continue with {{ p.label }}</a>{% endfor %}
-    <p class="muted small">{% set labels = sign_in_providers | map(attribute="label") | list %}{{ labels[:-1] | join(", ") ~ " or " ~ labels[-1] if labels | length > 1 else labels[0] }} will know you signed in here, but sees nothing of your records.{% if code_required %} You'll still enter your authenticator code.{% endif %}</p>
+    {{ provider_buttons() }}
+    {{ provider_note() }}
   </div>
+  {% endif %}
+  <p class="small legal"><a href="/terms">Terms of Service</a> · <a href="/privacy-notice">Privacy Policy</a></p>
   {% endif %}
 </section>
 {% endblock %}

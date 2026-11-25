@@ -99,7 +99,7 @@
   <section class="card section">
     <h2>What you pay</h2>
     <div class="form-grid cols-4">
-      <label class="span-2">Copays<textarea name="copays" rows="4" placeholder="specialist: 60">{{ f.get('copays', copay_lines) }}</textarea><span class="hint">One per line. Names MHS checks: preventive, primary_care, specialist, urgent_care, emergency.</span></label>
+      <label class="span-2">Copays<textarea name="copays" rows="4" placeholder="specialist: 60">{{ f.get('copays', copay_lines) }}</textarea><span class="hint">One per line. Names CareBack checks: preventive, primary_care, specialist, urgent_care, emergency.</span></label>
     </div>
     {% if limits %}
     <h3 class="section">Deductibles and out-of-pocket maximums printed on the card</h3>

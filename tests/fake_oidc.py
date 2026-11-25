@@ -98,7 +98,8 @@ class FakeProvider:
                 if client_secret != CLIENT_SECRET or challenge != issued["challenge"]:
                     raise HTTPException(400)
             claims = {"iss": ISSUER, "aud": CLIENT_ID, "sub": self.subject, "email": self.email,
-                      "nonce": issued["nonce"], "exp": time.time() + 300, **self.overrides}
+                      "email_verified": bool(self.email), "nonce": issued["nonce"], "exp": time.time() + 300,
+                      **self.overrides}
             return JSONResponse({"id_token": f"{_b64({'alg': 'none'})}.{_b64(claims)}.signature"})
 
         with socket.socket() as s:
@@ -124,7 +125,7 @@ class FakeProvider:
                                      serialization.NoEncryption()).decode()
         return SignInProvider("apple", "Apple", CLIENT_ID, "", f"{self.url}/authorize", f"{self.url}/token",
                               r"https://issuer\.example\.test", scopes="", pkce=False, response_mode="query",
-                              key=ClientKey(TEAM_ID, KEY_ID, pem, audience=ISSUER))
+                              key=ClientKey(TEAM_ID, KEY_ID, pem, audience=ISSUER), signup=False)
 
     def stop(self):
         self.server.should_exit = True

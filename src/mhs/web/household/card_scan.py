@@ -1,4 +1,4 @@
-"""Scan an insurance card, front and back, to fill in a plan (ING-11, ADR-059).
+"""Scan an insurance card, front and back, to fill in a plan (ING-11, ADR-061).
 
 OCR and the layout rules (`ingest/card.py`) run here, in the application tier: the worker never sees a card. Member
 IDs, the group number and names are kept as vault tokens. The images are sealed with the household's key and held
@@ -228,7 +228,7 @@ def add_card_scan(app: FastAPI, templates: Jinja2Templates, *, db: Database, key
         plan_id = plan_id if ID_PATTERN.match(plan_id) else ""
         try:
             if not collect_for(hid, session.member_id):
-                raise ScanRefused("MHS can't take documents from you without your consent. Give it on the Consent "
+                raise ScanRefused("CareBack can't take documents from you without your consent. Give it on the Consent "
                                   "page (from your Account page), or ask why it's needed.")
             front = await read_upload(form.get("front"))
             back = await read_upload(form.get("back"))
@@ -252,11 +252,8 @@ def add_card_scan(app: FastAPI, templates: Jinja2Templates, *, db: Database, key
                 if doc.words:
                     confidences.append(doc.confidence)
             if not any(t.strip() for t in texts.values()):
-                raise ScanRefused("MHS couldn't read any text on this card. Try a clearer, well-lit photo with the "
+                raise ScanRefused("CareBack couldn't read any text on this card. Try a clearer, well-lit photo with the "
                                   "whole card in view, or type the plan in on Coverage.")
-            # TODO(ING-11): for households with AI extraction on (`ai_extraction(hid)`), a Claude fallback for cards
-            # the rules read poorly would receive only `scrub_card(...)` text with dates shifted (PRV-05), and its
-            # fields would be merged here beneath the rules' own. The first build is rules only (ADR-059).
             reading = card.read_card(texts["front"], texts["back"], min(confidences) if confidences else 1.0)
             if reading.kind == "vision":
                 raise ScanRefused(reading.refusal)

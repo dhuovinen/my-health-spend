@@ -14,7 +14,7 @@ from mhs.data.objects import ObjectStore
 from mhs.stack import AppConfig
 from mhs.web.household import privacy
 from mhs.web.household.auth import Accounts, Session
-from mhs.web.household.features import KEEP_CARD_IMAGES, REQUIRE_CODE, REQUIRE_CONSENT, Features, provider_setting
+from mhs.web.household.features import ALLOW_SIGNUP, KEEP_CARD_IMAGES, REQUIRE_CODE, REQUIRE_CONSENT, Features, provider_setting
 
 KNOWN_PROVIDERS = {"google": "Google", "microsoft": "Microsoft", "apple": "Apple"}
 
@@ -33,8 +33,10 @@ def add_admin_screen(app: FastAPI, *, config: AppConfig, accounts: Accounts, fea
         settings = features.all()
         providers = [{"name": name, "label": label, "configured": name in configured,
                       "on": settings.get(provider_setting(name), True)} for name, label in KNOWN_PROVIDERS.items()]
+        signup_providers = [p["label"] for p in providers if p["configured"] and p["on"] and configured[p["name"]].signup]
         return page(request, "admin.html", status, require_code=settings[REQUIRE_CODE], providers=providers,
-                    require_consent=settings[REQUIRE_CONSENT], keep_card_images=settings[KEEP_CARD_IMAGES],
+                    require_consent=settings[REQUIRE_CONSENT], allow_signup=settings[ALLOW_SIGNUP],
+                    signup_providers=signup_providers, keep_card_images=settings[KEEP_CARD_IMAGES],
                     card_images=features.card_image_counts(),
                     counts=features.counts(), changes=features.changes(), **ctx)
 
@@ -64,12 +66,33 @@ def add_admin_screen(app: FastAPI, *, config: AppConfig, accounts: Accounts, fea
         check_csrf(session, csrf_token)
         if state not in ("on", "off"):
             raise HTTPException(400)
+        if state == "off" and features.allow_signup():
+            return screen(request, 409, error="Consent can't stop being required while sign-up is open. Close "
+                                              "sign-up first.")
         features.set(REQUIRE_CONSENT, state == "on", member_id=session.member_id, household_id=session.household_id)
+        return RedirectResponse("/admin", status_code=303)
+
+    @app.post("/admin/allow-signup", response_class=HTMLResponse)
+    def allow_signup(request: Request, state: str = Form(""), csrf_token: str = Form("")):
+        """PRV-13 (ADR-059): let new people create a household with Google or Microsoft. Only with consent required."""
+        session = owner(request)
+        check_csrf(session, csrf_token)
+        if state not in ("on", "off"):
+            raise HTTPException(400)
+        if state == "on":
+            settings = features.all()
+            if not settings[REQUIRE_CONSENT]:
+                return screen(request, 409, error="Require consent before collection first: everyone who signs up "
+                                                  "must agree before anything is collected from them.")
+            if not any(p.signup and settings.get(provider_setting(p.name), True) for p in configured.values()):
+                return screen(request, 409, error="Set up and turn on Google or Microsoft sign-in first: sign-up "
+                                                  "uses one of them.")
+        features.set(ALLOW_SIGNUP, state == "on", member_id=session.member_id, household_id=session.household_id)
         return RedirectResponse("/admin", status_code=303)
 
     @app.post("/admin/keep-card-images")
     def keep_card_images(request: Request, state: str = Form(""), csrf_token: str = Form("")):
-        """ING-11 (ADR-059): keep insurance card images after a scan is confirmed (staging, validation, troubleshooting)."""
+        """ING-11 (ADR-061): keep insurance card images after a scan is confirmed (staging, validation, troubleshooting)."""
         session = owner(request)
         check_csrf(session, csrf_token)
         if state not in ("on", "off"):

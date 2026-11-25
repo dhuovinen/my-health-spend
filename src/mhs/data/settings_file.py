@@ -27,7 +27,7 @@ def settings_document(store: Store, previous_source: dict | None = None) -> dict
     out = {
         "schema_version": "0.1",
         "source": {
-            "prepared_by": "My Health Spend Settings page",
+            "prepared_by": "CareBack Settings page",
             "prepared_on": date.today().isoformat(),
             "notes": previous_source.get("notes", "Settings exported from the app."),
         },

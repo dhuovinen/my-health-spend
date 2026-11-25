@@ -22,7 +22,7 @@ if [[ "$DRY_RUN" != 1 ]]; then
   if [[ "$DELETE_PROJECT" == 1 ]]; then
     printf 'This shuts down the whole project %s and everything in it.\n' "$PROJECT_ID"
   else
-    printf 'This deletes the My Health Spend services, database, bucket, secrets, image repository, Document AI\n'
+    printf 'This deletes the CareBack services, database, bucket, secrets, image repository, Document AI\n'
     printf 'processor, service accounts and network in %s, and destroys its KMS key versions.\n' "$PROJECT_ID"
   fi
   read -r -p "Type the project id to go ahead: " answer

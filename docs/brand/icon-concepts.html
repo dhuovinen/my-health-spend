@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CareBack icon concepts</title>
+<link rel="icon" href="concept-a-heart-back.svg" type="image/svg+xml">
+<style>
+  @font-face { font-family: "Manrope"; src: url("../../src/mhs/web/static/fonts/manrope.woff2") format("woff2"); font-weight: 200 800; }
+  @font-face { font-family: "DM Sans"; src: url("../../src/mhs/web/static/fonts/dm-sans.woff2") format("woff2"); font-weight: 100 1000; }
+  :root { --bg: #ffffff; --fg: #151f30; --muted: #58616f; --primary: #1a5cdf; --line: #d9dee7; --tile: #f3f5f9; --dark: #131d2d; --dark-fg: #f6f9fc; --dark-primary: #7ea8ff; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/26px "DM Sans", system-ui, sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1, h2 { font-family: "Manrope", sans-serif; margin: 0 0 8px; }
+  h1 { font-size: 36px; line-height: 45px; }
+  h2 { font-size: 22px; margin-top: 40px; }
+  p { color: var(--muted); margin: 0 0 16px; max-width: 70ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 24px; align-items: end; padding: 24px; border: 1px solid var(--line); border-radius: 7px; }
+  .size { display: grid; justify-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .lockups { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; }
+  .lockup { display: flex; align-items: center; gap: 12px; padding: 28px 24px; border-radius: 7px; background: var(--tile); }
+  .lockup.dark { background: var(--dark); }
+  .word { font: 750 30px/1 "Manrope", sans-serif; letter-spacing: -0.5px; }
+  .word b { font-weight: 750; color: var(--primary); }
+  .dark .word { color: var(--dark-fg); }
+  .dark .word b { color: var(--dark-primary); }
+  .plain .word b { color: inherit; }
+  .tab { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; font-size: 13px; background: var(--tile); }
+  .defs { position: absolute; }
+  .note { font-size: 14px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" class="defs" aria-hidden="true"><symbol id="mark-a" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1a5cdf"/>
+  <path d="M32 52s-17-10.2-17-22.5C15 23.2 19.6 19 25 19c3.2 0 5.6 1.6 7 3.8 1.4-2.2 3.8-3.8 7-3.8 5.4 0 10 4.2 10 10.5C49 41.8 32 52 32 52z" fill="#ffffff"/>
+  <g transform="translate(22.4 23.6) scale(0.8)" fill="none" stroke="#1a5cdf" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 14 4 9l5-5"/>
+    <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>
+  </g></symbol><symbol id="mark-b" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1a5cdf"/>
+  <path d="M42.6 42.6A15 15 0 1 1 40.4 20.2" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  <path d="M47.6 25.3 43.4 15.0 36.4 24.9z" fill="#ffffff" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M25.5 32.5l4.5 4.5 8.5-9" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></symbol></svg>
+<main>
+  <h1>CareBack icon concepts</h1>
+  <p>Brand blue #1A5CDF, the current 14/64 corner radius, Manrope for the wordmark. Both marks are drafts to choose between; the chosen one gets a pixel pass at 16 px before it ships.</p>
+
+  <h2>A · Heart, with a return arrow (not chosen)</h2>
+  <p>Keeps the heart that members and the landing page already know. The <code>$</code> becomes a return arrow: <em>we’ve got your back</em> and <em>money coming back</em>, with no currency symbol (ADR-060 drops it).</p>
+  <div class="row">
+    <div class="size"><svg width="16" height="16" aria-hidden="true"><use href="#mark-a"/></svg>16</div>
+    <div class="size"><svg width="32" height="32" aria-hidden="true"><use href="#mark-a"/></svg>32</div>
+    <div class="size"><svg width="53" height="53" aria-hidden="true"><use href="#mark-a"/></svg>53 (navbar)</div>
+    <div class="size"><svg width="120" height="120" aria-hidden="true"><use href="#mark-a"/></svg>120 (Google consent)</div>
+    <div class="size"><svg width="180" height="180" aria-hidden="true"><use href="#mark-a"/></svg>180 (iPhone home)</div>
+    <div class="size"><span class="tab"><svg width="16" height="16" aria-hidden="true"><use href="#mark-a"/></svg>Visits · CareBack</span>browser tab</div>
+  </div>
+
+  <h2>B · A C that loops back to a check (chosen 2026-11-25)</h2>
+  <p>A new, ownable mark: the letter C drawn as an arrow that turns back on itself, closing on a check. It reads as the initial, as “back” and as “settled”. Drops the heart, which every health brand uses.</p>
+  <div class="row">
+    <div class="size"><svg width="16" height="16" aria-hidden="true"><use href="#mark-b"/></svg>16</div>
+    <div class="size"><svg width="32" height="32" aria-hidden="true"><use href="#mark-b"/></svg>32</div>
+    <div class="size"><svg width="53" height="53" aria-hidden="true"><use href="#mark-b"/></svg>53 (navbar)</div>
+    <div class="size"><svg width="120" height="120" aria-hidden="true"><use href="#mark-b"/></svg>120 (Google consent)</div>
+    <div class="size"><svg width="180" height="180" aria-hidden="true"><use href="#mark-b"/></svg>180 (iPhone home)</div>
+    <div class="size"><span class="tab"><svg width="16" height="16" aria-hidden="true"><use href="#mark-b"/></svg>Visits · CareBack</span>browser tab</div>
+  </div>
+
+  <h2>Wordmark lockups</h2>
+  <p>“Care” in the text color and “Back” in primary, replacing the blue <code>$</code>. The split is color only: every letter stays a letter, as ADR-060 asks. One-color version for places that can’t carry two colors (OAuth screens, authenticator apps, email).</p>
+  <div class="lockups">
+    <div class="lockup"><svg width="44" height="44" aria-hidden="true"><use href="#mark-a"/></svg><span class="word">Care<b>Back</b></span></div>
+    <div class="lockup dark"><svg width="44" height="44" aria-hidden="true"><use href="#mark-a"/></svg><span class="word">Care<b>Back</b></span></div>
+    <div class="lockup"><svg width="44" height="44" aria-hidden="true"><use href="#mark-b"/></svg><span class="word">Care<b>Back</b></span></div>
+    <div class="lockup dark"><svg width="44" height="44" aria-hidden="true"><use href="#mark-b"/></svg><span class="word">Care<b>Back</b></span></div>
+    <div class="lockup plain"><svg width="44" height="44" aria-hidden="true"><use href="#mark-a"/></svg><span class="word">Care<b>Back</b></span></div>
+    <div class="lockup plain"><svg width="44" height="44" aria-hidden="true"><use href="#mark-b"/></svg><span class="word">Care<b>Back</b></span></div>
+  </div>
+  <p class="note">The production wordmark is outlined from Manrope 750 into an SVG, so it renders the same where the font isn’t loaded (email, OAuth screens, social cards).</p>
+</main>
+</body>
+</html>

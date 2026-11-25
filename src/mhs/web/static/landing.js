@@ -1,37 +1,32 @@
-// The landing page's sample review: a native dialog with tabs. Same-origin, so it runs under the Content Security Policy.
+// The landing page's motion (ADR-047, REBRAND_PLAN.md §5). The page reads complete without this file: it only lines the
+// sample documents up the first time they come into view and keeps the red pen redrawing its loop while a loop is on
+// screen. Visitors who ask for reduced motion get the finished drawing, and anyone can pause the pen (WCAG 2.2.2).
+// Same-origin, so it runs under the Content Security Policy.
 document.addEventListener("DOMContentLoaded", () => {
-  const dialog = document.getElementById("sample");
-  document.querySelectorAll("[data-open-sample]").forEach((button) => {
-    button.addEventListener("click", () => dialog.showModal());
-  });
-  dialog.querySelector("[data-close-sample]").addEventListener("click", () => dialog.close());
-  // A click on the backdrop lands on the dialog element itself, outside its content box.
-  dialog.addEventListener("click", (event) => {
-    if (event.target !== dialog) return;
-    const box = dialog.getBoundingClientRect();
-    const inside = event.clientX >= box.left && event.clientX <= box.right
-      && event.clientY >= box.top && event.clientY <= box.bottom;
-    if (!inside) dialog.close();
+  if (!("IntersectionObserver" in window) || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const root = document.documentElement;
+  const KEY = "careback-pen-paused";
+  const remembered = () => { try { return localStorage.getItem(KEY) === "1"; } catch { return false; } };
+  const remember = (paused) => { try { localStorage.setItem(KEY, paused ? "1" : "0"); } catch { /* private window */ } };
+
+  root.classList.add("motion");
+  const toggle = document.querySelector(".pen-toggle");
+  const show = (paused) => {
+    root.classList.toggle("pen-paused", paused);
+    toggle.textContent = paused ? "Play the red pen" : "Pause the red pen";
+  };
+  show(remembered());
+  toggle.hidden = false;
+  toggle.addEventListener("click", () => {
+    const paused = !root.classList.contains("pen-paused");
+    show(paused);
+    remember(paused);
   });
 
-  const tabs = [...dialog.querySelectorAll('[role="tab"]')];
-  const select = (chosen) => {
-    tabs.forEach((tab) => {
-      const on = tab === chosen;
-      tab.setAttribute("aria-selected", String(on));
-      tab.tabIndex = on ? 0 : -1;
-      document.getElementById(tab.getAttribute("aria-controls")).hidden = !on;
-    });
-  };
-  tabs.forEach((tab, index) => {
-    tab.addEventListener("click", () => select(tab));
-    tab.addEventListener("keydown", (event) => {
-      const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
-      if (!step) return;
-      event.preventDefault();
-      const next = tabs[(index + step + tabs.length) % tabs.length];
-      select(next);
-      next.focus();
-    });
-  });
+  // .drawn starts the block's animation once; .offscreen holds the pen still while nobody can see it.
+  const watch = new IntersectionObserver((entries) => entries.forEach((entry) => {
+    if (entry.isIntersecting) entry.target.classList.add("drawn");
+    entry.target.classList.toggle("offscreen", !entry.isIntersecting);
+  }), { threshold: 0.35 });
+  document.querySelectorAll("[data-draw]").forEach((block) => watch.observe(block));
 });

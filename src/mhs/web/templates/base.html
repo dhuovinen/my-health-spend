@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}My Health $pend{% endblock %} · MH$</title>
-  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <title>{% block title %}Home{% endblock %} · CareBack</title>
+  {% include "_brand_head.html" %}
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/app.js" defer></script>
 </head>
@@ -18,7 +18,7 @@
 {% macro on(href) %}{{ 'active' if (href == '/' and path == '/') or (href != '/' and (path.startswith(href) or (href == '/cases' and '/cases/' in path) or (href == '/providers' and path.startswith('/charges')))) }}{% endmacro %}
 <header class="topbar">
   <div class="inner">
-    <a class="brand" href="/" aria-label="My Health Spend"><img src="/static/favicon.svg" alt=""><span>My Health <span class="dollar">$</span>pend</span></a>
+    <a class="brand" href="/" aria-label="CareBack"><img src="/static/brand/mark.svg" alt="" width="28" height="28"><span>Care<b>Back</b></span></a>
     {% if show_nav %}
     <nav class="nav" aria-label="Pages">
       {% for href, label in pages %}<a href="{{ href }}" class="{{ on(href) }}"{% if on(href) %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
