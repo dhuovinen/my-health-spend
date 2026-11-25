@@ -1,4 +1,5 @@
-"""The public landing page (ADR-047): who sees it at "/", that it shows no data, and that its copy keeps the UI guide's rules."""
+"""The public landing page (ADR-047, CareBack's design from REBRAND_PLAN.md §5): who sees it at "/", that it shows no
+data, and that its copy keeps the UI guide's rules."""
 
 import re
 
@@ -10,7 +11,7 @@ from mhs.web.app import create_app
 
 
 def is_landing(response) -> bool:
-    return response.status_code == 200 and "Let’s make sense" in response.text
+    return response.status_code == 200 and "Now somebody does." in response.text
 
 
 @pytest.fixture
@@ -34,9 +35,59 @@ def test_copy_follows_the_ui_guide(release0):
     assert "supabase" not in text.lower() and "lovable" not in text.lower()
 
 
-@pytest.mark.parametrize("name", ["landing.css", "landing.js", "landing/billing-chaos.jpg", "landing/mark.png"])
+def test_page_is_careback_and_never_names_the_old_brand(release0):
+    """ADR-060 and the owner's call of 2026-11-25: the page doesn't mention My Health Spend at all, and "Back" never
+    promises money back."""
+    text = release0.get("/welcome").text
+    assert not re.search(r"Health \$?[Ss]pend|MyHealthSpend|MH\$", text)
+    assert "<title>CareBack" in text and 'aria-label="CareBack home"' in text
+    assert "It can’t promise that" in text
+    assert not re.search(r"(get|win) (your|you) money back|guarantee|save you", text, re.I)
+
+
+def test_page_reads_complete_without_its_script(release0):
+    """The red pen and the documents lining up are only added by landing.js: the HTML itself has the loops drawn and
+    no animation classes, and the pause button stays hidden until the script can work it."""
+    text = release0.get("/welcome").text
+    assert text.count('<use href="#loop"/>') == 2 and 'id="loop"' in text
+    assert "drawing" not in text and 'class="motion' not in text
+    assert '<button class="pen-toggle" type="button" hidden>' in text
+
+
+def test_start_button_follows_sign_up(release0):
+    """Release 0 has no sign-up, so the closing button opens the app; the Release 1 cases are in test_r1_signup.py."""
+    text = release0.get("/welcome").text
+    assert '<a class="btn brand" href="/">Open the app</a>' in text and "Get started" not in text
+    assert "accounts are set up by invitation" in text
+
+
+@pytest.mark.parametrize("name", ["landing.css", "landing.js", "landing/billing-chaos.jpg", "landing/mark.svg",
+                                  "favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png",
+                                  "icon-maskable-512.png", "og-image.png", "site.webmanifest", "brand/mark.svg"])
 def test_assets_are_served(release0, name):
     assert release0.get(f"/static/{name}").status_code == 200
+
+
+def test_brand_icons_are_linked_and_the_manifest_points_at_real_files(release0):
+    """ADR-060 and REBRAND_PLAN.md §2.3: every page head carries the icons, the manifest names CareBack, and the
+    bare /favicon.ico browsers ask for is a real icon."""
+    for path in ("/welcome", "/"):
+        text = release0.get(path).text
+        for link in ('href="/favicon.ico"', 'href="/static/favicon.svg"', 'rel="apple-touch-icon"', 'rel="manifest"'):
+            assert link in text, (path, link)
+    ico = release0.get("/favicon.ico")
+    assert ico.status_code == 200 and ico.headers["content-type"] == "image/x-icon"
+    assert ico.content[:4] == b"\x00\x00\x01\x00"  # an ICO file, not the SVG under another name
+    manifest = release0.get("/static/site.webmanifest").json()
+    assert manifest["name"] == "CareBack"
+    for entry in manifest["icons"]:
+        assert release0.get(entry["src"]).status_code == 200, entry["src"]
+
+
+def test_landing_page_has_a_link_preview_image(release0):
+    text = release0.get("/welcome").text
+    match = re.search(r'<meta property="og:image" content="([^"]+)">', text)
+    assert match and match.group(1).startswith("http") and match.group(1).endswith("/static/og-image.png")
 
 
 @pytest.mark.postgres
@@ -81,3 +132,12 @@ def test_signing_out_returns_to_the_sign_in_form_and_root_is_public_again(househ
     r = c.post("/signout", data={"csrf_token": household.csrf(c)}, follow_redirects=False)
     assert r.headers["location"] == "/signin"
     assert is_landing(c.get("/", follow_redirects=False))
+
+
+@pytest.mark.postgres
+def test_release1_serves_the_icon_and_preview_image_without_sign_in(household):
+    c = household.client()
+    ico = c.get("/favicon.ico", follow_redirects=False)
+    assert ico.status_code == 200 and ico.headers["content-type"] == "image/x-icon"
+    text = c.get("/welcome").text
+    assert 'rel="manifest"' in text and "/static/og-image.png" in text

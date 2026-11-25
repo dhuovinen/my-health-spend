@@ -83,7 +83,7 @@ def create_app(config: Config | None = None) -> FastAPI:
 
     @app.get("/favicon.ico", include_in_schema=False)
     def favicon():
-        return FileResponse(WEB / "static" / "favicon.svg", media_type="image/svg+xml")
+        return FileResponse(WEB / "static" / "favicon.ico", media_type="image/x-icon")
 
     add_pages(app, templates, LocalHost(config))
     return app
