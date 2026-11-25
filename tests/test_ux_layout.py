@@ -200,7 +200,7 @@ def check_landing(browser, server, path: str, device: dict, label: str):
     violations = []
     page.on("console", lambda m: violations.append(m.text) if m.type == "error" else None)
     assert page.goto(server.url + path).status == 200
-    assert page.locator("h1").inner_text().startswith("Medical bills.")
+    assert page.locator("h1").inner_text().startswith("Somebody should check your medical bills.")
     assert page.evaluate("() => document.querySelector('.hero-photo').naturalWidth") == 1920
     assert page.evaluate("() => document.fonts.check('16px \"DM Sans\"')")
     assert page.evaluate(SIDEWAYS) <= 0
@@ -211,19 +211,29 @@ def check_landing(browser, server, path: str, device: dict, label: str):
         .filter(e => parseFloat(getComputedStyle(e).fontSize) < 12).map(e => e.textContent.slice(0, 40))""")
     assert small == []
     shot(page, f"{label}-landing.png")
-    # the sample review opens, its tabs switch and it closes
-    dialog = page.locator("dialog#sample")
-    assert not dialog.is_visible()
-    page.locator("[data-open-sample]").first.click()
-    assert dialog.is_visible() and page.locator("#panel-overview").is_visible()
-    assert page.evaluate(SMALL_TARGETS) == []
-    shot(page, f"{label}-landing-sample.png")
-    page.locator("#tab-finding").click()
-    assert page.locator("#panel-finding").is_visible() and not page.locator("#panel-overview").is_visible()
-    page.keyboard.press("ArrowRight")
-    assert page.locator("#panel-next").is_visible()
-    page.locator("[data-close-sample]").click()
-    assert not dialog.is_visible()
+    # the red pen (REBRAND_PLAN.md §5): it loops while the block is on screen, and the visitor can pause it
+    assert page.evaluate("() => document.documentElement.classList.contains('motion')")
+    hero = page.locator(".found")
+    hero.scroll_into_view_if_needed()  # on a phone it sits below the photo
+    page.wait_for_function("() => document.querySelector('.found').classList.contains('drawn')")
+    assert page.evaluate("() => getComputedStyle(document.querySelector('.found .pen')).animationName") == "pen"
+    toggle = page.locator(".pen-toggle")
+    assert toggle.is_visible() and toggle.inner_text() == "Pause the red pen"
+    toggle.click()
+    assert toggle.inner_text() == "Play the red pen"
+    assert page.evaluate("() => getComputedStyle(document.querySelector('.found .pen')).animationName") == "none"
+    toggle.click()
+    assert hero.is_visible()
+    # the documents line up once they scroll into view
+    page.locator("#visit .docs").scroll_into_view_if_needed()
+    page.wait_for_function("() => document.querySelector('#visit [data-draw]').classList.contains('drawn')")
+    shot(page, f"{label}-landing-visit.png")
+    # reduced motion: no animation at all, the loops simply drawn, and nothing to pause
+    page.emulate_media(reduced_motion="reduce")
+    page.reload()
+    assert not page.evaluate("() => document.documentElement.classList.contains('motion')")
+    assert not page.locator(".pen-toggle").is_visible()
+    assert page.evaluate("() => getComputedStyle(document.querySelector('.found .pen')).strokeDashoffset") in ("0", "0px")
     assert violations == []
     context.close()
 

@@ -2,7 +2,7 @@
 # requires-python = ">=3.12,<3.13"
 # dependencies = ["pypdf>=5"]
 # ///
-"""Build an MH$ ingest JSON file from an insurer claims CSV, an HSA transaction export and
+"""Build a CareBack ingest JSON file from an insurer claims CSV, an HSA transaction export and
 provider patient statements (PDF).
 
 Usage:

@@ -23,6 +23,7 @@ def test_tc_prv_08_3_policy_allows_only_own_scripts():
     assert d["script-src"] == ["'self'"]
     assert d["style-src"] == ["'self'"]
     assert d["object-src"] == ["'none'"] and d["frame-ancestors"] == ["'none'"] and d["base-uri"] == ["'none'"]
+    assert d["manifest-src"] == ["'self'"]  # the home-screen icons' manifest (ADR-060), nothing else
     for name, values in d.items():
         allowed_data = name == "img-src"  # the favicon-style inline SVGs only
         for v in values:

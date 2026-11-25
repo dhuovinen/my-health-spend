@@ -24,7 +24,7 @@ from mhs.data.keys import Keyring
 MIN_PASSWORD = 12
 MAX_FAILED = 5
 LOCK_MINUTES = 15
-TOTP_ISSUER = "My Health Spend"
+TOTP_ISSUER = "CareBack"  # new enrolments only: existing authenticator entries keep the old label (ADR-060)
 ENROLMENT_LINK_MINUTES = 15
 RECOVERY_CODES = 10
 RECOVERY_LINK_MINUTES = 15

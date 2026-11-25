@@ -66,6 +66,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 057 | Sign in with Apple as the third social sign-in provider (PRV-12): no scopes, so the callback stays a GET; a short-lived signed client secret; no PKCE | 2026-11-19 | Accepted |
 | 058 | myhealthspend.com served by the app on Cloud Run, retiring the Hostinger website; one main address, every other host forwarded to it | 2026-11-20 | Accepted |
 | 059 | Self-service sign-up with Google or Microsoft (PRV-13): a new household per sign-up, linked by subject, verified email only, explicit Terms agreement, no password; an owner toggle, off by default and only with consent required | 2026-11-21 | Proposed |
+| 060 | The brand becomes CareBack; carebackhealth.com is the main address, healthcareback.com and myhealthspend.com forward to it; the `$` wordmark goes; code names stay `mhs` | 2026-11-25 | Accepted |
 
 ## Records
 
@@ -587,3 +588,20 @@ PRV-13, B-24. The owner asked on 2026-11-21 for a "Log in or sign up" page, like
 - **No new scopes and no new library.** `openid email` as before; Apple stays sign-in only for linked members (its sign-up needs the email, which changes its callback to a cross-site POST: B-25).
 
 **Consequences.** Anyone with a Google or Microsoft account can create a household while sign-up is on, so it must stay off on staging (synthetic data only) except for testing, and off in production until the launch gate is passed. Abuse is limited by the providers' own sign-up and by the owner's switch; a daily cap is a later item if needed. Google's OAuth consent screen has to move from Testing to In production for strangers to get through. Test cases: TC-PRV-13-1 to TC-PRV-13-10.
+
+### ADR-060 · The brand becomes CareBack (Accepted)
+An HSA administrator already ships a mobile app called MyHealthSpend. Keeping "My Health Spend" would confuse members, could suggest we are tied to an HSA company (the opposite of our independence) and carries trademark risk. On 2026-11-25 the owner chose a new name after the review in [naming.md](../naming.md): a fighter-and-advocate tone, for individuals and their households only, a name that stands on its own, and nothing that becomes untrue if the service stays nonprofit, charges nominal fees or is acquired.
+
+**Decision.**
+- **The brand is CareBack.** One word, capital B, no descriptor needed. It means both *we've got your back* and *getting your money back*. It replaces "My Health Spend" and "My Health $pend" in everything a member or the public sees.
+- **The `$` wordmark goes.** The name is set in plain type per [UI_GUIDE.md](UI_GUIDE.md); no visual device stands in for a letter.
+- **`carebackhealth.com` is the main address** (`MHS_PUBLIC_URL`) once it serves the app. `healthcareback.com` and `myhealthspend.com` (with `www` and `app.` names) forward to it through ADR-058's host forwarding (307, same path), so old links, bookmarks and the old domain's sign-in keep arriving. Both new domains were registered on 2026-11-25. `careback.com` is listed for sale and wasn't bought; if it is later, it becomes the main address through the same setting, without a code change.
+- **Code and infrastructure names stay `mhs`.** The Python package, `mhs-admin`, environment variables (`MHS_*`), the compose project, image tags, Google Cloud project and resource names, database roles and requirement codes are internal and keep their names. Renaming them would touch every file, migration and deployment for no gain to members. Only text that people see changes.
+
+**What changes with it.**
+- Templates and pages: `base.html`, `landing.html`, `home.html`, `help.html`, the Terms and privacy notice drafts (both still go to the attorney), and the page titles.
+- The authenticator issuer, `TOTP_ISSUER` in `web/household/auth.py`. New enrolments show "CareBack"; existing entries in members' authenticator apps keep the old label until they re-enrol, and their codes keep working.
+- The OAuth clients: the app name shown on the Google, Microsoft and Apple consent screens, and callback URLs on `carebackhealth.com` added beside the existing ones before the main address moves. Changing the name or logo on Google's consent screen can send it back through brand verification.
+- DNS and Cloud Run domain mappings for the two new domains (GCP_SETUP.md "Custom domain"), and any email addresses on `myhealthspend.com`, which stay until moved.
+
+**Consequences.** Not yet done: a USPTO search for "CareBack" (classes 36, 42, 44) and the app store and social handles. If the search turns up a conflict, the name is revisited with a new decision; the domains and forwarding are cheap to redirect again. Docs written before this date use the old name and are not rewritten; this record is the pointer.

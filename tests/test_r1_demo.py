@@ -51,7 +51,7 @@ def decode(svg: str) -> str:
 
 
 def test_qr_svg_scans_and_is_csp_clean():
-    uri = pyotp.TOTP(pyotp.random_base32()).provisioning_uri(name="demo@example.com", issuer_name="My Health Spend")
+    uri = pyotp.TOTP(pyotp.random_base32()).provisioning_uri(name="demo@example.com", issuer_name="CareBack")
     svg = qr_svg(uri)
     assert decode(svg) == uri
     assert svg.startswith("<svg") and 'viewBox="0 0 ' in svg and "width=" not in svg  # scales to its box

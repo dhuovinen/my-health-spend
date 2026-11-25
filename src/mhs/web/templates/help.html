@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Help{% endblock %}
 {% block content %}
-<div class="page-head"><h1>Help</h1><span class="muted small">How My Health $pend checks your health spending, and how to use it</span></div>
+<div class="page-head"><h1>Help</h1><span class="muted small">How CareBack checks your health spending, and how to use it</span></div>
 
 <nav class="card section help-toc">
   <a href="#idea">What it does</a> · <a href="#pages">Home, visits and household</a> · {% if not path_import %}<a href="#signin">Signing in</a> · <a href="#uploads">Uploading</a> · {% endif %}<a href="#import">Importing a file</a> · <a href="#statuses">Visit statuses</a> · <a href="#checks">The checks</a> · <a href="#cases">Disputes</a> · <a href="#accuracy">Closing a finding</a> · <a href="#hsa">HSA flags</a> · <a href="#settings">Settings</a>{% if not path_import %} · <a href="#data">Your data</a>{% endif %} · <a href="#limits">What it isn't</a>
@@ -9,7 +9,7 @@
 
 <section class="card section" id="idea">
   <h2>What it does</h2>
-  <p>For every visit there are up to three documents: the provider's bill or statement, the insurer's decision (the EOB, explanation of benefits) and your payment, usually from your HSA. My Health $pend lines them up per visit and checks them against each other, so a bill that asks for more than the EOB says you owe, a payment made twice, or a balance nobody asked you about doesn't go unnoticed.</p>
+  <p>For every visit there are up to three documents: the provider's bill or statement, the insurer's decision (the EOB, explanation of benefits) and your payment, usually from your HSA. CareBack lines them up per visit and checks them against each other, so a bill that asks for more than the EOB says you owe, a payment made twice, or a balance nobody asked you about doesn't go unnoticed.</p>
 </section>
 
 <section class="card section" id="pages">

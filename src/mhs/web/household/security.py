@@ -7,6 +7,7 @@ CSP = "; ".join([
     "style-src 'self'",
     "img-src 'self' data:",
     "font-src 'self'",
+    "manifest-src 'self'",
     "connect-src 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",

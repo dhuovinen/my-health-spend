@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from markupsafe import Markup
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -186,16 +186,21 @@ def create_app(
         return {"session": session if signed_in else None, "csrf": session.csrf_token if session else "",
                 "show_nav": signed_in, "path_import": False,
                 "landing_link": {"href": "/signin", "label": "Sign in or sign up" if signup else "Sign in"},
+                "public_url": config.public_url,
                 "sign_in_providers": providers_on(settings), "signup_open": signup,
                 "has_password": session.has_password if session else True,
                 "code_required": bool(session and session.is_owner) or settings[REQUIRE_CODE]}
 
     templates = make_templates([HERE / "templates"], context)
 
-    app = FastAPI(title="My Health Spend", docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(title="CareBack", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.accounts = accounts
     app.state.vault = vault
     app.mount("/static", StaticFiles(directory=WEB / "static"), name="static")
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    def favicon():
+        return FileResponse(WEB / "static" / "favicon.ico", media_type="image/x-icon")
 
     main_host = urlsplit(config.public_url).netloc.lower()
 
