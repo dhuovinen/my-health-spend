@@ -165,7 +165,7 @@ The callback (`/signin/with/<provider>/callback`) already checks `state`, `nonce
 
 ## 7. Outside the code (owner)
 
-1. **Google**: the OAuth consent screen must be **In production** (not "Testing", which only lets listed test users in), with the home page, Privacy Policy (`https://myhealthspend.com/privacy-notice`) and Terms of Service (`https://myhealthspend.com/terms`) links. `openid` and `email` need no Google verification review, but the brand (name and logo) does.
+1. **Google**: the OAuth consent screen must be **In production** (not "Testing", which only lets listed test users in), with the home page, Privacy Policy (`https://carebackhealth.com/privacy-notice`) and Terms of Service (`https://carebackhealth.com/terms`) links. `openid` and `email` need no Google verification review, but the brand (name and logo) does.
 2. **Microsoft**: the app registration's supported account types must include personal Microsoft accounts (the app uses the `common` endpoint). Publisher verification removes the "unverified" warning on the consent screen. Add the `xms_edov` optional claim to allow work and school accounts.
 3. **Terms of Service**: the draft at `/terms` needs the attorney's review, like the privacy notice.
 4. **Admin screen**: require consent, then turn on sign-up, only when ready (SU-37).
