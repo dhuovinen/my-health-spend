@@ -45,6 +45,19 @@ def test_page_is_careback_and_never_names_the_old_brand(release0):
     assert not re.search(r"(get|win) (your|you) money back|guarantee|save you", text, re.I)
 
 
+def test_about_us_is_signed_by_the_founder(release0):
+    """docs/gtm/ABOUT.md: the mission, how we work and Don's signature, with his photo served by the app (the policy
+    allows only the site's own images) and a link to his LinkedIn profile. Community service, not "a nonprofit"."""
+    text = release0.get("/welcome").text
+    assert 'href="#about">About us</a>' in text and 'id="about"' in text
+    assert "Check every bill. Fix what’s wrong. Pay only what you owe." in text
+    assert '<img src="/static/landing/don-huovinen.jpg" alt="Don Huovinen"' in text
+    assert 'href="https://www.linkedin.com/in/don-huovinen-288399/"' in text
+    assert "partner with a leading nonprofit" in text
+    assert not re.search(r"CareBack is a (non-?profit|charity)|tax[- ](efficient|deductible|advice)", text, re.I)
+    assert "Who is behind CareBack?" in text
+
+
 def test_page_reads_complete_without_its_script(release0):
     """The red pen and the documents lining up are only added by landing.js: the HTML itself has the loops drawn and
     no animation classes, and the pause button stays hidden until the script can work it."""
@@ -62,7 +75,7 @@ def test_start_button_follows_sign_up(release0):
 
 
 @pytest.mark.parametrize("name", ["landing.css", "landing.js", "landing/billing-chaos.jpg", "landing/mark.svg",
-                                  "favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png",
+                                  "landing/don-huovinen.jpg", "favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png",
                                   "icon-maskable-512.png", "og-image.png", "site.webmanifest", "brand/mark.svg"])
 def test_assets_are_served(release0, name):
     assert release0.get(f"/static/{name}").status_code == 200

@@ -36,6 +36,7 @@
     <a href="#visit">How it works</a>
     <a href="#does">What it does</a>
     <a href="#fair">How we fight fair</a>
+    <a href="#about">About us</a>
     <a href="#faq">FAQs</a>
   </nav>
   <div class="nav-actions">
@@ -194,6 +195,35 @@
     </div>
   </section>
 
+  <section class="section about" id="about">
+    <div class="wide about-grid">
+      <div class="about-letter">
+        <span class="eyebrow">About us</span>
+        <h2>Check every bill. Fix what’s wrong. Pay only what you owe.</h2>
+        <p>Healthcare is eighteen percent of the American economy, and more of its cost lands on each of us every year. When a bill is wrong, we’re the first line of defense, without the billing experts the insurers have.</p>
+        <p>I learned that the hard way. Over a series of monthly treatments, the same care was coded and billed differently, and I was paying more. I found it, asked my provider to fix it, and they did. Then I heard the same story from friends and colleagues. I didn’t need to fix this for myself. It needs fixing, period. That’s why I started CareBack.</p>
+        <p class="about-close">When it comes to your medical bills, we’ve got your back.</p>
+        <div class="signature">
+          <img src="/static/landing/don-huovinen.jpg" alt="Don Huovinen" width="80" height="80" loading="lazy">
+          <div>
+            <strong>Don Huovinen</strong>
+            <span>Founder, CareBack</span>
+            <a class="linkedin" href="https://www.linkedin.com/in/don-huovinen-288399/" rel="noopener noreferrer">LinkedIn {{ icon("external_link") }}</a>
+          </div>
+        </div>
+      </div>
+      <div class="about-ways">
+        <h3>How we work</h3>
+        <ul class="ways">
+          <li>{{ icon("heart_handshake") }}<div><strong>A community service, at no cost.</strong><p>Lots of companies help with medical bills for a fee or a cut of the savings. That isn’t us: CareBack is free to use. If it proves its value, our aim is to partner with a leading nonprofit to keep providing it at no cost.</p></div></li>
+          <li>{{ icon("bot") }}<div><strong>Advocates that work for you.</strong><p>CareBack checks every bill, EOB and payment, finds where they disagree and drafts what to say. Today you review it and send it. Next, with your permission, CareBack will hand its findings to your own AI agent, or act for you directly, through open standards for personal agents such as A2A, MCP and Poppy.</p></div></li>
+          <li>{{ icon("wallet") }}<div><strong>Paying the efficient way.</strong><p>We believe your HSA is the most efficient way to pay for care. CareBack shows which expenses it can likely cover and keeps the receipts, so you pay for your care in the most efficient way possible.</p></div></li>
+          <li>{{ icon("code") }}<div><strong>100% open source.</strong><p>Our code is public and free for anyone to use. Our goal isn’t to make money from a problem many people share. It’s to solve it, for everyone. If you run a nonprofit that can do this better or reach more people, I’d be glad to work with you, support you or follow your lead. It isn’t about me. It’s about the outcome.</p></div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
   <section class="section does" id="faq">
     <div class="wide faq">
       <div class="section-head">
@@ -202,6 +232,7 @@
       </div>
       <div class="faq-list">
         <details open><summary>Will CareBack get my money back?{{ icon("plus") }}</summary><p>It can’t promise that, and no one honest can. It finds where your bill, your EOB and your payments disagree, shows you the evidence, and helps you ask the provider or insurer about it. Whether money comes back is up to their review.</p></details>
+        <details><summary>Who is behind CareBack?{{ icon("plus") }}</summary><p>Don Huovinen, who started it after finding billing errors in his own care. CareBack is a free community service and open source. <a href="#about">Read more about us</a>.</p></details>
         <details><summary>Is this health insurance?{{ icon("plus") }}</summary><p>No. CareBack helps individuals and their households understand their health spending. It isn’t insurance, a payment account or a replacement for your insurer.</p></details>
         <details><summary>Can it help with bills I’ve already paid?{{ icon("plus") }}</summary><p>Yes, that’s where it starts. Discrepancies can show up even after a bill has been paid.</p></details>
         <details><summary>Can I upload my medical bills today?{{ icon("plus") }}</summary><p>Only with an account. {% if signup_open %}CareBack is in early access: sign up with your Google or Microsoft account.{% else %}CareBack is in early access, and accounts are set up by invitation.{% endif %} The sample on this page uses fictional examples and collects nothing, so please don’t send personal health or financial information here.</p></details>
