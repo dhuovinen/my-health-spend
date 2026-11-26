@@ -191,7 +191,7 @@ A cool, blue-gray desk with one confident blue for action and a red pen kept for
 - **Title** (750, 36px, 1.25): the app's page title (h1).
 - **Subtitle** (700, 18px, 1.5): app card and section heads (h2).
 - **Body** (400, 16px, 26px): everything you read. Landing ledes go to 17–18px. Nothing is ever below 12px.
-- **Label** (600, 12.5px, 0.03em, uppercase): table column headers. On the landing page, eyebrows are 12px, 750, 1.5px tracking, uppercase, in blue with a dot.
+- **Label** (600, 12.5px, 0.03em, uppercase): table column headers. On the landing page, eyebrows are 12px, 750, 1.5px tracking, uppercase, in blue with a dot, and there are only three: the hero's tagline, and "How we fight fair" and "About us", which match the menu links (owner, 2026-11-25).
 - **Figure** (Manrope 700, tabular numerals): every amount, count and date that must line up. Tiles use 1.6rem; the landing's big figures go to 28–30px.
 
 ### Named Rules
@@ -279,6 +279,7 @@ A Coral, hand-drawn loop around the figure that matters ("$150.00 worth a closer
 - **Don't** use red for brand accents, emphasis or anything decorative; it belongs to findings, blocking errors and destructive actions.
 - **Don't** use a second accent color, gradients, glows, or shadows on things that sit in the page.
 - **Don't** set text below 12px, or put Coral on text.
+- **Don't** put an eyebrow above a heading unless it is the hero's tagline or matches a menu link; otherwise the heading carries the section.
 - **Don't** promise money back or show savings counters; the visual system never dramatizes recovered dollars.
 - **Don't** recolor, outline or shadow the mark, or put it on a photo without its blue tile.
 - **Don't** use inline styles, inline scripts or third-party assets; every page stays CSP-clean.

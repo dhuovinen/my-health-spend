@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-26T02:17:35+00:00",
+  "generatedAt": "2026-11-26T02:44:27+00:00",
   "title": "Design System: CareBack",
   "extensions": {
     "colorMeta": {
@@ -576,6 +576,7 @@
       "**Don't** use red for brand accents, emphasis or anything decorative; it belongs to findings, blocking errors and destructive actions.",
       "**Don't** use a second accent color, gradients, glows, or shadows on things that sit in the page.",
       "**Don't** set text below 12px, or put Coral on text.",
+      "**Don't** put an eyebrow above a heading unless it is the hero's tagline or matches a menu link; otherwise the heading carries the section.",
       "**Don't** promise money back or show savings counters; the visual system never dramatizes recovered dollars.",
       "**Don't** recolor, outline or shadow the mark, or put it on a photo without its blue tile.",
       "**Don't** use inline styles, inline scripts or third-party assets; every page stays CSP-clean."

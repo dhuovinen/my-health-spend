@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "kicker-above-heading",
+        "value": "*",
+        "files": [
+          "src/mhs/web/templates/landing.html"
+        ],
+        "createdAt": "2026-11-26T02:39:44.471Z",
+        "reason": "owner's decision, 2026-11-25: the landing page keeps three eyebrows (the hero tagline, and 'How we fight fair' and 'About us', which match the menu links); the other four were removed. Recorded in DESIGN.md Typography and Do's and Don'ts."
+      }
+    ]
+  }
+}
