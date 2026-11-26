@@ -45,18 +45,46 @@ def test_page_is_careback_and_never_names_the_old_brand(release0):
     assert not re.search(r"(get|win) (your|you) money back|guarantee|save you", text, re.I)
 
 
-def test_about_us_is_signed_by_the_founder(release0):
-    """docs/gtm/ABOUT.md: the mission, how we work and Don's signature, with his photo served by the app (the policy
-    allows only the site's own images) and a link to his LinkedIn profile. Community service, not "a nonprofit"."""
+def test_about_us_is_its_own_page_with_a_founder_band_on_the_landing_page(release0):
+    """The landing page critique of 2026-11-26: "About us" is last in the menu and links to /about; the landing page
+    keeps a short founder band. /about carries docs/gtm/ABOUT.md: community service, not "a nonprofit"."""
     text = release0.get("/welcome").text
-    assert 'href="#about">About us</a>' in text and 'id="about"' in text
-    assert "Check every bill. Fix what’s wrong. Pay only what you owe." in text
-    assert '<img src="/static/landing/don-huovinen.jpg" alt="Don Huovinen"' in text
-    assert 'href="https://www.linkedin.com/in/don-huovinen-288399/"' in text
-    assert "partner with a leading nonprofit" in text
-    assert not re.search(r"CareBack is a (non-?profit|charity)|tax[- ](efficient|deductible|advice)", text, re.I)
-    assert "Who is behind CareBack?" in text
+    assert text.index('href="#faq">FAQs</a>') < text.index('href="/about">About us</a>')
+    assert 'id="about"' in text and 'href="/about">Read our story' in text
+    assert '<img class="founder-photo" src="/static/landing/don-huovinen.jpg" alt="Don Huovinen"' in text
+    about = release0.get("/about")
+    assert about.status_code == 200
+    page = about.text
+    assert "Check every bill. Fix what’s wrong. Pay only what you owe." in page
+    assert 'href="https://www.linkedin.com/in/don-huovinen-288399/"' in page and 'aria-current="page"' in page
+    assert "partner with a leading nonprofit" in page and "Next, not built yet" in page
+    assert not re.search(r"CareBack is a (non-?profit|charity)|tax[- ](efficient|deductible|advice)", page, re.I)
 
+
+def test_release0_has_no_waitlist(release0):
+    text = release0.get("/welcome").text
+    assert "Join the waitlist" not in text and 'action="/waitlist"' not in text
+
+
+@pytest.mark.postgres
+def test_waitlist_keeps_an_address_only_with_the_tick(household):
+    """ADR-061: while sign-up is closed the closing band offers the waitlist; nothing is stored without consent, and
+    the answer never echoes the address."""
+    from mhs.web.household.waitlist import Waitlist
+    c = household.client()
+    assert 'action="/waitlist"' in c.get("/welcome").text
+    waitlist = Waitlist(household.accounts.db)
+    r = c.post("/waitlist", data={"email": "pat@example.com"}, follow_redirects=False)
+    assert r.headers["location"] == "/welcome?waitlist=consent#start" and waitlist.count() == 0
+    r = c.post("/waitlist", data={"email": "not-an-address", "agree": "yes"}, follow_redirects=False)
+    assert r.headers["location"] == "/welcome?waitlist=invalid#start" and waitlist.count() == 0
+    for _ in range(2):
+        r = c.post("/waitlist", data={"email": " Pat@Example.com ", "agree": "yes"}, follow_redirects=False)
+        assert r.headers["location"] == "/welcome?waitlist=joined#start"
+    assert [row["email"] for row in waitlist.entries()] == ["pat@example.com"]
+    shown = c.get("/welcome?waitlist=joined").text
+    assert "You’re on the list." in shown and "pat@example.com" not in shown
+    assert waitlist.remove("pat@example.com") and waitlist.count() == 0
 
 def test_page_reads_complete_without_its_script(release0):
     """The red pen and the documents lining up are only added by landing.js: the HTML itself has the loops drawn and

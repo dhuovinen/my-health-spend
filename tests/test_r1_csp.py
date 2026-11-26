@@ -58,8 +58,8 @@ def test_tc_prv_08_1_pages_reference_no_third_party_resources():
              + [STATIC / "style.css", STATIC / "app.js", STATIC / "landing.css", STATIC / "landing.js"])
     for path in files:
         text = path.read_text()
-        for url in OUTBOUND_LINKS:
-            text = text.replace(f'<a class="linkedin" href="{url}" rel="noopener noreferrer">', "")
+        for url in OUTBOUND_LINKS:  # a plain link out, opened by the visitor (rel noopener noreferrer), is allowed
+            text = re.sub(rf'<a [^>]*href="{re.escape(url)}" rel="noopener noreferrer">', "", text)
         assert not re.search(r"https?://", text), path
         assert not re.search(r"<script(?![^>]*\bsrc=\"/static/)", text), path  # only own script files, if any
         assert not re.search(r"\sstyle=", text), path

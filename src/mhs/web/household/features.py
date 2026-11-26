@@ -77,6 +77,7 @@ class Features:
                 "(SELECT count(*) FROM app.members WHERE totp_confirmed) AS confirmed, "
                 "(SELECT count(*) FROM app.members WHERE signed_in_without_code AND NOT totp_confirmed) AS no_code, "
                 "(SELECT count(*) FROM app.members WHERE is_owner) AS owners, "
-                "(SELECT count(*) FROM app.members WHERE signed_up_with <> '') AS signed_up").fetchone()
+                "(SELECT count(*) FROM app.members WHERE signed_up_with <> '') AS signed_up, "
+                "(SELECT count(*) FROM app.waitlist) AS waitlist").fetchone()
             linked = c.execute("SELECT provider, count(*) AS n FROM app.member_identities GROUP BY provider").fetchall()
         return {**row, **{f"linked_{r['provider']}": r["n"] for r in linked}}

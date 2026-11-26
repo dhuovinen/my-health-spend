@@ -1,6 +1,6 @@
 # About us: copy for the website
 
-*Revised 2026-11-25 with the owner's answers. The source for the "About us" section of the landing page (`#about` in `src/mhs/web/templates/landing.html`), signed by Don with his photo (`static/landing/don-huovinen.jpg`) and his LinkedIn profile. The page uses a shortened version of this text; keep the two in step.*
+*Revised 2026-11-25 with the owner's answers; since 2026-11-26 the source for the `/about` page (`src/mhs/web/templates/about.html`, with a short founder band at `#about` on the landing page), signed by Don with his photo (`static/landing/don-huovinen.jpg`) and his LinkedIn profile. The page uses a shortened version of this text; keep the two in step.*
 
 ---
 
