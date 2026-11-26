@@ -107,6 +107,7 @@ First-time setup and the converter's warnings are in `docs/SETUP.md`. Everything
 ## Gotchas
 
 - The product is CareBack (ADR-060); code, package and infrastructure names stay `mhs`. `tests/test_brand_name.py` fails if "My Health $pend" or "My Health Spend" appears anywhere under `src/`.
+- Go-to-market (launch and awareness assets): `docs/gtm/`. Every asset takes its claims and wording from `docs/gtm/BACKGROUND.md`; add anything new there first.
 - Brand and UI standard: `docs/UI_GUIDE.md`. The app is on it, with Manrope and DM Sans self-hosted in `web/static/fonts/`; new visual work follows the guide. DM Sans has no tabular digits, so figures that must line up use `.num` (Manrope).
 - `data/` holds the owner's real health data and is git-ignored. Never import test files into it, never commit it, and don't read the source PDFs or statements unless the owner asks. To try the app, point `MHS_DATA_DIR` at a scratch folder and import `samples/example-ingest.json`.
 - Money is integer cents everywhere inside the app (`src/mhs/data/money.py`); ingest files use dollars.
