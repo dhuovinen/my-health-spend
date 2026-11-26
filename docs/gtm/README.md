@@ -21,7 +21,7 @@ The track for how CareBack is described and launched: positioning, messages, and
 | Background document | [BACKGROUND.md](BACKGROUND.md) | Draft, 2026-11-25; open questions in §10 |
 | Talk track (narration for the deck and video) | [TALK_TRACK.md](TALK_TRACK.md) | Draft, 2026-11-25; wording choices to confirm at the end |
 | About us: mission, ethos, founder's signature | [ABOUT.md](ABOUT.md) | On the landing page (`#about`, and the FAQ "Who is behind CareBack?"), 2026-11-25 |
-| Short presentation (about 8 slides) | | Not started; outline in BACKGROUND §9 |
+| Short presentation (10 slides, from the talk track; narration in the speaker notes) | [CareBack: In your corner](https://claude.ai/artifact/9zD6DYWQRJDnfxi6NsF8hF) (private until shared) | Draft, 2026-11-25 |
 | Short video (60 to 90 seconds) | | Not started; outline in BACKGROUND §9 |
 | One-page summary | | Not started |
 | Social profiles and launch posts | | Waiting on handles (REBRAND_PLAN §8) |
