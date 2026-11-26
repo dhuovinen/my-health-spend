@@ -264,6 +264,14 @@ A full-width grid row for each visit: date, provider (weight 600), the member, t
 ### The red pen (signature motif)
 A Coral, hand-drawn loop around the figure that matters ("$150.00 worth a closer look"). On the landing page it draws itself when it scrolls into view, loops on an 8-second cycle only while on screen, and can be paused ("Pause the red pen", WCAG 2.2.2). With reduced motion or no JavaScript, it is simply drawn. In the app the same idea is static: red-pen text on its wash around the amount at issue.
 
+### Decks (presentations)
+Same palette, type and red-pen motif, scaled to a 1920×1080 slide (source in `docs/gtm/deck/source/`, review copy built by `tools/build_deck_html.py`).
+- **Blue as the brand accent** (owner, 2026-11-26): in a deck, Advocate Blue may mark a hero figure, a statement slide's ground or a label, because nothing on a slide is pressed. The One Blue Rule still holds in the app and on the landing page.
+- **Red stays the pen:** red text and the coral loop mark a finding only (an amount at issue), never emphasis.
+- **Eyebrows:** the cover's tagline (repeated on the close) and one at the start of each part of the story; none elsewhere.
+- **Scale:** headings 72–120px, body 28–32px, nothing below 24px; cards 12px corners with 2px hairlines; figures in Manrope 800 with tabular numerals.
+- **Grounds:** paper and soft for evidence, Night Desk for the cover, values and the close (so the mark keeps its tile), blue for one statement slide.
+
 ## Do's and Don'ts
 
 ### Do:

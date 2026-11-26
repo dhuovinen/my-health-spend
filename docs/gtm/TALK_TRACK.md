@@ -1,12 +1,12 @@
 # CareBack talk track
 
-*Draft, 2026-11-25. Narration for the short presentation and the video, in Don's voice, from his story of 2026-11-25. About 3½ minutes at a speaking pace (about 500 words). Lines in [brackets] are what's on screen. Every figure is sourced at the end; check the notes before changing one.*
+*Draft, 2026-11-25. Narration for the short presentation and the video, in Don's voice, from his story of 2026-11-25. About 4½ minutes at a speaking pace (about 700 words). Revised 2026-11-26 after the deck's design critique: the product shown on slide 8 and a recruiting ask on the close. Lines in [brackets] are what's on screen. Every figure is sourced at the end; check the notes before changing one.*
 
 ---
 
 ## 1. The system (0:00)
 
-[A single figure: 18% of GDP]
+[Slide 2: 18% of the US economy; the question underneath]
 
 Healthcare is eighteen percent of the American economy. There's a lot of good in that. There's also a lot of confusion, and a lot of bloat.
 
@@ -14,19 +14,21 @@ So let me ask you: do you read your medical bills? In detail? And do you underst
 
 ## 2. Who pays when it goes wrong (0:25)
 
-[$2,759 → $3,786, "+37% in one year"]
+[Slide 3: "If you buy your own coverage, more of the bill lands on you." Bars $2,759 → $3,786, +37%]
 
 More and more of the bill is landing on us. If you buy your own coverage on the ACA Marketplace, the average deductible went from about $2,760 in 2025 to about $3,790 in 2026. That's up thirty-seven percent in a single year.
 
-[57% of spending · 30% of people]
+[Slide 4: "People 55 and over account for most US health spending." 57% of spending · 30% of people]
 
 And it lands hardest on people like me. People fifty-five and over are thirty percent of the population, but we account for fifty-seven percent of all health spending.
+
+[Slide 5: "When there's a billing mistake, the bill comes to us."]
 
 So when there's a billing mistake, the bill comes to us. We're the first line of defense. And we don't have the billing experts the insurers have. We're left to fend for ourselves.
 
 ## 3. How I found out (1:10)
 
-[A calendar of monthly visits; the same treatment, different charges]
+[Slide 6: "Same treatment. Different bills." Two panels: the treatment, the same every month; what was coded and billed, not the same]
 
 I didn't realize how broken this was until I had a chronic health problem to deal with. Your annual checkup? They probably get that right. Anything more complex, and in my experience the mistakes start to show up.
 
@@ -34,11 +36,11 @@ I was having a monthly series of eye injections for my vision. Same treatment ev
 
 We'd changed insurers at the end of 2025, and at five to six hundred dollars a visit, every month, I knew 2026 was going to hit my deductible hard. So I went back through the earlier charges and projected the rest of the year. The bills weren't consistent. When I drilled in, they really weren't, and I was paying more.
 
-I used AI to find the outliers. Knowing the treatment was the same, I went back to my provider and had the visits reclassified. That saved me hundreds of dollars.
+I used AI to find the outliers. Knowing the treatment was the same, I went back to my provider and had the visits reclassified: re-coded to match what was actually done. That saved me hundreds of dollars.
 
 ## 4. It's not just me (2:00)
 
-[Two short cards: "$4,000+" and "$315 vs $275"]
+[Slide 7: two cards: the $4,000+ ER visit; billed $315, circled in red pen, against $275 owed per the insurer]
 
 Then I started asking around. A colleague went to the ER and was given a pain reliever. The bill was over four thousand dollars, because it was coded as an ambulance service. When a mistake is that egregious, at least you notice it.
 
@@ -46,17 +48,25 @@ Most aren't. Recently my provider couldn't give me an itemized bill, just a stat
 
 ## 5. Why CareBack (2:45)
 
-[CareBack mark]
-
 That's when I realized I didn't need to fix this for myself. It needs fixing, period.
 
-That's why I started CareBack. CareBack lines up your provider's bill, your insurer's explanation of benefits and what you paid, shows you where they don't agree, and helps you get it fixed.
+[Slide 8: the fictional Riverview visit: the bill, the EOB and the HSA payment side by side, the $150 gap circled]
 
-And it's free. No fee, no cut of what you get back. It's open source, and it's a community service. If it proves its value, our aim is to partner with a leading nonprofit to keep it free for everyone.
+That's why I started CareBack. Here's what it does, on a made-up visit. Your provider says you owe $348. Your insurer's explanation of benefits says you owe $198, and that's what you paid from your HSA. CareBack lines the three up and circles the $150 gap. It doesn't call it an error; it says it's worth a closer look, shows you the documents, and drafts the letter if you want to ask. You decide what's sent.
 
-[Wordmark · "In your corner on every medical bill" · carebackhealth.com]
+[Slide 9: "What's built, what's next." Built and running, on the left; where developers and nonprofits come in, on the right]
 
-When it comes to your medical bills, we've got your back.
+So what exists today? CareBack is built and running. You can upload or forward your bills, EOBs and HSA exports. It matches every visit line by line and gives each one a status. It removes names and member numbers before any AI reads a document. It drafts the letter, and you decide what's sent. It's Python, FastAPI and Postgres, MIT licensed, and live at carebackhealth.com.
+
+And it's free. No fee, no cut of what you get back.
+
+What's next is where you come in. Developers: the hardest problems are reading documents accurately and matching them to the right visit. Nonprofits: you already serve the households who need this most, and you know what they need.
+
+[Slide 10: "Build it with us." One ask for developers and nonprofits; Don's photo, LinkedIn and carebackhealth.com]
+
+When it comes to your medical bills, we've got your back. But I can't do this alone.
+
+Before we open CareBack to every household, I'm looking for the people who'll help carry it. If you're a developer or you run a nonprofit, and you want to help, talk to me. Find me on LinkedIn, or start at carebackhealth.com.
 
 ---
 

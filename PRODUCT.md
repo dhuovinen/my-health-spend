@@ -16,6 +16,8 @@ A responsive, server-rendered web app (FastAPI and Jinja templates). There is no
 
 Other audiences the product serves, but design doesn't center on: people 55 and over with complex or repeated care (the founder's own situation), people who already suspect a bill is wrong, and adult children handling a parent's bills (not yet confirmed as a launch audience).
 
+**Launch priority (owner, 2026-11-25):** recruit developers and nonprofits to build and carry CareBack before driving member adoption.
+
 Who can use it today: early access by invitation. Self-service sign-up is built but switched off until the launch gate (consent, privacy notice, breach plan and attorney review) is passed.
 
 ## Product Purpose
@@ -69,7 +71,7 @@ CareBack is free, with no fee and no cut of what comes back. It is open source (
 - **Undecided:**
   - the signature line;
   - whether adult children handling a parent's bills are a launch audience;
-  - whether the founder's own results may be published.
+  - whether the results of CareBack's run on the founder's own data (for example $1,693.94 at stake across 11 visits) may be published. The founder's personal stories in `docs/gtm/TALK_TRACK.md`, amounts included, are cleared for launch material.
 
 ## Brand Commitments
 
@@ -93,7 +95,7 @@ CareBack is free, with no fee and no cut of what comes back. It is open source (
 - **Fictional samples only, labelled as fictional:**
   - the landing page's Riverview visit ($348 billed, $198 owed, $150 worth a closer look);
   - `samples/demo/`, `samples/walkthrough/`, `samples/household-ingest.json`, `samples/tax-ingest.json`.
-- **Absent, and must not be invented:** testimonials, customer counts, savings results, press, an unsourced error rate for medical bills, and the founder's own dollar results (not cleared for publication).
+- **Absent, and must not be invented:** testimonials, customer counts, savings results, press, an unsourced error rate for medical bills, and the results of CareBack's run on the founder's own data (not cleared for publication; his personal stories in the talk track are).
 
 ## Product Principles
 
