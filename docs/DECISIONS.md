@@ -67,6 +67,7 @@ ADR-001 to ADR-007 restate the Release 0 decisions log (D1 to D15 in [MVP_REQUIR
 | 058 | myhealthspend.com served by the app on Cloud Run, retiring the Hostinger website; one main address, every other host forwarded to it | 2026-11-20 | Accepted |
 | 059 | Self-service sign-up with Google or Microsoft (PRV-13): a new household per sign-up, linked by subject, verified email only, explicit Terms agreement, no password; an owner toggle, off by default and only with consent required | 2026-11-21 | Proposed |
 | 060 | The brand becomes CareBack; carebackhealth.com is the main address, healthcareback.com and myhealthspend.com forward to it; the `$` wordmark goes; code names stay `mhs` | 2026-11-25 | Accepted |
+| 061 | A waitlist on the landing page: an email address, a consent version and a time in the app's database; counts on the admin screen, the list only through `mhs-admin`; no email is sent | 2026-11-26 | Accepted |
 
 ## Records
 
@@ -605,3 +606,19 @@ An HSA administrator already ships a mobile app called MyHealthSpend. Keeping "M
 - DNS and Cloud Run domain mappings for the two new domains (GCP_SETUP.md "Custom domain"), and any email addresses on `myhealthspend.com`, which stay until moved.
 
 **Consequences.** Not yet done: a USPTO search for "CareBack" (classes 36, 42, 44) and the app store and social handles. If the search turns up a conflict, the name is revisited with a new decision; the domains and forwarding are cheap to redirect again. Docs written before this date use the old name and are not rewritten; this record is the pointer.
+
+### ADR-061 · A waitlist on the landing page (Accepted)
+
+**Context.** Sign-up stays closed until the launch gate (ADR-055, ADR-059), so the landing page's closing button sent everyone to a sign-in only invited members can use. The owner wants visitors to be able to ask to be told when CareBack opens (2026-11-26), and the landing page critique of the same day found the page's last step was a dead end for the uninvited.
+
+**Decision.**
+- **What is kept:** the email address (lower-cased, at most 254 characters), the version of the consent wording the visitor ticked, and when. Nothing else: no name, no IP address, no health information. One row per address; joining twice changes nothing and says the same thing.
+- **Where:** a new table, `app.waitlist`, in the Release 1 database, beside the service tables. It belongs to no household, so it has no row-level security; the app role may insert, read and delete.
+- **Consent:** an unticked box beside the address ("Email me when CareBack opens sign-up…"), linking to the privacy notice, which gains a short waitlist section (a draft for the attorney like the rest). Without the tick nothing is stored.
+- **Who sees it:** the admin screen shows a count only (ADR-049 shows counts, never people). The owner lists or removes addresses with `mhs-admin waitlist list` and `mhs-admin waitlist remove --email`.
+- **No email is sent.** CareBack sends no mail yet (mail for carebackhealth.com isn't set up); the owner writes to the list by hand when sign-up opens, then removes it.
+- **Abuse:** the post must come from the site itself (the app's same-origin check), the page never echoes the address, and the answer is the same whether or not it was already there. A daily cap is a later item if needed, as for sign-up.
+- **Release 0** (the local app) has no waitlist: its landing page keeps "Open the app".
+
+**Consequences.** A new kind of personal data outside any household: it is not in a member's export, so a removal request is handled with `mhs-admin waitlist remove`. The privacy notice draft (its new "If you join the waitlist" section) and the consent wording go to the attorney with the rest of the launch gate. The notice's version (`NOTICE_VERSION`) is not bumped: nothing a member agreed to changes, and a bump would ask every member to consent again. Test cases: `tests/test_landing.py` (waitlist).
+

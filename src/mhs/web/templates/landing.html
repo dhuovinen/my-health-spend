@@ -1,28 +1,17 @@
 {# The public landing page (ADR-047), CareBack's "In your corner" design (ADR-060, REBRAND_PLAN.md §5). Stands alone:
    it doesn't extend base.html, reads no household data and is served to people who aren't signed in. Follows
-   docs/UI_GUIDE.md: no unverified statistics, no promised savings or money back, samples labelled as fictional.
-   It reads complete without landing.js, which only plays the red pen and the documents lining up. #}
+   docs/UI_GUIDE.md and DESIGN.md: no unverified statistics, no promised savings or money back, samples labelled as
+   fictional. It reads complete without landing.js, which only plays the red pen and the documents lining up.
+   The founder's full story is /about (about.html); here a short band links to it. Bands alternate white and tint.
+   While sign-up is closed, Release 1 offers the waitlist (ADR-061) beside "Sign in" in the closing band. #}
 {% from "_icons.html" import icon %}
-{% macro wordmark() %}<a class="wordmark" href="/welcome" aria-label="CareBack home"><img src="/static/landing/mark.svg" alt="" width="40" height="40"><span>Care<b>Back</b></span></a>{% endmacro %}
+{% from "_landing_chrome.html" import head, header, footer with context %}
 {% macro loop() %}<svg class="pen" aria-hidden="true" preserveAspectRatio="none"><use href="#loop"/></svg>{% endmacro %}
-{% if signup_open %}{% set start = {"href": landing_link.href, "label": "Get started"} %}{% else %}{% set start = landing_link %}{% endif %}
+{% set waitlist_state = request.query_params.get("waitlist", "") %}
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CareBack | In your corner on every medical bill</title>
-  <meta name="description" content="CareBack lines up your provider’s bill, your insurer’s explanation of benefits and what you paid, circles where they don’t agree, and helps you ask about it.">
-  <meta property="og:title" content="CareBack | In your corner on every medical bill">
-  <meta property="og:description" content="Your bill, your insurer’s EOB and what you paid. Side by side.">
-  <meta property="og:type" content="website">
-  {% set site = public_url or (request.base_url | string).rstrip("/") %}
-  <meta property="og:image" content="{{ site }}/static/og-image.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta name="twitter:card" content="summary_large_image">
-{% include "_brand_head.html" %}
-  <link rel="stylesheet" href="/static/landing.css">
+{{ head("CareBack | In your corner on every medical bill", "CareBack lines up your provider’s bill, your insurer’s explanation of benefits and what you paid, circles where they don’t agree, and helps you ask about it.") }}
   <script src="/static/landing.js" defer></script>
 </head>
 <body>
@@ -30,22 +19,9 @@
   <symbol id="loop" viewBox="0 0 120 60" preserveAspectRatio="none"><path pathLength="1" d="M8 34C4 16 46 4 84 7c30 3 38 22 26 36-14 15-62 15-88 6C6 43 2 33 12 24c6-5 15-9 26-11"/></symbol>
 </svg>
 
-<header class="wide navbar">
-  {{ wordmark() }}
-  <nav class="nav-links" aria-label="Main navigation">
-    <a href="#visit">How it works</a>
-    <a href="#does">What it does</a>
-    <a href="#fair">How we fight fair</a>
-    <a href="#about">About us</a>
-    <a href="#faq">FAQs</a>
-  </nav>
-  <div class="nav-actions">
-    <a class="signin" href="{{ landing_link.href }}">{{ landing_link.label }}</a>
-    {% if signup_open %}<a class="btn brand" href="{{ start.href }}">{{ start.label }}</a>{% endif %}
-  </div>
-</header>
+{{ header() }}
 
-<main>
+<main id="main">
   <section class="hero">
     <div class="wide hero-inner">
       <div class="hero-copy">
@@ -72,7 +48,22 @@
     </div>
   </section>
 
-  <section class="section" id="visit">
+  <section class="section" id="questions">
+    <div class="wide questions">
+      <div class="section-head">
+        <h2>Questions you shouldn’t have to answer alone.</h2>
+        <p>One visit produces a bill, an insurance decision and a payment, weeks apart and in different formats, from three parties. No one reconciles them.</p>
+      </div>
+      <ul class="question-list">
+        <li>Was the provider in network, and was I billed that way?</li>
+        <li>Did the insurer process the claim, and does what I owe match?</li>
+        <li>Am I overpaying through a wrong rate, a duplicate charge or a misapplied copay?</li>
+        <li>Was it paid from the right account, and is anything still outstanding?</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section tint" id="visit">
     <div class="wide">
       <div class="section-head">
         <h2>Here’s what CareBack sees that nobody else checks.</h2>
@@ -117,7 +108,7 @@
     </div>
   </section>
 
-  <section class="section does" id="does">
+  <section class="section" id="does">
     <div class="wide">
       <div class="section-head">
         <h2>Four things, for every visit.</h2>
@@ -138,7 +129,7 @@
           <p>Duplicate charges, wrong rates, misapplied copays, payments that weren’t credited and cost sharing that doesn’t match your plan, each with its numbers and documents.</p>
           <div class="slice">
             <div class="slice-row"><span>Billed twice: specimen processing<small>Summit Pathology · two lines on one bill</small></span><span class="num">$95.00</span></div>
-            <div class="slice-row"><span>Coinsurance above your plan’s 20%<small>Valley Radiology · from your EOB</small></span><span class="num">$62.40</span></div>
+            <div class="slice-row"><span>Your share is above your plan’s 20%<small>Valley Radiology · from your EOB</small></span><span class="num">$62.40</span></div>
           </div>
         </article>
         <article class="verb">
@@ -151,10 +142,10 @@
         </article>
         <article class="verb">
           <div class="verb-head"><span class="verb-icon">{{ icon("calendar") }}</span><h3>Plan ahead</h3></div>
-          <p>Estimate your share before you book, from your deductible, coinsurance and what you’ve paid so far, and see what your HSA can cover.</p>
+          <p>Estimate your share before you book, from your deductible, your share of the cost and what you’ve paid so far, and see what your HSA can cover.</p>
           <div class="slice">
             <div class="slice-row"><span>Knee MRI, in network<small>Deductible left: $400.00 · then 20%</small></span><span class="num">≈ $520.00</span></div>
-            <div class="slice-row"><span>HSA balance available<small>Eligible expense, Publication 502</small></span><span class="num">$1,240.00</span></div>
+            <div class="slice-row"><span>HSA balance available<small>An eligible medical expense</small></span><span class="num">$1,240.00</span></div>
           </div>
         </article>
       </div>
@@ -177,82 +168,75 @@
     </div>
   </section>
 
-  <section class="section">
-    <div class="wide questions">
+  <section class="section tint" id="about">
+    <div class="wide founder">
+      <img class="founder-photo" src="/static/landing/don-huovinen.jpg" alt="Don Huovinen" width="128" height="128" loading="lazy">
       <div class="section-head">
-        <h2>Questions you shouldn’t have to answer alone.</h2>
-        <p>One visit produces a bill, an insurance decision and a payment, weeks apart and in different formats, from three parties. No one reconciles them.</p>
-      </div>
-      <ul class="question-list">
-        <li>Was the provider in network, and was I billed that way?</li>
-        <li>Did the insurer process the claim, and does what I owe match?</li>
-        <li>Am I overpaying through a wrong rate, a duplicate charge or a misapplied copay?</li>
-        <li>Was it paid from the right account, and is anything still outstanding?</li>
-      </ul>
-    </div>
-  </section>
-
-  <section class="section about" id="about">
-    <div class="wide about-grid">
-      <div class="about-letter">
         <span class="eyebrow">About us</span>
-        <h2>Check every bill. Fix what’s wrong. Pay only what you owe.</h2>
-        <p>Healthcare is eighteen percent of the American economy, and more of its cost lands on each of us every year. When a bill is wrong, we’re the first line of defense, without the billing experts the insurers have.</p>
-        <p>I learned that the hard way. Over a series of monthly treatments, the same care was coded and billed differently, and I was paying more. I found it, asked my provider to fix it, and they did. Then I heard the same story from friends and colleagues. I didn’t need to fix this for myself. It needs fixing, period. That’s why I started CareBack.</p>
-        <p class="about-close">When it comes to your medical bills, we’ve got your back.</p>
-        <div class="signature">
-          <img src="/static/landing/don-huovinen.jpg" alt="Don Huovinen" width="80" height="80" loading="lazy">
-          <div>
-            <strong>Don Huovinen</strong>
-            <span>Founder, CareBack</span>
-            <a class="linkedin" href="https://www.linkedin.com/in/don-huovinen-288399/" rel="noopener noreferrer">LinkedIn {{ icon("external_link") }}</a>
-          </div>
+        <h2>Why I started CareBack.</h2>
+        <p>Over a series of monthly treatments, the same care was coded and billed differently, and I was paying more. I got it fixed, then heard the same story from friends and colleagues. It needs fixing, period. CareBack is free, open source and run as a community service.</p>
+        <div class="founder-foot">
+          <span class="founder-name">Don Huovinen, founder</span>
+          <a class="btn quiet" href="/about">Read our story {{ icon("arrow_right") }}</a>
         </div>
       </div>
-      <div class="about-ways">
-        <h3>How we work</h3>
-        <ul class="ways">
-          <li>{{ icon("heart_handshake") }}<div><strong>A community service, at no cost.</strong><p>Lots of companies help with medical bills for a fee or a cut of the savings. That isn’t us: CareBack is free to use. If it proves its value, our aim is to partner with a leading nonprofit to keep providing it at no cost.</p></div></li>
-          <li>{{ icon("bot") }}<div><strong>Advocates that work for you.</strong><p>CareBack checks every bill, EOB and payment, finds where they disagree and drafts what to say. Today you review it and send it. Next, with your permission, CareBack will hand its findings to your own AI agent, or act for you directly, through open standards for personal agents such as A2A, MCP and Poppy.</p></div></li>
-          <li>{{ icon("wallet") }}<div><strong>Paying the efficient way.</strong><p>We believe your HSA is the most efficient way to pay for care. CareBack shows which expenses it can likely cover and keeps the receipts, so you pay for your care in the most efficient way possible.</p></div></li>
-          <li>{{ icon("code") }}<div><strong>100% open source.</strong><p>Our code is public and free for anyone to use. Our goal isn’t to make money from a problem many people share. It’s to solve it, for everyone. If you run a nonprofit that can do this better or reach more people, I’d be glad to work with you, support you or follow your lead. It isn’t about me. It’s about the outcome.</p></div></li>
-        </ul>
-      </div>
     </div>
   </section>
 
-  <section class="section does" id="faq">
+  <section class="section" id="faq">
     <div class="wide faq">
       <div class="section-head">
         <h2>Straight answers.</h2>
+        <p>Still wondering about something? <a href="/about">About us</a> has the longer story.</p>
       </div>
       <div class="faq-list">
         <details open><summary>Will CareBack get my money back?{{ icon("plus") }}</summary><p>It can’t promise that, and no one honest can. It finds where your bill, your EOB and your payments disagree, shows you the evidence, and helps you ask the provider or insurer about it. Whether money comes back is up to their review.</p></details>
-        <details><summary>Who is behind CareBack?{{ icon("plus") }}</summary><p>Don Huovinen, who started it after finding billing errors in his own care. CareBack is a free community service and open source. <a href="#about">Read more about us</a>.</p></details>
+        <details><summary>Who is behind CareBack?{{ icon("plus") }}</summary><p>Don Huovinen, who started it after finding billing errors in his own care. CareBack is a free community service and open source. <a href="/about">Read our story</a>.</p></details>
         <details><summary>Is this health insurance?{{ icon("plus") }}</summary><p>No. CareBack helps individuals and their households understand their health spending. It isn’t insurance, a payment account or a replacement for your insurer.</p></details>
         <details><summary>Can it help with bills I’ve already paid?{{ icon("plus") }}</summary><p>Yes, that’s where it starts. Discrepancies can show up even after a bill has been paid.</p></details>
-        <details><summary>Can I upload my medical bills today?{{ icon("plus") }}</summary><p>Only with an account. {% if signup_open %}CareBack is in early access: sign up with your Google or Microsoft account.{% else %}CareBack is in early access, and accounts are set up by invitation.{% endif %} The sample on this page uses fictional examples and collects nothing, so please don’t send personal health or financial information here.</p></details>
+        <details><summary>Can I upload my medical bills today?{{ icon("plus") }}</summary><p>Only with an account. {% if signup_open %}CareBack is in early access: sign up with your Google or Microsoft account.{% elif waitlist_open %}CareBack is in early access, and accounts are set up by invitation. Join the waitlist below and we’ll tell you when sign-up opens.{% else %}CareBack is in early access, and accounts are set up by invitation.{% endif %} The sample on this page uses fictional examples and collects nothing, so please don’t send personal health or financial information here.</p></details>
       </div>
     </div>
   </section>
 
   <section class="closing" id="start">
     <div class="wide closing-inner">
-      <div>
+      <div class="closing-copy">
         <h2>Bring us one visit.</h2>
+        {% if waitlist_open %}
+        <p>Invited members can sign in now. Everyone else: join the waitlist and we’ll tell you when sign-up opens.</p>
+        {% else %}
         <p>We’ll show you what lines up, what doesn’t, and what to ask.</p>
+        {% endif %}
       </div>
+      {% if waitlist_open %}
+      <div class="waitlist">
+        {% if waitlist_state == "joined" %}
+        <p class="waitlist-note" role="status">You’re on the list. We’ll email you when sign-up opens, and nothing else.</p>
+        {% else %}
+        {% if waitlist_state == "invalid" %}<p class="waitlist-note" role="alert">That doesn’t look like an email address. Please check it and try again.</p>{% endif %}
+        {% if waitlist_state == "consent" %}<p class="waitlist-note" role="alert">Please tick the box so we can email you, then try again.</p>{% endif %}
+        <form class="waitlist-form" method="post" action="/waitlist">{{ csrf_input() }}
+          <label class="waitlist-label" for="waitlist-email">Your email address</label>
+          <div class="waitlist-row">
+            <input id="waitlist-email" name="email" type="email" autocomplete="email" maxlength="254" required>
+            <button class="btn light" type="submit">Join the waitlist</button>
+          </div>
+          <label class="waitlist-consent"><input type="checkbox" name="agree" value="yes" required><span>{{ waitlist_consent }} <a href="/privacy-notice#waitlist">Privacy notice</a></span></label>
+        </form>
+        {% endif %}
+        <p class="waitlist-signin">Already invited? <a href="{{ landing_link.href }}">{{ landing_link.label }}</a></p>
+      </div>
+      {% else %}
       <div class="closing-actions">
-        <a class="btn brand" href="{{ start.href }}">{{ start.label }}</a>
+        <a class="btn brand" href="{{ landing_link.href }}">{% if signup_open %}Get started{% else %}{{ landing_link.label }}{% endif %}</a>
         <a class="btn quiet" href="#visit">See a sample visit</a>
       </div>
+      {% endif %}
     </div>
   </section>
 </main>
 
-<footer class="wide footer">
-  {{ wordmark() }}
-  <p>© {{ year }} CareBack. In your corner.<br>Early access. Not insurance, medical, legal or financial advice.</p>
-</footer>
+{{ footer() }}
 </body>
 </html>

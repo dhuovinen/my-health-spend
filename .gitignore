@@ -16,3 +16,6 @@ scratch-data/
 .impeccable/config.local.json
 .impeccable/live/
 .impeccable/history/
+
+# Images uploaded in the CareBack deck (licence unknown); tools/build_deck_html.py reads them locally
+docs/gtm/deck/source/assets/

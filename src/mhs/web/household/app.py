@@ -42,6 +42,7 @@ from mhs.web.household.connect import add_insurer_connection
 from mhs.web.household.consent import add_consent
 from mhs.web.household.signup import add_signup
 from mhs.web.household.social import add_social_sign_in
+from mhs.web.household.waitlist import CONSENT_TEXT as WAITLIST_CONSENT, Waitlist, add_waitlist
 from mhs.web.pages import VIEW_COOKIE, WEB, add_pages, make_templates
 
 HERE = Path(__file__).parent
@@ -188,6 +189,8 @@ def create_app(
                 "landing_link": {"href": "/signin", "label": "Sign in or sign up" if signup else "Sign in"},
                 "public_url": config.public_url,
                 "sign_in_providers": providers_on(settings), "signup_open": signup,
+                # ADR-061: while sign-up is closed, the landing page offers the waitlist beside "Sign in"
+                "waitlist_open": not signup, "waitlist_consent": WAITLIST_CONSENT,
                 "has_password": session.has_password if session else True,
                 "code_required": bool(session and session.is_owner) or settings[REQUIRE_CODE]}
 
@@ -439,6 +442,7 @@ def create_app(
                        sign_up=begin_signup)
     add_admin_screen(app, config=config, accounts=accounts, features=features, db=db, page=page, member=member,
                      check_csrf=check_csrf)
+    add_waitlist(app, waitlist=Waitlist(db))
 
     @app.get("/account", response_class=HTMLResponse)
     def account(request: Request):
