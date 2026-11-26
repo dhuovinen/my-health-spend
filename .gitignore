@@ -9,3 +9,10 @@ __pycache__/
 harness-output/
 .env
 scratch-data/
+
+# Impeccable design skill (.claude/skills/impeccable): its downloaded engine and local state stay out of git
+**/skills/impeccable/scripts/bin/
+**/.impeccable/hook.cache.json
+.impeccable/config.local.json
+.impeccable/live/
+.impeccable/history/

@@ -1,0 +1,584 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-26T02:17:35+00:00",
+  "title": "Design System: CareBack",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Advocate Blue",
+        "canonical": "oklch(52.0% 0.210 262.1)",
+        "dark": "#7EA8FF",
+        "tonalRamp": [
+          "#00042F",
+          "#001C5D",
+          "#093690",
+          "#1953C6",
+          "#3A78F2",
+          "#6CA2FF",
+          "#9FCAFF",
+          "#CFEFFF"
+        ]
+      },
+      "primary-ink": {
+        "role": "primary",
+        "displayName": "Text on Blue",
+        "canonical": "oklch(100.0% 0.000 89.9)",
+        "dark": "#0B1A36",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#242424",
+          "#404040",
+          "#5D5D5D",
+          "#808080",
+          "#A4A4A4",
+          "#CACACA",
+          "#EEEEEE"
+        ]
+      },
+      "primary-tint": {
+        "role": "primary",
+        "displayName": "Blue Tint",
+        "canonical": "oklch(94.9% 0.024 259.8)",
+        "dark": "#1D2E4D",
+        "tonalRamp": [
+          "#090B0F",
+          "#20242B",
+          "#3A4049",
+          "#575E6A",
+          "#78818E",
+          "#9EA5B0",
+          "#C5CBD4",
+          "#EBEFF5"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(23.9% 0.036 260.7)",
+        "dark": "#F6F9FC",
+        "tonalRamp": [
+          "#080B12",
+          "#1E242E",
+          "#38404E",
+          "#535E70",
+          "#758195",
+          "#9BA5B6",
+          "#C3CBD8",
+          "#E9EFF9"
+        ]
+      },
+      "muted-ink": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "oklch(49.0% 0.025 259.2)",
+        "dark": "#ADB5C1",
+        "tonalRamp": [
+          "#090B10",
+          "#20242B",
+          "#3A404A",
+          "#565E6B",
+          "#78818E",
+          "#9EA5B1",
+          "#C5CBD4",
+          "#EAEFF6"
+        ]
+      },
+      "app-ground": {
+        "role": "neutral",
+        "displayName": "App Ground",
+        "canonical": "oklch(97.0% 0.006 264.5)",
+        "dark": "#131D2D",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#232426",
+          "#3F4042",
+          "#5C5E61",
+          "#7E8083",
+          "#A3A4A7",
+          "#C9CACD",
+          "#EEEEF0"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "oklch(100.0% 0.000 89.9)",
+        "dark": "#182334",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#242424",
+          "#404040",
+          "#5D5D5D",
+          "#808080",
+          "#A4A4A4",
+          "#CACACA",
+          "#EEEEEE"
+        ]
+      },
+      "quiet-band": {
+        "role": "neutral",
+        "displayName": "Quiet Band",
+        "canonical": "oklch(97.0% 0.009 264.5)",
+        "dark": "#1D2E4D",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#232426",
+          "#3E4043",
+          "#5B5E62",
+          "#7E8085",
+          "#A2A5A9",
+          "#C9CACE",
+          "#EDEEF1"
+        ]
+      },
+      "hero-mist": {
+        "role": "neutral",
+        "displayName": "Hero Mist",
+        "canonical": "oklch(96.0% 0.008 253.9)",
+        "dark": "#182334",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#222426",
+          "#3E4043",
+          "#5B5E62",
+          "#7D8085",
+          "#A2A5A8",
+          "#C8CBCD",
+          "#EDEFF1"
+        ]
+      },
+      "night-desk": {
+        "role": "neutral",
+        "displayName": "Night Desk",
+        "canonical": "oklch(23.0% 0.034 259.5)",
+        "dark": "#0E1623",
+        "tonalRamp": [
+          "#080B11",
+          "#1E242E",
+          "#38404D",
+          "#535E6F",
+          "#758194",
+          "#9BA5B5",
+          "#C3CBD8",
+          "#E9EFF8"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(89.9% 0.013 262.4)",
+        "dark": "#2F3B4F",
+        "tonalRamp": [
+          "#0A0B0E",
+          "#222428",
+          "#3D4045",
+          "#5A5E65",
+          "#7C8088",
+          "#A1A5AB",
+          "#C8CBD0",
+          "#ECEEF2"
+        ]
+      },
+      "field-edge": {
+        "role": "neutral",
+        "displayName": "Field Edge",
+        "canonical": "oklch(56.7% 0.027 262.0)",
+        "dark": "#7A889C",
+        "tonalRamp": [
+          "#090B10",
+          "#20242C",
+          "#3A404B",
+          "#565E6C",
+          "#788190",
+          "#9EA5B2",
+          "#C5CBD5",
+          "#EAEFF6"
+        ]
+      },
+      "red-pen": {
+        "role": "secondary",
+        "displayName": "Red Pen",
+        "canonical": "oklch(50.0% 0.182 29.5)",
+        "dark": "#FF8A80",
+        "tonalRamp": [
+          "#230000",
+          "#4B0100",
+          "#77140C",
+          "#A6291E",
+          "#D24F3F",
+          "#EE8171",
+          "#FFB0A2",
+          "#FFDCD1"
+        ]
+      },
+      "red-pen-wash": {
+        "role": "secondary",
+        "displayName": "Red Pen Wash",
+        "canonical": "oklch(95.6% 0.019 25.6)",
+        "dark": "#3A1D1B",
+        "tonalRamp": [
+          "#0E0A09",
+          "#292221",
+          "#473D3C",
+          "#675A59",
+          "#8A7C7B",
+          "#ADA1A0",
+          "#D1C8C7",
+          "#F4EDEC"
+        ]
+      },
+      "coral": {
+        "role": "secondary",
+        "displayName": "Coral",
+        "canonical": "oklch(63.0% 0.170 28.0)",
+        "dark": "#FF8A80",
+        "tonalRamp": [
+          "#210000",
+          "#490504",
+          "#741915",
+          "#A22F27",
+          "#CD5348",
+          "#EA8377",
+          "#FFB2A7",
+          "#FFDDD4"
+        ]
+      },
+      "warn": {
+        "role": "status",
+        "displayName": "Warn",
+        "canonical": "oklch(53.1% 0.119 65.1)",
+        "dark": "#FFC266",
+        "tonalRamp": [
+          "#190600",
+          "#3A1B00",
+          "#5E3400",
+          "#864F02",
+          "#AD712F",
+          "#CC9967",
+          "#EAC29C",
+          "#FFE8CC"
+        ]
+      },
+      "warn-wash": {
+        "role": "status",
+        "displayName": "Warn Wash",
+        "canonical": "oklch(97.0% 0.029 82.6)",
+        "dark": "#3A2C12",
+        "tonalRamp": [
+          "#0E0B06",
+          "#28231B",
+          "#453F33",
+          "#655D4D",
+          "#887F6E",
+          "#ABA496",
+          "#D0CABF",
+          "#F2EEE6"
+        ]
+      },
+      "info": {
+        "role": "status",
+        "displayName": "Info",
+        "canonical": "oklch(50.1% 0.165 258.7)",
+        "dark": "#8CB8FF",
+        "tonalRamp": [
+          "#000827",
+          "#022151",
+          "#0F3D7E",
+          "#215AAF",
+          "#437FDA",
+          "#74A5F2",
+          "#A5CCFF",
+          "#D3F1FF"
+        ]
+      },
+      "info-wash": {
+        "role": "status",
+        "displayName": "Info Wash",
+        "canonical": "oklch(95.3% 0.018 258.4)",
+        "dark": "#1A2A44",
+        "tonalRamp": [
+          "#090B0E",
+          "#212429",
+          "#3B4047",
+          "#585E67",
+          "#7A818B",
+          "#9FA5AD",
+          "#C6CBD2",
+          "#EBEFF4"
+        ]
+      },
+      "good": {
+        "role": "status",
+        "displayName": "Good",
+        "canonical": "oklch(52.4% 0.140 148.0)",
+        "dark": "#6FD38A",
+        "tonalRamp": [
+          "#001100",
+          "#002E0A",
+          "#054E1D",
+          "#197031",
+          "#409551",
+          "#75B77F",
+          "#A7DAAD",
+          "#D5FAD9"
+        ]
+      },
+      "good-wash": {
+        "role": "status",
+        "displayName": "Good Wash",
+        "canonical": "oklch(95.7% 0.021 152.2)",
+        "dark": "#17301F",
+        "tonalRamp": [
+          "#090C09",
+          "#202621",
+          "#3A423C",
+          "#566159",
+          "#78847B",
+          "#9EA8A0",
+          "#C5CDC7",
+          "#EAF0EC"
+        ]
+      },
+      "idle": {
+        "role": "status",
+        "displayName": "Idle",
+        "canonical": "oklch(50.6% 0.025 252.7)",
+        "dark": "#9AA6B2",
+        "tonalRamp": [
+          "#080B0F",
+          "#1F252B",
+          "#394149",
+          "#555F6A",
+          "#77818E",
+          "#9DA6B0",
+          "#C4CBD4",
+          "#EAEFF5"
+        ]
+      },
+      "idle-wash": {
+        "role": "status",
+        "displayName": "Idle Wash",
+        "canonical": "oklch(95.4% 0.005 258.3)",
+        "dark": "#26303B",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#232425",
+          "#3F4041",
+          "#5C5E60",
+          "#7F8083",
+          "#A3A5A7",
+          "#C9CACC",
+          "#EEEEF0"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The landing hero headline only; 38px on phones."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Landing section heads; 30px on phones."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "The app's page title (h1)."
+      },
+      "subtitle": {
+        "displayName": "Subtitle",
+        "purpose": "App card and section heads (h2)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Everything read; never below 12px."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase table headers in Muted Ink."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Every amount, count or date that lines up; Manrope with tabular numerals."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-rest",
+        "value": "0 1px 2px rgba(16, 24, 40, .06)",
+        "purpose": "Barely-there lift under app cards; none in dark mode."
+      },
+      {
+        "name": "menu",
+        "value": "0 10px 28px rgba(16, 24, 40, .14)",
+        "purpose": "Floating menus, such as the account menu."
+      },
+      {
+        "name": "landing-float",
+        "value": "0 12px 40px rgba(21, 31, 48, .09)",
+        "purpose": "The landing's document cards and the floating finding card."
+      }
+    ],
+    "motion": [
+      {
+        "name": "red-pen-loop",
+        "value": "8s infinite; draw over 14% with cubic-bezier(.6, 0, .3, 1), hold to 80%, fade by 90%",
+        "purpose": "The landing's red pen, only while on screen, pausable, none with reduced motion."
+      },
+      {
+        "name": "documents-line-up",
+        "value": "transform .8s cubic-bezier(.2, .7, .2, 1), opacity .6s",
+        "purpose": "The landing's three documents settle into a row once, on first view."
+      },
+      {
+        "name": "faq-toggle",
+        "value": "transform .2s",
+        "purpose": "The FAQ plus icon turning to a cross."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "480px"
+      },
+      {
+        "name": "tablet-and-phone",
+        "value": "860px"
+      },
+      {
+        "name": "narrow-desktop",
+        "value": "1100px"
+      },
+      {
+        "name": "wide",
+        "value": "1240px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled action on a view; verb label.",
+      "html": "<button class=\"ds-btn-primary\">Draft the letter</button>",
+      "css": ".ds-btn-primary { font-family: \"DM Sans\", -apple-system, \"Segoe UI\", Roboto, sans-serif; font-size: 16px; font-weight: 600; background: #1A5CDF; color: #FFFFFF; border: 1px solid #1A5CDF; border-radius: 5px; padding: 7px 14px; min-height: 40px; cursor: pointer; } .ds-btn-primary:hover { filter: brightness(.97); } .ds-btn-primary:focus-visible { outline: 2px solid #1A5CDF; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Every other action beside the primary.",
+      "html": "<button class=\"ds-btn-secondary\">Mark as reviewed</button>",
+      "css": ".ds-btn-secondary { font-family: \"DM Sans\", -apple-system, \"Segoe UI\", Roboto, sans-serif; font-size: 16px; font-weight: 600; background: #FFFFFF; color: #151F30; border: 1px solid #6E7787; border-radius: 5px; padding: 7px 14px; min-height: 40px; cursor: pointer; } .ds-btn-secondary:hover { filter: brightness(.97); } .ds-btn-secondary:focus-visible { outline: 2px solid #1A5CDF; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labelled field; 40px on desktop so a row of labels lines up.",
+      "html": "<label class=\"ds-field\">Amount billed<input class=\"ds-input\" value=\"348.00\"></label>",
+      "css": ".ds-field { font-family: \"DM Sans\", -apple-system, \"Segoe UI\", Roboto, sans-serif; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: #58616F; } .ds-input { font-family: \"DM Sans\", -apple-system, \"Segoe UI\", Roboto, sans-serif; font-size: 16px; color: #151F30; background: #FFFFFF; border: 1px solid #6E7787; border-radius: 5px; padding: 6px 9px; min-height: 40px; } .ds-input:focus-visible { outline: 2px solid #1A5CDF; outline-offset: 2px; }"
+    },
+    {
+      "name": "Top Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link-active",
+      "description": "Sticky white bar; active page in blue on its tint.",
+      "html": "<nav class=\"ds-nav\"><span class=\"ds-brand\">Care<b>Back</b></span><a class=\"ds-active\" href=\"#\">Home</a><a href=\"#\">Visits</a><a href=\"#\">Providers</a></nav>",
+      "css": ".ds-nav { font-family: \"DM Sans\", -apple-system, \"Segoe UI\", Roboto, sans-serif; display: flex; align-items: center; gap: 4px; background: #FFFFFF; border-bottom: 1px solid #D9DEE7; padding: 10px 16px; } .ds-brand { font-family: Manrope, \"DM Sans\", sans-serif; font-weight: 750; font-size: 17px; color: #151F30; margin-right: 16px; } .ds-brand b { color: #1A5CDF; font-weight: inherit; } .ds-nav a { color: #58616F; font-weight: 500; padding: 6px 10px; border-radius: 6px; text-decoration: none; } .ds-nav a:hover { background: #F2F5FB; color: #151F30; } .ds-nav a.ds-active { background: #E5EFFF; color: #1A5CDF; font-weight: 600; } .ds-nav a:focus-visible { outline: 2px solid #1A5CDF; outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Badges",
+      "kind": "chip",
+      "refersTo": "status-discrepancy",
+      "description": "A pill per status; the word says it, color only groups.",
+      "html": "<span class=\"ds-badge ds-bad\">Discrepancy</span> <span class=\"ds-badge ds-warn\">Needs review</span> <span class=\"ds-badge ds-info\">In dispute</span> <span class=\"ds-badge ds-good\">Complete</span> <span class=\"ds-badge ds-idle\">Awaiting EOB</span>",
+      "css": ".ds-badge { font-family: \"DM Sans\", -apple-system, \"Segoe UI\", Roboto, sans-serif; display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 600; } .ds-bad { background: #FDECEA; color: #B42318; } .ds-warn { background: #FFF4E0; color: #9A5B00; border: 1px dashed #9A5B00; } .ds-info { background: #E8F0FC; color: #1D5FBF; border: 1px solid #1D5FBF; } .ds-good { background: #E7F5EA; color: #1A7F37; } .ds-idle { background: #EEF0F3; color: #5B6673; }"
+    },
+    {
+      "name": "Card with Figures",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Hairline card on the app ground; figures in Manrope, tabular.",
+      "html": "<div class=\"ds-card\"><h2>Riverview Medical Center</h2><div class=\"ds-row\"><span>Billed</span><span class=\"ds-num\">$348.00</span></div><div class=\"ds-row\"><span>You owe per EOB</span><span class=\"ds-num\">$198.00</span></div><div class=\"ds-row ds-gap\"><span>Worth a closer look</span><span class=\"ds-num\">$150.00</span></div></div>",
+      "css": ".ds-card { font-family: \"DM Sans\", -apple-system, \"Segoe UI\", Roboto, sans-serif; background: #FFFFFF; border: 1px solid #D9DEE7; border-radius: 7px; padding: 18px 19px; box-shadow: 0 1px 2px rgba(16,24,40,.06); color: #151F30; max-width: 360px; } .ds-card h2 { font-family: Manrope, \"DM Sans\", sans-serif; font-size: 18px; font-weight: 700; margin: 0 0 8px; } .ds-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #D9DEE7; color: #58616F; } .ds-row:last-child { border-bottom: 0; } .ds-num { font-family: Manrope, \"DM Sans\", sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; color: #151F30; } .ds-gap, .ds-gap .ds-num { color: #B42318; }"
+    },
+    {
+      "name": "Visit Row",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Signature: one visit per row, figures right-aligned, status at the end.",
+      "html": "<div class=\"ds-visits\"><a class=\"ds-visit\" href=\"#\"><span>Mar 14</span><span class=\"ds-prov\">Riverview Medical Center</span><span class=\"ds-num\">$348.00</span><span class=\"ds-num\">$198.00</span><span class=\"ds-badge-x\">Discrepancy</span></a><a class=\"ds-visit\" href=\"#\"><span>Mar 14</span><span class=\"ds-prov\">Summit Pathology</span><span class=\"ds-num\">$95.00</span><span class=\"ds-num\">$95.00</span><span class=\"ds-badge-y\">Complete</span></a></div>",
+      "css": ".ds-visits { font-family: \"DM Sans\", -apple-system, \"Segoe UI\", Roboto, sans-serif; background: #FFFFFF; border: 1px solid #D9DEE7; border-radius: 7px; overflow: hidden; max-width: 720px; } .ds-visit { display: grid; grid-template-columns: 4.5rem 1fr 6rem 6rem 7.5rem; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #D9DEE7; border-left: 4px solid transparent; color: #151F30; text-decoration: none; } .ds-visit:last-child { border-bottom: 0; } .ds-visit:hover { background: #F2F5FB; } .ds-visit:focus-visible { outline: 2px solid #1A5CDF; outline-offset: -2px; } .ds-prov { font-weight: 600; } .ds-num { font-family: Manrope, \"DM Sans\", sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; } .ds-badge-x, .ds-badge-y { justify-self: end; padding: 2px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 600; } .ds-badge-x { background: #FDECEA; color: #B42318; } .ds-badge-y { background: #E7F5EA; color: #1A7F37; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Advocate's Desk",
+    "overview": "**Creative North Star: \"The Advocate's Desk\"**\n\nCareBack looks like a well-kept desk with someone on your side sitting at it. Three documents from one visit lie side by side: the provider's bill, the insurer's EOB and the payment. The advocate points at the one place they disagree and names the amount. Everything on the desk is in order: hairline rules, quiet blue-gray grounds, figures that line up. That order is what makes the one mark that matters, the red pen around a finding, impossible to miss.\n\nThe app is a working surface for a household's bill manager sitting at a laptop. It is dense where the work is (visit rows, line comparisons, ledgers) and calm everywhere else, and the brand shows in exact details rather than decoration. The landing page is the same desk shown to a newcomer: bigger type, the red pen drawn live, the documents lining up. It is bolder, but it uses the same palette, type and restraint.\n\nThe stance is a fighter's; the evidence is careful. Components are **confident and firm** (owner, 2026-11-25): one clear blue action per view, weight 600 or more on anything you press, and nothing hesitant about what to do next. Findings stay measured: a potential discrepancy, with its amount.",
+    "keyCharacteristics": [
+      "Three records side by side, and the gap circled in red.",
+      "One blue action color; red only for findings.",
+      "Manrope for headings and every figure, DM Sans for reading.",
+      "Flat, hairline-ruled surfaces; shadows only on what floats.",
+      "Small, consistent corners (5, 6 and 7px).",
+      "Status always said in words; color only groups.",
+      "Light and dark themes from the same tokens."
+    ],
+    "rules": [
+      {
+        "name": "The One Blue Rule",
+        "body": "Advocate Blue means \"you can act here\". It's never decoration, never a heading color in the app, and never used for a status.",
+        "section": "colors"
+      },
+      {
+        "name": "The Red Pen Rule",
+        "body": "Red is the advocate's pen: a finding, an error that blocks the member, or a destructive action, always with words. A screen with none of those has no red.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Says Its Word Rule",
+        "body": "Every status pill carries its label; color only groups statuses. Two statuses that share a color are told apart by a border (solid for in dispute, dashed for needs review).",
+        "section": "colors"
+      },
+      {
+        "name": "The Figures in Manrope Rule",
+        "body": "DM Sans has no tabular digits, so any number that sits in a column or beside another number is set in Manrope with tabular numerals (`.num`). A misaligned dollar amount undermines trust in a finding.",
+        "section": "typography"
+      },
+      {
+        "name": "The 12px Floor Rule",
+        "body": "No text is smaller than 12px, including captions, fine print and badges.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairlines Over Shadows Rule",
+        "body": "Separate with a 1px Hairline, not a shadow. A shadow means \"this floats\"; nothing that sits in the page flow gets more than the card-rest shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No Gradients Rule",
+        "body": "No gradients, except the landing hero's fade from Hero Mist into the photo.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** put the three records of a visit (bill, EOB, payment) side by side, and circle or color only the gap.",
+      "**Do** set every amount in Manrope with tabular numerals, right-aligned in columns.",
+      "**Do** name the amount next to every finding, and say \"potential discrepancy\" or \"worth a closer look\" until it's confirmed.",
+      "**Do** give each view one filled Advocate Blue action, with a verb label.",
+      "**Do** keep every control at least 44px tall on phones, and the 2px blue focus ring on everything focusable.",
+      "**Do** label every status in words; use color only to group.",
+      "**Do** label fictional samples as fictional wherever they appear."
+    ],
+    "donts": [
+      "**Don't** use red for brand accents, emphasis or anything decorative; it belongs to findings, blocking errors and destructive actions.",
+      "**Don't** use a second accent color, gradients, glows, or shadows on things that sit in the page.",
+      "**Don't** set text below 12px, or put Coral on text.",
+      "**Don't** promise money back or show savings counters; the visual system never dramatizes recovered dollars.",
+      "**Don't** recolor, outline or shadow the mark, or put it on a photo without its blue tile.",
+      "**Don't** use inline styles, inline scripts or third-party assets; every page stays CSP-clean."
+    ]
+  }
+}
