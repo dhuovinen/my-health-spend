@@ -32,6 +32,7 @@ from mhs.stack import load_app_config
 from mhs.web.household.files import EncryptedFiles
 from mhs.web.household.auth import AccountError, Accounts
 from mhs.web.household.features import REQUIRE_CODE, Features
+from mhs.web.household.waitlist import Waitlist
 
 
 def accounts_from_env() -> tuple[Database, Accounts]:
@@ -221,6 +222,9 @@ def main(argv: list[str] | None = None) -> None:
                                      "(PLT-09, ADR-049)")
     o.add_argument("--email", required=True)
     o.add_argument("state", choices=["on", "off", "status"])
+    w = sub.add_parser("waitlist", help="the landing page's waitlist (ADR-061): list the addresses, or remove one")
+    w.add_argument("action", choices=["list", "remove", "count"])
+    w.add_argument("--email", help="the address to remove")
     c = sub.add_parser("require-code", help="whether members must enter the authenticator code (the admin screen "
                                             "does the same; ADR-049)")
     c.add_argument("state", choices=["on", "off", "status"])
@@ -265,6 +269,17 @@ def main(argv: list[str] | None = None) -> None:
                 raise AccountError("No such member.")
             print(f"{args.email} is {'an owner' if accounts.is_owner(args.email) else 'not an owner'}. Owners open "
                   "/admin and always enter the code; their sessions ended, so they sign in again.")
+        elif args.command == "waitlist":
+            waitlist = Waitlist(db)
+            if args.action == "remove":
+                if not args.email:
+                    raise AccountError("Give the address with --email.")
+                print(f"Removed {args.email}." if waitlist.remove(args.email) else f"{args.email} isn't on the waitlist.")
+            elif args.action == "count":
+                print(waitlist.count())
+            else:
+                for row in waitlist.entries():
+                    print(f"{row['email']}\t{row['joined_at']:%Y-%m-%d}\tconsent {row['consent_version']}")
         elif args.command == "require-code":
             features = Features(db)
             if args.state != "status":

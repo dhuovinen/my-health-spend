@@ -92,7 +92,7 @@ def add_admin_screen(app: FastAPI, *, config: AppConfig, accounts: Accounts, fea
 
     @app.post("/admin/keep-card-images")
     def keep_card_images(request: Request, state: str = Form(""), csrf_token: str = Form("")):
-        """ING-11 (ADR-061): keep insurance card images after a scan is confirmed (staging, validation, troubleshooting)."""
+        """ING-11 (ADR-062): keep insurance card images after a scan is confirmed (staging, validation, troubleshooting)."""
         session = owner(request)
         check_csrf(session, csrf_token)
         if state not in ("on", "off"):

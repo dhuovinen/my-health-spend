@@ -549,7 +549,7 @@ def is_secondary(plan: dict | None) -> bool:
 
 
 def is_dental(plan: dict | None) -> bool:
-    """A dental plan, made from a dental card (ING-11, ADR-061). Dental claims aren't reconciled, so a dental plan is
+    """A dental plan, made from a dental card (ING-11, ADR-062). Dental claims aren't reconciled, so a dental plan is
     listed on Coverage and left out of the medical plan choices, REC-06, REC-15 and the estimate."""
     return (plan or {}).get("coverage_kind") == "dental"
 

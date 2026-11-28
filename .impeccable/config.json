@@ -1,0 +1,44 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "kicker-above-heading",
+        "value": "*",
+        "files": [
+          "src/mhs/web/templates/landing.html"
+        ],
+        "createdAt": "2026-11-26T02:39:44.471Z",
+        "reason": "owner's decision, 2026-11-25: the landing page keeps three eyebrows (the hero tagline, and 'How we fight fair' and 'About us', which match the menu links); the other four were removed. Recorded in DESIGN.md Typography and Do's and Don'ts."
+      },
+      {
+        "rule": "oversized-h1",
+        "value": "*",
+        "files": [
+          "docs/gtm/deck/careback-deck.html"
+        ],
+        "createdAt": "2026-11-26T02:56:12.986Z",
+        "reason": "slide canvas, not a page: the cover's h1 is 120px on a 1920x1080 slide, scaled to about 75px at 1200px wide; the deck is a review copy of the Claude Slides artifact"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "sans\",arial,sans-serif",
+        "files": [
+          "docs/gtm/deck/careback-deck.html"
+        ],
+        "createdAt": "2026-11-26T02:56:13.000Z",
+        "reason": "fallback only: the deck sets DM Sans and Manrope (DESIGN.md) with Arial as the fallback, as the Slides format asks; the fonts load from src/mhs/web/static/fonts"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "src/mhs/web/templates/_landing_chrome.html"
+        ],
+        "createdAt": "2026-11-26T21:08:59.594Z",
+        "reason": "measured in the browser 2026-11-26: footer links and fine print are #58616f on white, 6.26:1; the template has no stylesheet for the static scan to read"
+      }
+    ]
+  }
+}

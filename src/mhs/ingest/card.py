@@ -1,4 +1,4 @@
-"""Read an insurance card from its OCR text (ING-11, ADR-061). Pure functions: no OCR, database or web imports.
+"""Read an insurance card from its OCR text (ING-11, ADR-062). Pure functions: no OCR, database or web imports.
 
 The front and the back are text (one string per side). The rules look for the labels cards use ("Member ID",
 "Group", "RxBIN", "Subscriber", "PCP $30", "Eff. Date", "Payer ID"), the shape of the value next to or under a label,
@@ -435,7 +435,7 @@ def read_card(front_text: str, back_text: str = "", ocr_confidence: float = 1.0)
 
 def public_contact_lines(text: str) -> set[int]:
     """Indexes (in `lines_of(text)`) of the lines that are the insurer's public contact details: a labelled phone
-    number, the claims or appeals address, a website, the payer ID or the network. The scrubber keeps these (ADR-061);
+    number, the claims or appeals address, a website, the payer ID or the network. The scrubber keeps these (ADR-062);
     everything else on a card is the member's."""
     lines = lines_of(text)
     keep: set[int] = set()
@@ -460,7 +460,7 @@ def public_contact_lines(text: str) -> set[int]:
 
 def reading_dict(reading: CardReading, tokenize) -> dict:
     """The reading as a JSON-safe dict for the scan record, with every identifier (member IDs, group number,
-    pharmacy group, people's names) replaced by `tokenize(kind, value)`: only tokens are stored (ADR-061)."""
+    pharmacy group, people's names) replaced by `tokenize(kind, value)`: only tokens are stored (ADR-062)."""
     def fld(f: Field, kind: str | None = None) -> dict:
         value = f.value
         if kind and isinstance(value, str):

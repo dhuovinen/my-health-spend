@@ -1,4 +1,4 @@
-"""From a confirmed card review to a plan record (ING-11, ADR-061). Pure functions over record dicts, money in cents.
+"""From a confirmed card review to a plan record (ING-11, ADR-062). Pure functions over record dicts, money in cents.
 
 `find_plan` says whether a card is for a plan the household has (same insurer and group number and kind), `merge`
 lays the card's values over it, and `changes` says in words what a card would change, for the review page.

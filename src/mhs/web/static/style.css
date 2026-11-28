@@ -616,7 +616,7 @@ form.inline.type-row { align-items: flex-end; gap: .6rem; }
 label.agree { flex-direction: row; gap: .6rem; align-items: flex-start; min-height: 44px; font-size: .9rem; color: var(--text); }
 .agree input { width: 1.2rem; height: 1.2rem; margin-top: .15rem; flex: none; }
 
-/* Insurance card scan and the card's contacts on Coverage (ING-11, ADR-061) */
+/* Insurance card scan and the card's contacts on Coverage (ING-11, ADR-062) */
 .card-shots { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
 .card-shots figure { margin: 0; flex: 1 1 260px; max-width: 480px; }
 .card-shots img { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); border: 1px solid var(--line, #d5dbe5); }

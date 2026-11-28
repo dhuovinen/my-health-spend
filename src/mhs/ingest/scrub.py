@@ -319,7 +319,7 @@ def scrubber_class(name: str = "rules") -> type[Scrubber]:
 
 
 def scrub_card(scrubber: Scrubber, front: str, back: str = "") -> tuple[str, str, Scrubbed]:
-    """Scrub the text of an insurance card (ING-11, ADR-061): the member's names, member ID, group number and
+    """Scrub the text of an insurance card (ING-11, ADR-062): the member's names, member ID, group number and
     pharmacy group become vault tokens like any identifier, while the insurer's public contact details on the card
     (member services and claims phone numbers, the claims address, website, payer ID) are left in place. Returns the
     scrubbed front, the scrubbed back, and what was replaced. This is what a Claude fallback would receive."""

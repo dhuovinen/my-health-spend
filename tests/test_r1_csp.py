@@ -11,6 +11,9 @@ pytestmark = pytest.mark.postgres
 
 HOUSEHOLD = Path(__file__).resolve().parents[1] / "src" / "mhs" / "web" / "household"
 STATIC = HOUSEHOLD.parent / "static"
+# Plain links out (navigation, never a resource the page loads): the founder's profile on the landing page's About us
+# (docs/gtm/ABOUT.md). Referrer-Policy is same-origin, so following one sends nothing about the visitor.
+OUTBOUND_LINKS = {"https://www.linkedin.com/in/don-huovinen-288399/"}
 
 
 def directives(csp: str) -> dict[str, list[str]]:
@@ -55,6 +58,8 @@ def test_tc_prv_08_1_pages_reference_no_third_party_resources():
              + [STATIC / "style.css", STATIC / "app.js", STATIC / "landing.css", STATIC / "landing.js"])
     for path in files:
         text = path.read_text()
+        for url in OUTBOUND_LINKS:  # a plain link out, opened by the visitor (rel noopener noreferrer), is allowed
+            text = re.sub(rf'<a [^>]*href="{re.escape(url)}" rel="noopener noreferrer">', "", text)
         assert not re.search(r"https?://", text), path
         assert not re.search(r"<script(?![^>]*\bsrc=\"/static/)", text), path  # only own script files, if any
         assert not re.search(r"\sstyle=", text), path
@@ -68,4 +73,4 @@ def test_served_pages_load_only_same_origin_assets(household):
     html = "".join(member.get(p).text for p in ("/", "/visits", "/providers", "/import", "/settings", "/help", "/accuracy", "/uploads"))
     html += household.client().get("/signin").text + household.client().get("/").text
     for url in re.findall(r'(?:src|href)="([^"]+)"', html):
-        assert url.startswith(("/", "#", "?")) and not url.startswith("//"), url
+        assert url.startswith(("/", "#", "?")) and not url.startswith("//") or url in OUTBOUND_LINKS, url

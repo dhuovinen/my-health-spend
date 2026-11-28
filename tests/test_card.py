@@ -1,4 +1,4 @@
-"""The insurance card reader (ING-11, ADR-061) on synthetic cards: text in, fields with confidences out."""
+"""The insurance card reader (ING-11, ADR-062) on synthetic cards: text in, fields with confidences out."""
 
 from mhs.ingest.card import CHECK_BELOW, IDENTIFIER_FIELDS, read_card
 from tests import cards

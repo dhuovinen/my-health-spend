@@ -44,6 +44,7 @@ from mhs.web.household.connect import add_insurer_connection
 from mhs.web.household.consent import add_consent
 from mhs.web.household.signup import add_signup
 from mhs.web.household.social import add_social_sign_in
+from mhs.web.household.waitlist import CONSENT_TEXT as WAITLIST_CONSENT, Waitlist, add_waitlist
 from mhs.web.pages import VIEW_COOKIE, WEB, add_pages, make_templates
 
 HERE = Path(__file__).parent
@@ -119,7 +120,7 @@ class HouseholdHost:
         return value
 
     def cards_for(self, request: Request, store: HouseholdStore, plan_ids: list[str]) -> dict[str, list[dict]]:
-        """Kept card images by plan (only when the owner's keep_card_images setting kept them, ADR-061)."""
+        """Kept card images by plan (only when the owner's keep_card_images setting kept them, ADR-062)."""
         return self.card_store.kept(store.household_id, plan_ids) if self.card_store else {}
 
     def _detokenize(self, household_id: str, token: str) -> str:
@@ -213,6 +214,8 @@ def create_app(
                 "landing_link": {"href": "/signin", "label": "Sign in or sign up" if signup else "Sign in"},
                 "public_url": config.public_url,
                 "sign_in_providers": providers_on(settings), "signup_open": signup,
+                # ADR-061: while sign-up is closed, the landing page offers the waitlist beside "Sign in"
+                "waitlist_open": not signup, "waitlist_consent": WAITLIST_CONSENT,
                 "has_password": session.has_password if session else True,
                 "code_required": bool(session and session.is_owner) or settings[REQUIRE_CODE]}
 
@@ -464,6 +467,7 @@ def create_app(
                        sign_up=begin_signup)
     add_admin_screen(app, config=config, accounts=accounts, features=features, db=db, page=page, member=member,
                      check_csrf=check_csrf, objects=objects)
+    add_waitlist(app, waitlist=Waitlist(db))
 
     @app.get("/account", response_class=HTMLResponse)
     def account(request: Request):
@@ -597,7 +601,7 @@ def create_app(
     host.card_store = app.state.card_store = add_card_scan(app, templates, db=db, keyring=keyring, objects=objects, vault=vault,
                                     ocr=lambda: intake.ocr, features=features, member=member, check_csrf=check_csrf,
                                     collect_for=collect_for, ai_extraction=accounts.ai_extraction)
-    try:  # scans left open past 24 hours go at start-up too (ADR-061)
+    try:  # scans left open past 24 hours go at start-up too (ADR-062)
         host.card_store.expire()
     except Exception:  # noqa: BLE001 - a clean-up that fails must not stop the app; the next scan page retries it
         log.warning("card scan clean-up failed at start-up")

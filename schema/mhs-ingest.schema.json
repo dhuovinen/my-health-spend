@@ -241,18 +241,18 @@
             "POS",
             "HDHP"
           ],
-          "description": "Network type as printed on the insurance card (ING-11, ADR-061)."
+          "description": "Network type as printed on the insurance card (ING-11, ADR-062)."
         },
         "coverage_kind": {
           "enum": [
             "medical",
             "dental"
           ],
-          "description": "Medical (the default) or dental. A dental plan comes from a dental card, is never merged into a medical plan, and is left out of reconciliation (ADR-061)."
+          "description": "Medical (the default) or dental. A dental plan comes from a dental card, is never merged into a medical plan, and is left out of reconciliation (ADR-062)."
         },
         "group_number": {
           "type": "string",
-          "description": "The plan's group number. A vault token in Release 1 (ADR-061); plain text in an ingest file."
+          "description": "The plan's group number. A vault token in Release 1 (ADR-062); plain text in an ingest file."
         },
         "payer_id": {
           "type": "string",
@@ -320,7 +320,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Ids of kept insurance card images; present only while the owner's keep_card_images setting was on at confirmation (ADR-061)."
+          "description": "Ids of kept insurance card images; present only while the owner's keep_card_images setting was on at confirmation (ADR-062)."
         },
         "card_back_missing": {
           "type": "boolean",

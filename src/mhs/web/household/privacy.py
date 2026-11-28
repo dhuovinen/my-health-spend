@@ -81,7 +81,7 @@ def export_household(db: Database, keyring: Keyring, objects: ObjectStore, vault
                                             "extraction": store.get("extraction", rec["id"])})
         manifest["records"]["original"] = len(uploads)
         add("uploads.json", json.dumps(uploads, indent=2).encode())
-        with db.tx(household_id) as c:  # insurance card images the owner's setting kept (ADR-061)
+        with db.tx(household_id) as c:  # insurance card images the owner's setting kept (ADR-062)
             kept = c.execute("SELECT id, side, plan_id, content_type, object_key, sha256 FROM app.card_images "
                              "WHERE household_id = %s AND state = 'kept' ORDER BY created_at, side",
                              (household_id,)).fetchall()
@@ -128,7 +128,7 @@ def delete_household(db: Database, objects: ObjectStore, vault: VaultClient, hou
     store = HouseholdStore(db, household_id)
     keys = [k for r in store.all("original") for k in [r["object_key"], *r.get("scrubbed_keys", [])]]
     keys += [d["stored_file"] for d in store.all("document") if d.get("stored_file")]
-    with db.tx(household_id) as c:  # insurance card images, in review or kept (ADR-061)
+    with db.tx(household_id) as c:  # insurance card images, in review or kept (ADR-062)
         keys += [r["object_key"] for r in c.execute("SELECT object_key FROM app.card_images WHERE household_id = %s",
                                                     (household_id,))]
     vault.delete_household(household_id)

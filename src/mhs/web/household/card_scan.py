@@ -1,4 +1,4 @@
-"""Scan an insurance card, front and back, to fill in a plan (ING-11, ADR-061).
+"""Scan an insurance card, front and back, to fill in a plan (ING-11, ADR-062).
 
 OCR and the layout rules (`ingest/card.py`) run here, in the application tier: the worker never sees a card. Member
 IDs, the group number and names are kept as vault tokens. The images are sealed with the household's key and held

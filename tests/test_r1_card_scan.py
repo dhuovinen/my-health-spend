@@ -1,4 +1,4 @@
-"""Scan an insurance card (ING-11, ADR-061): TC-ING-11-1 to 12 through the application tier, with a fake OCR engine that
+"""Scan an insurance card (ING-11, ADR-062): TC-ING-11-1 to 12 through the application tier, with a fake OCR engine that
 reads the card's text, so the flow runs where Tesseract isn't installed."""
 
 import re

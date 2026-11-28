@@ -1,4 +1,4 @@
--- Insurance card scans (ING-11, ADR-061). A scan holds what was read from a card (identifiers as vault tokens)
+-- Insurance card scans (ING-11, ADR-062). A scan holds what was read from a card (identifiers as vault tokens)
 -- and its images only while the member reviews it; both go when the scan is confirmed or abandoned, or after 24
 -- hours. Images stay only if the owner's keep_card_images setting was on at confirmation ("kept"), linked to the plan.
 -- The service settings table already holds the toggle, so this adds only the two tables and three functions.

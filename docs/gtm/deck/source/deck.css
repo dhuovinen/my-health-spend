@@ -1,0 +1,144 @@
+/* CareBack deck, on the tokens in docs/UI_GUIDE.md and DESIGN.md (ADR-060): Manrope for headings and figures, DM Sans for text.
+   Colour rules: in decks blue is the brand accent (DESIGN.md, Decks); red (--red-pen, and the coral loop) marks a finding only. */
+:root {
+  --ink: #151f30; --muted: #58616f; --paper: #f6f9fc; --soft: #eef2f7; --card: #ffffff; --rule: #d9dee7; --bar-last: #7a8596;
+  --primary: #1a5cdf; --on-primary: #f6f9fc;
+  --night: #131d2d; --on-night: #f6f9fc; --on-night-muted: #adb5c1; --on-night-accent: #7ea8ff; --night-rule: #2f3b4f; --night-card: #182334;
+  --coral: #dd574b; --red-pen: #b42318; --red-soft: #fdecea; --good: #18794e;
+  --radius: 12px;
+}
+body { font-family: 'DM Sans', Arial, sans-serif; color: var(--ink); }
+section { padding: 128px; background: var(--paper); color: var(--ink); display: flex; flex-direction: column; box-sizing: border-box; }
+section.light { background: var(--paper); }
+section.soft { background: var(--soft); }
+section.night { background: var(--night); color: var(--on-night); }
+section.blue { background: var(--primary); color: var(--on-primary); }
+section.footed { padding: 128px 128px 160px; }
+
+h1, h2, h3 { font-family: 'Manrope', Arial, sans-serif; margin: 0; }
+h1 { font-size: 120px; line-height: 1.04; font-weight: 800; letter-spacing: -2px; }
+h2 { font-size: 72px; line-height: 1.1; font-weight: 800; letter-spacing: -1px; }
+h3 { font-size: 44px; line-height: 1.2; font-weight: 700; }
+p { margin: 0; font-size: 32px; line-height: 1.45; }
+
+/* Eyebrows mark the cover's tagline and the start of each part of the story (problem, story, CareBack). */
+.eyebrow { margin-bottom: 24px; font-size: 24px; line-height: 1.2; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--primary); }
+.night .eyebrow { color: var(--on-night-accent); }
+.lede { color: var(--muted); }
+.night .lede { color: var(--on-night-muted); }
+.blue .lede { color: var(--on-primary); }
+.source { position: absolute; left: 128px; bottom: 64px; width: 1664px; font-size: 24px; line-height: 1.3; color: var(--muted); }
+.num { font-family: 'Manrope', Arial, sans-serif; font-variant-numeric: tabular-nums; font-weight: 800; }
+/* .num.accent and .num.pen outrank the containers' own `p` colours (.stat p, .card p) */
+.accent, .num.accent { color: var(--primary); }
+.night .accent, .night .num.accent { color: var(--on-night-accent); }
+.pen, .num.pen { color: var(--red-pen); }
+.quiet { color: var(--muted); }
+
+/* cover and close */
+.brand { display: flex; align-items: center; gap: 24px; }
+.brand img { width: 88px; height: 88px; }
+.wordmark { font-family: 'Manrope', Arial, sans-serif; font-size: 56px; line-height: 1; font-weight: 800; }
+.cover-body { margin-top: auto; display: flex; flex-direction: column; gap: 32px; }
+.cover-body h1 { width: 1400px; }
+.byline { font-size: 32px; color: var(--on-night-muted); }
+
+/* big figures */
+.stat-row { display: flex; gap: 96px; margin-top: 56px; align-items: flex-end; }
+.stat { display: flex; flex-direction: column; gap: 12px; width: 760px; }
+.stat .num { font-size: 200px; line-height: 1; letter-spacing: -4px; }
+.stat .num.big { font-size: 240px; letter-spacing: -6px; }
+.stat .num.major { font-size: 240px; letter-spacing: -6px; color: var(--ink); }
+.stat .num.minor { font-size: 120px; letter-spacing: -2px; color: var(--muted); }
+.stat p { color: var(--muted); }
+.question { margin-top: auto; padding-top: 40px; border-top: 2px solid var(--rule); font-size: 44px; line-height: 1.3; font-weight: 600; letter-spacing: 0; font-family: 'Manrope', Arial, sans-serif; }
+
+/* deductible bars: last year in a mid grey, this year in ink, both on an ink baseline */
+.bars { display: flex; align-items: flex-end; gap: 72px; margin-top: 56px; height: 470px; }
+.bar-col { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 300px; }
+.bar { width: 300px; border-bottom: 4px solid var(--ink); }
+.bar.y2025 { height: 236px; background: var(--bar-last); }
+.bar.y2026 { height: 324px; background: var(--ink); }
+.bar-col .num { font-size: 56px; line-height: 1; color: var(--ink); }
+.bar-col .num.last { color: var(--muted); }
+.bar-col p { font-size: 28px; color: var(--muted); }
+.bar-note { display: flex; flex-direction: column; gap: 20px; width: 760px; margin-left: 40px; align-self: center; }
+.bar-note .num { font-size: 160px; line-height: 1; color: var(--ink); letter-spacing: -3px; }
+
+/* statement */
+.statement { margin-top: auto; margin-bottom: auto; display: flex; flex-direction: column; gap: 40px; }
+.statement h2 { font-size: 96px; width: 1500px; }
+.statement p { width: 1300px; font-size: 40px; }
+
+/* the same treatment, billed differently */
+.compare { display: flex; gap: 40px; margin-top: 56px; }
+.panel { flex: 1; background: var(--card); border: 2px solid var(--rule); border-radius: var(--radius); padding: 44px 48px; display: flex; flex-direction: column; gap: 16px; }
+.panel.off { border-color: var(--coral); background: var(--red-soft); }
+.panel .tag { font-size: 24px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.panel h3 { font-size: 56px; color: var(--good); }
+.panel.off h3 { color: var(--red-pen); }
+.panel p.body { color: var(--muted); }
+.story-foot { display: flex; gap: 48px; margin-top: auto; }
+.story-foot div { flex: 1; border-top: 2px solid var(--rule); padding-top: 24px; display: flex; flex-direction: column; gap: 8px; }
+.story-foot h3 { font-size: 40px; }
+.story-foot p { font-size: 28px; color: var(--muted); }
+
+/* cards */
+.cards { display: flex; gap: 40px; margin-top: 56px; }
+.card { flex: 1; background: var(--card); border: 2px solid var(--rule); border-radius: var(--radius); padding: 48px; display: flex; flex-direction: column; gap: 20px; }
+.card .num { font-size: 112px; line-height: 1; letter-spacing: -2px; color: var(--ink); }
+.card .num.pen { color: var(--red-pen); }
+.card p { color: var(--muted); }
+.card .tag { font-size: 24px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--ink); }
+.amounts { display: flex; gap: 72px; align-items: flex-end; }
+.amounts .label { font-size: 24px; font-weight: 700; color: var(--muted); }
+.amounts .num { font-size: 96px; }
+
+/* the red pen: a hand-drawn coral loop around the amount at issue */
+.circled { position: relative; }
+.circled .loop { position: absolute; left: -44px; top: -31px; }
+.circled .loop.small { left: -48px; top: -14px; }
+
+/* what CareBack does: the fictional Riverview visit */
+.docs { display: flex; gap: 32px; margin-top: 44px; }
+.doc { flex: 1; background: var(--card); border: 2px solid var(--rule); border-radius: var(--radius); padding: 28px 32px; display: flex; flex-direction: column; gap: 6px; }
+.doc-kind { font-size: 24px; font-weight: 700; color: var(--primary); }
+.doc h3 { font-size: 36px; }
+.doc-from { font-size: 24px; color: var(--muted); }
+.doc-line { display: flex; justify-content: space-between; align-items: baseline; margin-top: 16px; padding-top: 16px; border-top: 2px solid var(--rule); }
+.doc-line p { font-size: 28px; color: var(--muted); }
+.doc-line .num { font-size: 52px; line-height: 1; color: var(--ink); }
+.verdict { display: flex; align-items: center; gap: 48px; margin-top: 44px; }
+.verdict .eq { font-size: 40px; color: var(--ink); white-space: nowrap; }
+.verdict .gap { font-size: 88px; line-height: 1; color: var(--red-pen); }
+.verdict .gap-note { width: 440px; font-size: 26px; color: var(--muted); }
+.verdict .gap-note b { color: var(--red-pen); }
+.captions { margin-top: auto; font-size: 28px; font-weight: 600; color: var(--muted); }
+
+/* what's built, what's next, on night */
+#how .lede { margin-top: 16px; }
+.built-next { display: flex; gap: 64px; margin-top: auto; align-items: stretch; }
+.built { flex: 1.15; display: flex; flex-direction: column; gap: 20px; }
+.built h3 { font-size: 40px; }
+.checks { margin: 0; padding: 0 0 0 36px; display: flex; flex-direction: column; gap: 14px; }
+.checks li { font-size: 30px; line-height: 1.4; color: var(--on-night); }
+.next { flex: 1; display: flex; flex-direction: column; gap: 28px; }
+
+/* close: one ask, on night so the mark keeps its tile */
+.close-single { margin-top: auto; display: flex; flex-direction: column; gap: 32px; }
+.close-single h2 { font-size: 112px; }
+.close-single .lede { width: 1300px; font-size: 40px; }
+.signoff { display: flex; align-items: center; gap: 32px; margin-top: 16px; }
+.signoff img { width: 140px; height: 140px; border-radius: 70px; object-fit: cover; }
+.signoff div { display: flex; flex-direction: column; gap: 6px; }
+.signoff .name { font-family: 'Manrope', Arial, sans-serif; font-size: 40px; font-weight: 700; }
+.signoff .url { font-family: 'Manrope', Arial, sans-serif; font-size: 40px; font-weight: 700; color: var(--on-night-accent); }
+.signoff .site { font-size: 32px; color: var(--on-night-muted); }
+.ask { background: var(--night-card); border: 2px solid var(--night-rule); border-radius: var(--radius); padding: 36px 40px; display: flex; flex-direction: column; gap: 12px; }
+.ask x-icon { width: 48px; height: 48px; color: var(--on-night-accent); }
+.ask h3 { font-size: 40px; }
+.ask p { font-size: 28px; color: var(--on-night-muted); }
+
+/* arrival */
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+.in { animation: rise 600ms cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc(var(--i, 0) * 140ms); }

@@ -1,6 +1,6 @@
 {
   "version": "2026-11-24",
-  "note": "Public names of health and dental insurers, used by the card reader (ING-11, ADR-061) to name the insurer from the top of a card. Add a name here in the yearly review; no code changes. A card from an insurer not listed is still read: the reader falls back to the first plausible line.",
+  "note": "Public names of health and dental insurers, used by the card reader (ING-11, ADR-062) to name the insurer from the top of a card. Add a name here in the yearly review; no code changes. A card from an insurer not listed is still read: the reader falls back to the first plausible line.",
   "insurers": [
     {"name": "Aetna", "aliases": ["Aetna"]},
     {"name": "Anthem", "aliases": ["Anthem Blue Cross", "Anthem Blue Cross Blue Shield", "Anthem"]},

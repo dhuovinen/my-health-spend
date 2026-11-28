@@ -9,3 +9,13 @@ __pycache__/
 harness-output/
 .env
 scratch-data/
+
+# Impeccable design skill (.claude/skills/impeccable): its downloaded engine and local state stay out of git
+**/skills/impeccable/scripts/bin/
+**/.impeccable/hook.cache.json
+.impeccable/config.local.json
+.impeccable/live/
+.impeccable/history/
+
+# Images uploaded in the CareBack deck (licence unknown); tools/build_deck_html.py reads them locally
+docs/gtm/deck/source/assets/

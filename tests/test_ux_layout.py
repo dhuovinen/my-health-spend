@@ -413,3 +413,18 @@ def test_tc_ux_11_3_a_dots_details_on_hover_focus_and_tap(browser, release0):
         detail = page.locator("#dot-detail").inner_text()
         assert "Billed $" in detail and "your share" in detail, (act, detail)
         context.close()
+
+
+def test_about_page_phone_and_desktop_release0(browser, release0):
+    """/about (the landing page critique, 2026-11-26): no sideways scroll, every standalone link at least 44px, and the
+    footer links reach every public page on a phone, where the top menu is hidden."""
+    server, _ = release0
+    for device, label in ((PHONE, "r0-375"), (DESKTOP, "r0-1280")):
+        context, page = open_page(browser, server, [], device)
+        assert page.goto(server.url + "/about").status == 200
+        assert page.evaluate(SIDEWAYS) <= 0
+        assert page.evaluate(SMALL_TARGETS) == []
+        assert [a.get_attribute("href") for a in page.locator(".footer-links a").all()] == \
+            ["/welcome#visit", "/welcome#faq", "/about", "/"]
+        shot(page, f"{label}-about.png")
+        context.close()
