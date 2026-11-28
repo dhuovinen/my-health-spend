@@ -314,3 +314,7 @@ suggested first for dental and vision care), so the page tests don't assert it.
 | Staging project and the OCR accuracy run | 1.3 |
 | Redacted real-world scenario per REC rule | 1.4 |
 | Restore drill and performance run in staging | 1.6 |
+
+## Insurance card scan (ING-11, ADR-062)
+
+Synthetic cards are in `tests/cards.py` (never a real card). `tests/test_card.py` tests the reader on text (several layouts, dental, vision refused, front only, non-card, poor OCR, the scrubber keeping the insurer's public contacts, a per-field accuracy check; the image-through-Tesseract test skips without Tesseract). `tests/test_r1_card_scan.py` runs the flow through the application tier with a fake OCR engine: read and review (TC-ING-11-1), confirm (2), rescan and next year (3), unmatched name (4), front only then the back (6), the member ID for letters (7), non-card (8), no image kept, abandoned or after 24 hours (10), the owner's `keep_card_images` setting, export and delete (11), dental and vision (12), consent, ownership. Not yet run: TC-ING-11-9 in a browser (`/coverage/card` is in `tests/test_ux_layout.py` `R1_PAGES`) and TC-ING-11-13 as a reported measurement.

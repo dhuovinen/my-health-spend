@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Scan your insurance card{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ 'Add the back of your card' if plan else 'Scan your insurance card' }}</h1>
+    <div class="muted">{% if plan %}The back has the phone numbers and the claims address for {{ plan.insurer }}{% if plan.plan_name %}, {{ plan.plan_name }}{% endif %}.{% else %}Take or choose a photo of the front, then the back. CareBack reads what is printed on it and fills in your plan for you to check. Nothing is saved until you confirm.{% endif %}</div>
+  </div>
+  <a class="back" href="/coverage">Back to Coverage</a>
+</div>
+{% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
+<section class="card section card-scan">
+  <form method="post" action="/coverage/card" enctype="multipart/form-data" class="stack">{{ csrf_input() }}
+    {% if plan %}<input type="hidden" name="plan" value="{{ plan.id }}">{% endif %}
+    {% if not plan %}
+    <label>Front of the card
+      <input type="file" name="front" accept="image/*,application/pdf,.heic" capture="environment" required>
+    </label>
+    {% endif %}
+    <label>Back of the card{% if not plan %} <span class="muted small">(you can skip it and add it later)</span>{% endif %}
+      <input type="file" name="back" accept="image/*,application/pdf,.heic" capture="environment" {{ 'required' if plan }}>
+    </label>
+    <div class="form-actions"><button class="btn primary" type="submit">Read the card</button></div>
+  </form>
+  <p class="small muted">Photos or PDF scans of a medical or dental card. Vision cards aren't read: type a vision plan in on Coverage. The photos are read on this server and shown to you for the review only; they are deleted when you confirm or cancel, or after 24 hours, unless the service owner has chosen to keep them. Your member ID, group number and the names on the card are stored as codes, not as printed.</p>
+</section>
+{% endblock %}

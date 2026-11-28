@@ -56,7 +56,8 @@ class Members:
 
 def plan_for(plans: list[dict], year: int, kind: str = "medical") -> str | None:
     """The plan for a service year: one whose name mentions the kind, else the primary one, else the only one."""
-    same_year = [p for p in plans if p.get("plan_year") == year]
+    dental = kind.lower() == "dental"  # a plan made from a dental card never stands in for the medical plan (ING-11)
+    same_year = [p for p in plans if p.get("plan_year") == year and (p.get("coverage_kind") == "dental") == dental]
     named = [p for p in same_year if kind.lower() in (p.get("plan_name", "") + " " + p["id"]).lower()]
     primary = [p for p in same_year if p.get("coverage_order") == "primary"]
     for group in (named, primary, same_year if len(same_year) == 1 else []):

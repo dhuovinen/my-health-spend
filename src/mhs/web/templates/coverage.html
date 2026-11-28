@@ -7,6 +7,7 @@
     <h1>Coverage</h1>
     <div class="muted">Your insurance plans for {{ report.year }}: what they cover, how far into each deductible you are, and the claims behind it.</div>
   </div>
+  {% if card_scan %}<a class="btn primary" href="/coverage/card">Scan your insurance card</a>{% endif %}
   <form method="get" action="/coverage" class="inline">
     <label>Plan year<select name="year" data-autosubmit>{% for y in years %}<option value="{{ y }}" {{ 'selected' if y == report.year }}>{{ y }}</option>{% endfor %}</select></label>
     <noscript><button class="btn small">Show</button></noscript>
@@ -14,22 +15,31 @@
 </div>
 {% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
 {% if saved %}<div class="alert good">Saved.</div>{% endif %}
+{% if card == 'on_file' %}<div class="alert info">That card is already on file: nothing changed.</div>{% endif %}
 
 {% for p in plans %}
-{% set unconfirmed = not p.terms_confirmed and not (p.coverage_order in ('secondary', 'tertiary')) %}
+{% set dental = p.coverage_kind == 'dental' %}
+{% set unconfirmed = not p.terms_confirmed and not dental and not (p.coverage_order in ('secondary', 'tertiary')) %}
 <section class="card section plan-card" id="plan-{{ p.id }}" aria-labelledby="plan-{{ p.id }}-title">
   <div class="plan-summary">
     <div class="insurance-card" aria-label="Plan summary">
       <div class="ic-insurer">{{ p.insurer }}</div>
-      <h2 class="ic-plan" id="plan-{{ p.id }}-title">{{ p.plan_name or 'Medical plan' }}</h2>
+      <h2 class="ic-plan" id="plan-{{ p.id }}-title">{{ p.plan_name or ('Dental plan' if dental else 'Medical plan') }}</h2>
       <div class="ic-chips">
         <span class="badge {{ 's-complete' if (p.coverage_order or 'primary') == 'primary' else 's-in_dispute' }}">{{ (p.coverage_order or 'primary')|humanize }}</span>
+        {% if dental %}<span class="badge s-na">Dental</span>{% endif %}
+        {% if p.plan_type %}<span class="badge s-na">{{ p.plan_type }}</span>{% endif %}
         {% if p.hsa_eligible_plan %}<span class="badge s-na">HSA-eligible</span>{% endif %}
       </div>
       <dl class="ic-facts">
         <div><dt>Plan year</dt><dd>{{ p.plan_year }}</dd></div>
         <div><dt>Coverage</dt><dd>{% if p.coverage_start or p.coverage_end %}{{ p.coverage_start|nice_date if p.coverage_start else '…' }} to {{ p.coverage_end|nice_date if p.coverage_end else '…' }}{% else %}Not set{% endif %}</dd></div>
         <div><dt>Covers</dt><dd>{% for mid in p.member_ids or [] %}{{ member_names.get(mid, mid) }}{{ ', ' if not loop.last }}{% else %}Not set{% endfor %}</dd></div>
+        {% set ids = card_ids.get(p.id) or {} %}
+        {% if ids.group %}<div><dt>Group number</dt><dd class="num">{{ ids.group }}</dd></div>{% endif %}
+        {% for mid, n in (ids.numbers or {}).items() %}{% if n.number %}<div><dt>Member ID, {{ member_names.get(mid, mid) }}{{ ' (subscriber)' if n.subscriber }}</dt><dd class="num">{{ n.number }}</dd></div>{% endif %}{% endfor %}
+        {% if p.payer_id %}<div><dt>Payer ID</dt><dd class="num">{{ p.payer_id }}</dd></div>{% endif %}
+        {% if p.rx %}<div><dt>Pharmacy</dt><dd class="num">{% if p.rx.bin %}RxBIN {{ p.rx.bin }}{% endif %}{% if p.rx.pcn %} · PCN {{ p.rx.pcn }}{% endif %}{% if ids.rx_group %} · Group {{ ids.rx_group }}{% endif %}</dd></div>{% endif %}
       </dl>
     </div>
     <div class="plan-terms">
@@ -49,6 +59,24 @@
       {% endif %}
     </div>
   </div>
+
+  {% if p.contacts or p.card_back_missing or kept_cards.get(p.id) %}
+  <div class="section plan-contacts" id="contacts-{{ p.id }}">
+    <h3>From your card</h3>
+    {% if p.contacts %}
+    <ul class="contact-list">
+      {% for c in p.contacts %}
+      <li><span class="contact-label">{{ c.label }}</span>
+        {% if c.phone %}<a class="btn" href="tel:+1{{ c.phone|replace('-', '') }}">Call {{ c.phone }}</a>{% endif %}
+        {% if c.address %}<span class="small">{{ c.address }}</span>{% endif %}
+        {% if c.url %}<span class="small">{{ c.url }}</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if p.card_back_missing and card_scan %}<p class="small"><a class="btn small" href="/coverage/card?plan={{ p.id }}">Add the back of the card</a> for the phone numbers and claims address.</p>{% endif %}
+    {% for img in kept_cards.get(p.id) or [] %}<a class="btn small" href="/coverage/card-image/{{ img.id }}">Card {{ img.side }}</a> {% endfor %}
+  </div>
+  {% endif %}
 
   {% set eob_rows = inferred.get(p.id) or [] %}
   {% if eob_rows %}
@@ -116,6 +144,7 @@
 <div class="card empty">
   <h2>No plan for {{ report.year }} yet</h2>
   <p class="muted">Add the plan from your insurance documents: its deductible, out-of-pocket maximum, coinsurance and copays. MHS checks each EOB against them and estimates visits before they happen.</p>
+  {% if card_scan %}<p><a class="btn primary" href="/coverage/card">Scan your insurance card</a> to fill in the plan from the card in your wallet.</p>{% endif %}
 </div>
 {% endfor %}
 

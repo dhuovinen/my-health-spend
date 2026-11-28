@@ -10,10 +10,11 @@ from mhs.web.household import privacy
 REQUIRE_CODE = "require_code"
 REQUIRE_CONSENT = "require_consent"
 ALLOW_SIGNUP = "allow_signup"
+KEEP_CARD_IMAGES = "keep_card_images"  # ING-11, ADR-062: keep insurance card images after a scan is confirmed
 # The code starts on: an upgrade never quietly removes protection (ADR-049). Consent before collection starts off for
 # the owner's own household and must be on before anyone else is invited (the launch gate, ADR-055). Sign-up starts
 # off, so an upgrade never opens the service to strangers (ADR-059).
-DEFAULTS = {REQUIRE_CODE: True, REQUIRE_CONSENT: False, ALLOW_SIGNUP: False}
+DEFAULTS = {REQUIRE_CODE: True, REQUIRE_CONSENT: False, ALLOW_SIGNUP: False, KEEP_CARD_IMAGES: False}
 
 
 def provider_setting(provider: str) -> str:
@@ -42,6 +43,15 @@ class Features:
 
     def allow_signup(self) -> bool:
         return self.get(ALLOW_SIGNUP)
+
+    def keep_card_images(self) -> bool:
+        return self.get(KEEP_CARD_IMAGES)
+
+    def card_image_counts(self) -> dict[str, int]:
+        """Card images held for a review, and kept ones, over every household: counts only (ADR-062)."""
+        with self.db.tx() as c:
+            row = c.execute("SELECT in_review, kept FROM app.card_image_counts()").fetchone()
+        return {"in_review": row["in_review"], "kept": row["kept"]}
 
     def provider_on(self, provider: str) -> bool:
         return self.get(provider_setting(provider))

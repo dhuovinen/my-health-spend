@@ -232,6 +232,99 @@
             "unknown"
           ],
           "description": "Whether a self-pay (cash) amount counts toward the deductible under this plan (PRE-04, ADR-053). Default unknown."
+        },
+        "plan_type": {
+          "enum": [
+            "PPO",
+            "HMO",
+            "EPO",
+            "POS",
+            "HDHP"
+          ],
+          "description": "Network type as printed on the insurance card (ING-11, ADR-062)."
+        },
+        "coverage_kind": {
+          "enum": [
+            "medical",
+            "dental"
+          ],
+          "description": "Medical (the default) or dental. A dental plan comes from a dental card, is never merged into a medical plan, and is left out of reconciliation (ADR-062)."
+        },
+        "group_number": {
+          "type": "string",
+          "description": "The plan's group number. A vault token in Release 1 (ADR-062); plain text in an ingest file."
+        },
+        "payer_id": {
+          "type": "string",
+          "description": "The insurer's EDI payer ID, from the back of the card (public)."
+        },
+        "rx": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Pharmacy routing from the card: RxBIN and RxPCN are public; the RxGroup is a vault token in Release 1.",
+          "properties": {
+            "bin": {
+              "type": "string"
+            },
+            "pcn": {
+              "type": "string"
+            },
+            "group": {
+              "type": "string"
+            }
+          }
+        },
+        "contacts": {
+          "type": "array",
+          "description": "The insurer's phone numbers, claims and appeals addresses and website, from the back of the card. Public contact details, shown with tap-to-call links.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "label"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "address": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "member_numbers": {
+          "type": "object",
+          "description": "Per household member: the member ID printed for them (a vault token in Release 1) and whether they are the subscriber.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "member_number": {
+                "type": "string"
+              },
+              "subscriber": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "card_documents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ids of kept insurance card images; present only while the owner's keep_card_images setting was on at confirmation (ADR-062)."
+        },
+        "card_back_missing": {
+          "type": "boolean",
+          "description": "The plan was made from the front of a card only; Coverage offers adding the back."
         }
       }
     },

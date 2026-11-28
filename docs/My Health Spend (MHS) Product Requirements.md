@@ -57,6 +57,7 @@ Release 1 runs on uploaded documents; direct connections to insurers come later 
 | ING-08 | Import HSA/FSA transactions from the account administrator's CSV, XLS or XLSX export | P1 |
 | ING-09 | Connect to insurers through the CMS patient access API (FHIR ExplanationOfBenefit, CARIN Blue Button) with per-app member consent | P2 |
 | ING-10 | Keep the original file unchanged, linked to its extracted data, for audit and dispute evidence | P1 |
+| ING-11 | **Feature request (in progress):** scan an insurance card, front and back, and read the insurer, plan name, insurance type, group number, member ID, subscriber, every member listed, printed copays and the contacts on the back, to fill in the plan automatically for the member to confirm (OCR and layout rules first; dental cards make a separate plan; card images kept only when an admin toggle is on). Spec: `docs/FEATURE_REQUEST_ING-11_INSURANCE_CARD_SCAN.md` | P1 |
 
 Payer APIs return adjudicated claims with remittance and member cost-sharing as FHIR resources, and members authorize each app separately ([Patient Access API overview](https://www.health-samurai.io/docs/payerbox/interop-apis/patient-access)).
 

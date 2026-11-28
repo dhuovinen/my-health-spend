@@ -12,6 +12,7 @@ Identifiers are normalized first (PRV-03), so "SMITH, PAT" and "Pat Smith" get o
   extraction needs them.
 """
 
+import copy
 import logging
 import os
 import re
@@ -315,3 +316,40 @@ def scrubber_class(name: str = "rules") -> type[Scrubber]:
     if cls is PresidioScrubber:
         presidio_analyzer()  # load the model now, so a broken install fails at start-up, not on an upload
     return cls
+
+
+def scrub_card(scrubber: Scrubber, front: str, back: str = "") -> tuple[str, str, Scrubbed]:
+    """Scrub the text of an insurance card (ING-11, ADR-062): the member's names, member ID, group number and
+    pharmacy group become vault tokens like any identifier, while the insurer's public contact details on the card
+    (member services and claims phone numbers, the claims address, website, payer ID) are left in place. Returns the
+    scrubbed front, the scrubbed back, and what was replaced. This is what a Claude fallback would receive."""
+    from mhs.ingest.card import lines_of, public_contact_lines, read_card
+
+    reading = read_card(front, back)
+    names = [p.name for p in reading.people]
+    numbers = [(k, str(f.value)) for k, f in reading.fields.items() if k in ("member_number", "group_number", "rx_group")]
+    numbers += [("member_number", str(p.member_number.value)) for p in reading.people if p.member_number]
+    scrub = copy.copy(scrubber)
+    scrub.known_names = scrubber.known_names + names
+    out = Scrubbed("")
+    sides = []
+    for text, is_back in ((front, False), (back, True)):
+        lines = lines_of(text)
+        kept = public_contact_lines(text)  # contact lines on either side; the front rarely has any
+        marks = {i: f"\x00KEEP{i}\x00" for i in kept}
+        shielded = "\n".join(marks.get(i, ln) for i, ln in enumerate(lines))
+        edited = _Edited(shielded)
+        for kind, value in numbers:
+            if len(value) >= 4:
+                token_kind = "member_id" if kind == "member_number" else "account_number"
+                edited.sub(re.compile(rf"(?<![\w-]){re.escape(value)}(?![\w-])"),
+                           lambda m, k=token_kind: scrub._token(out, k, m.group(0)))
+        result = scrub.scrub(edited.text)
+        out.tokens.update(result.tokens)
+        out.found += result.found
+        text = result.text
+        for i, mark in marks.items():
+            text = text.replace(mark, lines[i])
+        sides.append(text)
+    out.text = sides[0] + ("\n\f\n" + sides[1] if back else "")
+    return sides[0], sides[1], out
